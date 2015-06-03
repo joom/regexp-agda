@@ -20,7 +20,7 @@ module RegExp where
   s ∈L ε = s == ""
   s ∈L (Lit c) = s == "c"
   s ∈L (r₁ ⊕ r₂) = Either (s ∈L r₁) (s ∈L r₂)
-  s ∈L (r₁ · r₂) = Σ {_} {_} {String × String} (λ p  → (append (fst p) (snd p) == s) × (fst p) ∈L r₁ × (snd p) ∈L r₂)
+  s ∈L (r₁ · r₂) = Σ (λ p  → (append (fst p) (snd p) == s) × (fst p) ∈L r₁ × (snd p) ∈L r₂)
 
   -- I can't believe this is not in the preliminaries
   _or_ : Bool → Bool → Bool
@@ -36,3 +36,9 @@ module RegExp where
   ... | _ = False
   match (r₁ · r₂) s k = match r₁ s (λ s' → match r₂ s' k)
   match (r₁ ⊕ r₂) s k = (match r₁ s k) or (match r₂ s k)
+
+  match-correct : (r : RegExp)
+                → (s : String)
+                → (k : String → Bool)
+                → Σ (λ p  → (append (fst p) (snd p) == s) × (fst p) ∈L r × (k (snd p) == True))
+  match-correct r s k = {!!}
