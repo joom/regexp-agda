@@ -2,7 +2,7 @@ open import lib.Preliminaries
 
 module RegExp where
 
-  open String
+  open List
 
   data RegExp : Set where
     ∅ : RegExp  -- empty set (type \emptyset)
@@ -10,35 +10,79 @@ module RegExp where
     Lit : Char → RegExp -- literal character
     _·_ : RegExp → RegExp → RegExp -- concatenation (type \cdot)
     _⊕_ : RegExp → RegExp → RegExp -- alternation/set union (type \oplus)
+    _* : RegExp → RegExp -- Kleene star
 
-    -- Left out for now because of termination issues
-    -- _* : RegExp → RegExp -- Kleene star
+  {-
+    Example regexp:
+      ((Lit 'a' ⊕ Lit 'b') · (Lit 'c')) accepts "ac"
+      (∅ *) accepts ""
+  -}
+
+  infix 1 _*
+  infixr 2 _·_
+  infixr 3 _⊕_
 
   -- Shows a string accepted by the language of a regexp. Type "\in L".
-  _∈L_ : String → RegExp → Set
+  _∈L_ : List Char → RegExp → Set
   _ ∈L ∅ = Void
-  s ∈L ε = s == ""
-  s ∈L (Lit c) = s == "c"
+  s ∈L ε = s == []
+  s ∈L (Lit c) = s == 'c' :: []
   s ∈L (r₁ ⊕ r₂) = Either (s ∈L r₁) (s ∈L r₂)
-  s ∈L (r₁ · r₂) = Σ (λ p  → (append (fst p) (snd p) == s) × (fst p) ∈L r₁ × (snd p) ∈L r₂)
+  s ∈L (r₁ · r₂) = Σ (λ p  → ((fst p) ++ (snd p) == s) × (fst p) ∈L r₁ × (snd p) ∈L r₂)
+  s ∈L (r *) = {!!}
 
-  -- I can't believe this is not in the preliminaries
+  -- I can't believe these are not in the preliminaries file
+  -- simple stuff
+  _and_ : Bool → Bool → Bool
+  True and True = True
+  _ and _ = False
+
   _or_ : Bool → Bool → Bool
   True or _ = True
   _ or True = True
   _ or _ = False
 
-  match : RegExp → String → (String → Bool) → Bool
+  null : {A : Set} → List A → Bool
+  null [] = True
+  null _ = False
+  -- end of simple stuff
+
+  match : RegExp → List Char → (List Char → Bool) → Bool
   match ∅ _ _ = False
-  match ε s _ = equal s ""
-  match (Lit c) s _ with toList s
-  ... | (x :: []) = Char.equalb x c
-  ... | _ = False
+  match ε s k = k s
+  match (Lit c) (x :: xs) k = Char.equalb x c and k xs
+  match (Lit _) _ _ = False
   match (r₁ · r₂) s k = match r₁ s (λ s' → match r₂ s' k)
   match (r₁ ⊕ r₂) s k = (match r₁ s k) or (match r₂ s k)
+  match (r *) s k = (k s) or (match r s (λ s' → match (r *) s' k))
+
+  _accepts_ : RegExp → String.String → Bool
+  r accepts s = match r (String.toList s) null
+
+  δ : RegExp → RegExp
+  δ ∅ = ∅
+  δ ε = ε
+  δ (Lit x) = ∅
+  δ (r₁ · r₂) with δ r₁ | δ r₂
+  ... | ∅ | _ = ∅
+  ... | _ | ∅ = ∅
+  ... | _ | _ = ε
+  δ (r₁ ⊕ r₂) with δ r₁ | δ r₂
+  ... | ε | _ = ε
+  ... | _ | ε = ε
+  ... | _ | _ = ∅
+  δ(r *) = ε
+
+  standardize : RegExp → RegExp
+  standardize ∅ = ∅
+  standardize ε = ∅
+  standardize (Lit x) = Lit x
+  standardize (r₁ · r₂) = (δ r₁ · standardize r₂) ⊕ (standardize r₁ · δ r₂) ⊕ (standardize r₁ · standardize r₂)
+  standardize (r₁ ⊕ r₂) = standardize r₁ ⊕ standardize r₂
+  standardize (r *) = standardize r ⊕ (standardize r)*
 
   match-correct : (r : RegExp)
-                → (s : String)
-                → (k : String → Bool)
-                → Σ (λ p  → (append (fst p) (snd p) == s) × (fst p) ∈L r × (k (snd p) == True))
+                → (s : List Char)
+                → (k : List Char → Bool)
+                → Σ (λ p  → ( (fst p) ++ (snd p) == s) × (fst p) ∈L r × (k (snd p) == True))
   match-correct r s k = {!!}
