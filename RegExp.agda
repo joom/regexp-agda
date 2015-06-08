@@ -10,17 +10,17 @@ module RegExp where
     Lit : Char → RegExp -- literal character
     _·_ : RegExp → RegExp → RegExp -- concatenation (type \cdot)
     _⊕_ : RegExp → RegExp → RegExp -- alternation/set union (type \oplus)
-    _* : RegExp → RegExp -- Kleene star
+    -- _* : RegExp → RegExp -- Kleene star
 
+  -- infix 1 _*
+  infixr 2 _·_
+  infixr 3 _⊕_
   {-
     Example regexp:
       ((Lit 'a' ⊕ Lit 'b') · (Lit 'c')) accepts "ac"
       (∅ *) accepts ""
   -}
 
-  infix 1 _*
-  infixr 2 _·_
-  infixr 3 _⊕_
 
   -- Shows a string accepted by the language of a regexp. Type "\in L".
   _∈L_ : List Char → RegExp → Set
@@ -29,18 +29,13 @@ module RegExp where
   s ∈L (Lit c) = s == 'c' :: []
   s ∈L (r₁ ⊕ r₂) = Either (s ∈L r₁) (s ∈L r₂)
   s ∈L (r₁ · r₂) = Σ (λ p  → ((fst p) ++ (snd p) == s) × (fst p) ∈L r₁ × (snd p) ∈L r₂)
-  s ∈L (r *) = {!!}
+  -- s ∈L (r *) = {! Either (s ∈L ε) (s ∈L (r · r *))!}
 
   -- I can't believe these are not in the preliminaries file
   -- simple stuff
-  _and_ : Bool → Bool → Bool
-  True and True = True
-  _ and _ = False
-
-  _or_ : Bool → Bool → Bool
-  True or _ = True
-  _ or True = True
-  _ or _ = False
+  if_then_else_ : {A : Set} → Bool → A → A → A
+  if True then x else _ = x
+  if False then _ else y = y
 
   null : {A : Set} → List A → Bool
   null [] = True
@@ -50,14 +45,11 @@ module RegExp where
   match : RegExp → List Char → (List Char → Bool) → Bool
   match ∅ _ _ = False
   match ε s k = k s
-  match (Lit c) (x :: xs) k = Char.equalb x c and k xs
+  match (Lit c) (x :: xs) k = if (Char.equalb x c) then (k xs) else False -- lazy and
   match (Lit _) _ _ = False
   match (r₁ · r₂) s k = match r₁ s (λ s' → match r₂ s' k)
-  match (r₁ ⊕ r₂) s k = (match r₁ s k) or (match r₂ s k)
-  match (r *) s k = (k s) or (match r s (λ s' → match (r *) s' k))
-
-  _accepts_ : RegExp → String.String → Bool
-  r accepts s = match r (String.toList s) null
+  match (r₁ ⊕ r₂) s k = if (match r₁ s k) then True else (match r₂ s k) -- lazy or
+  -- match (r *) s k = if (k s) then True else (match r s (λ s' → match (r *) s' k)) -- lazy or
 
   δ : RegExp → RegExp
   δ ∅ = ∅
@@ -71,7 +63,7 @@ module RegExp where
   ... | ε | _ = ε
   ... | _ | ε = ε
   ... | _ | _ = ∅
-  δ(r *) = ε
+  -- δ(r *) = ε
 
   standardize : RegExp → RegExp
   standardize ∅ = ∅
@@ -79,7 +71,10 @@ module RegExp where
   standardize (Lit x) = Lit x
   standardize (r₁ · r₂) = (δ r₁ · standardize r₂) ⊕ (standardize r₁ · δ r₂) ⊕ (standardize r₁ · standardize r₂)
   standardize (r₁ ⊕ r₂) = standardize r₁ ⊕ standardize r₂
-  standardize (r *) = standardize r ⊕ (standardize r)*
+  -- standardize (r *) = standardize r · (standardize r)*
+
+  _accepts_ : RegExp → String.String → Bool
+  r accepts s = match (standardize r) (String.toList s) null
 
   match-correct : (r : RegExp)
                 → (s : List Char)
