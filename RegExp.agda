@@ -10,7 +10,7 @@ module RegExp where
     Lit : Char → RegExp -- literal character
     _·_ : RegExp → RegExp → RegExp -- concatenation (type \cdot)
     _⊕_ : RegExp → RegExp → RegExp -- alternation/set union (type \oplus)
-    -- _* : RegExp → RegExp -- Kleene star
+  --   _* : RegExp → RegExp -- Kleene star
 
   -- infix 1 _*
   infixr 2 _·_
@@ -76,8 +76,29 @@ module RegExp where
   _accepts_ : RegExp → String.String → Bool
   r accepts s = match (standardize r) (String.toList s) null
 
-  match-correct : (r : RegExp)
-                → (s : List Char)
-                → (k : List Char → Bool)
-                → Σ (λ p  → ( (fst p) ++ (snd p) == s) × (fst p) ∈L r × (k (snd p) == True))
-  match-correct r s k = {!!}
+  -- Proofs
+
+  sym : {A : Set} →  {x y : A} → (x == y) → y == x
+  sym {_} {y} {.y} Refl = Refl
+
+  append-lh-[] : ∀ {A : Set} → (xs : List A) → (ys : List A) → xs == [] → xs ++ ys == ys
+  append-lh-[] .[] ys Refl = Refl
+
+  match-soundness : (r : RegExp)
+                  → (s : List Char)
+                  → (k : List Char → Bool)
+                  → {!!}
+                  → Σ (λ p  → ( (fst p) ++ (snd p) == s) × (fst p) ∈L r × (k (snd p) == True))
+  match-soundness r s k = {!!}
+
+  match-completeness : (r : RegExp)
+                     → (s : List Char)
+                     → (k : List Char → Bool)
+                     → Σ (λ p  → ( (fst p) ++ (snd p) == s) × (fst p) ∈L r × (k (snd p) == True))
+                     → match r s k == True
+  match-completeness ∅ s k ((xs , ys) , b , c , d) = abort c
+  match-completeness ε s k ((xs , ys) , b , c , d) with ys | s | (b ∘ sym (append-lh-[] xs ys c))
+  ... | p | .p | Refl = d
+  match-completeness (Lit x) s k ((xs , ys) , b , c , d) = {!!}
+  match-completeness (r₁ · r₂) s k ((xs , ys) , b , c , d) = {!!}
+  match-completeness (r₁ ⊕ r₂) s k ((xs , ys) , b , c , d) = {!!}
