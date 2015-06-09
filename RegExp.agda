@@ -26,7 +26,7 @@ module RegExp where
   _∈L_ : List Char → RegExp → Set
   _ ∈L ∅ = Void
   s ∈L ε = s == []
-  s ∈L (Lit c) = s == 'c' :: []
+  s ∈L (Lit c) = s == c :: []
   s ∈L (r₁ ⊕ r₂) = Either (s ∈L r₁) (s ∈L r₂)
   s ∈L (r₁ · r₂) = Σ (λ p  → ((fst p) ++ (snd p) == s) × (fst p) ∈L r₁ × (snd p) ∈L r₂)
   -- s ∈L (r *) = {! Either (s ∈L ε) (s ∈L (r · r *))!}
@@ -91,6 +91,9 @@ module RegExp where
                   → Σ (λ p  → ( (fst p) ++ (snd p) == s) × (fst p) ∈L r × (k (snd p) == True))
   match-soundness r s k = {!!}
 
+  singleton-append : {A : Set} → {x : A} → {xs ys s : List A} → xs == x :: [] → xs ++ ys == s → x :: ys == s
+  singleton-append Refl Refl = Refl
+
   match-completeness : (r : RegExp)
                      → (s : List Char)
                      → (k : List Char → Bool)
@@ -99,6 +102,6 @@ module RegExp where
   match-completeness ∅ s k ((xs , ys) , b , c , d) = abort c
   match-completeness ε s k ((xs , ys) , b , c , d) with ys | s | (b ∘ sym (append-lh-[] xs ys c))
   ... | p | .p | Refl = d
-  match-completeness (Lit x) s k ((xs , ys) , b , c , d) = {!!}
+  match-completeness (Lit x) s k ((xs , ys) , b , c , d) = {!singleton-append c b!}
   match-completeness (r₁ · r₂) s k ((xs , ys) , b , c , d) = {!!}
   match-completeness (r₁ ⊕ r₂) s k ((xs , ys) , b , c , d) = {!!}
