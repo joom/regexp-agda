@@ -26,7 +26,7 @@ module RegExp where
   _∈L_ : List Char → RegExp → Set
   _ ∈L ∅ = Void
   s ∈L ε = s == []
-  s ∈L (Lit c) = s == 'c' :: []
+  s ∈L (Lit c) = s == c :: []
   s ∈L (r₁ ⊕ r₂) = Either (s ∈L r₁) (s ∈L r₂)
   s ∈L (r₁ · r₂) = Σ (λ p  → ((fst p) ++ (snd p) == s) × (fst p) ∈L r₁ × (snd p) ∈L r₂)
   -- s ∈L (r *) = {! Either (s ∈L ε) (s ∈L (r · r *))!}
