@@ -100,6 +100,12 @@ module RegExp where
   ... | Inl _ = Refl
   ... | Inr f = abort (f Refl)
 
+  eitherIf : {A B : Bool} → Either (A == True) (B == True) → if A then True else B == True
+  eitherIf {True} (Inl p) = Refl
+  eitherIf {False} (Inl ())
+  eitherIf {True} (Inr Refl) = Refl
+  eitherIf {False} (Inr Refl) = Refl
+
   match-soundness : (r : RegExp)
                   → (s : List Char)
                   → (k : List Char → Bool)
@@ -134,9 +140,5 @@ module RegExp where
   match-completeness (r₁ · r₂) .((ms ++ ns) ++ ys) k ((.(ms ++ ns) , ys) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) | Refl | Refl | p3
     with match-completeness r₂ (ns ++ ys) k ((ns , ys) , (Refl , (ns∈r₂ , d)))
   ... | x = match-completeness r₁ ((ms ++ ns) ++ ys) (λ s' → match r₂ s' k) ((ms , (ns ++ ys)) , (p3 , (ms∈r₁ , x)))
-  match-completeness (r₁ ⊕ r₂) s k ((xs , ys) , b , Inl c , d) = {!match-completeness r₁ s k ((xs , ys) , b , c , d)!}
-  match-completeness (r₁ ⊕ r₂) s k ((xs , ys) , b , Inr c , d) = {!match-completeness r₂ s k ((xs , ys) , b , c , d)!} -- with match r₁ s k | c
-
-  --... | True | _ = Refl
-  --... | False | Inr q = match-completeness r₂ s k ((xs , ys) , b , q , d)
-  --match-completeness (r₁ ⊕ r₂) s k ((xs , ys) , b , c , d) | False | Inl p = {!!}
+  match-completeness (r₁ ⊕ r₂) s k ((xs , ys) , b , Inl c , d) = eitherIf (Inl (match-completeness r₁ s k ((xs , ys) , b , c , d)))
+  match-completeness (r₁ ⊕ r₂) s k ((xs , ys) , b , Inr c , d) = {!match-completeness r₂ s k ((xs , ys) , b , c , d)!}
