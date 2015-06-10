@@ -100,9 +100,11 @@ module RegExp where
   match-soundness (Lit x) [] k ()
   match-soundness (Lit x) (y :: ys) k m with Char.equalb y x | Char.equal y x
   match-soundness (Lit x) (.x :: ys) k m | True | Inl Refl = (x :: [] , ys) , Refl , Refl , m
-  match-soundness (Lit x) (y :: ys) k m | True | Inr q = {!!}
+  match-soundness (Lit x) (y :: ys) k () | True | Inr q
   match-soundness (Lit x) (y :: ys) k () | False | _
-  match-soundness (r₁ · r₂) s k m = {!!}
+  match-soundness (r₁ · r₂) s k m with match-soundness r₁ s (λ s' → match r₂ s' k) m
+  match-soundness (r₁ · r₂) s k m | (xs , ys) , a , b , c with match-soundness r₂ ys k c
+  match-soundness (r₁ · r₂) .(xs ++ as ++ bs) k m | (xs , .(as ++ bs)) , Refl , b , c | (as , bs) , Refl , e , f = {!!}
   match-soundness (r₁ ⊕ r₂) s k m = {!!}
 
   match-completeness : (r : RegExp)
@@ -116,12 +118,12 @@ module RegExp where
   match-completeness (Lit x) s k ((xs , ys) , b , c , d) with !(singleton-append c b)
   match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl with (Char.equalb x x)
   match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl | True = d
-  match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl | False = {!!}
+  match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , ()) | Refl | False
   match-completeness (r₁ · r₂) s k ((xs , ys) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) with tot | b | append-assoc ms ns ys
   match-completeness (r₁ · r₂) .((ms ++ ns) ++ ys) k ((.(ms ++ ns) , ys) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) | Refl | Refl | p3
     with match-completeness r₂ (ns ++ ys) k ((ns , ys) , (Refl , (ns∈r₂ , d)))
   ... | x = match-completeness r₁ ((ms ++ ns) ++ ys) (λ s' → match r₂ s' k) ((ms , (ns ++ ys)) , (p3 , (ms∈r₁ , x)))
   match-completeness (r₁ ⊕ r₂) s k ((xs , ys) , b , c , d) with match r₁ s k | c
   ... | True | _ = Refl
-  ... | False | Inl p = match-completeness r₂ s k ((xs , ys) , b , {!!} , d)
   ... | False | Inr q = match-completeness r₂ s k ((xs , ys) , b , q , d)
+  match-completeness (r₁ ⊕ r₂) s k ((xs , ys) , b , c , ()) | False | Inl p
