@@ -104,8 +104,14 @@ module RegExp where
   match-soundness (Lit x) (y :: ys) k () | False | _
   match-soundness (r₁ · r₂) s k m with match-soundness r₁ s (λ s' → match r₂ s' k) m
   match-soundness (r₁ · r₂) s k m | (xs , ys) , a , b , c with match-soundness r₂ ys k c
-  match-soundness (r₁ · r₂) .(xs ++ as ++ bs) k m | (xs , .(as ++ bs)) , Refl , b , c | (as , bs) , Refl , e , f = {!!}
+  match-soundness (r₁ · r₂) .(xs ++ as ++ bs) k m | (xs , .(as ++ bs)) , Refl , b , c | (as , bs) , Refl , e , f = (xs ++ as , bs) , (! (append-assoc xs as bs) , (((xs , as) , (Refl , (b , e))) , f))
   match-soundness (r₁ ⊕ r₂) s k m = {!!}
+
+
+  lemma₁ : (c : Char) → Char.equalb c c == True
+  lemma₁ c with Char.equalb c c
+  ... | True = Refl
+  ... | False = {!!}
 
   match-completeness : (r : RegExp)
                      → (s : List Char)
@@ -115,15 +121,18 @@ module RegExp where
   match-completeness ∅ s k ((xs , ys) , b , c , d) = abort c
   match-completeness ε s k ((xs , ys) , b , c , d) with ys | s | (b ∘ !(append-lh-[] xs ys c))
   ... | p | .p | Refl = d
-  match-completeness (Lit x) s k ((xs , ys) , b , c , d) with !(singleton-append c b)
-  match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl with (Char.equalb x x)
-  match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl | True = d
-  match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , ()) | Refl | False
+  match-completeness (Lit x) s k ((xs , ys) , b , c , d)  with !(singleton-append c b)
+  match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl = {!!}
+  -- match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl with (Char.equalb x x)
+  --match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl | True = d
+  --match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl | False = {!!}
   match-completeness (r₁ · r₂) s k ((xs , ys) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) with tot | b | append-assoc ms ns ys
   match-completeness (r₁ · r₂) .((ms ++ ns) ++ ys) k ((.(ms ++ ns) , ys) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) | Refl | Refl | p3
     with match-completeness r₂ (ns ++ ys) k ((ns , ys) , (Refl , (ns∈r₂ , d)))
   ... | x = match-completeness r₁ ((ms ++ ns) ++ ys) (λ s' → match r₂ s' k) ((ms , (ns ++ ys)) , (p3 , (ms∈r₁ , x)))
-  match-completeness (r₁ ⊕ r₂) s k ((xs , ys) , b , c , d) with match r₁ s k | c
-  ... | True | _ = Refl
-  ... | False | Inr q = match-completeness r₂ s k ((xs , ys) , b , q , d)
-  match-completeness (r₁ ⊕ r₂) s k ((xs , ys) , b , c , ()) | False | Inl p
+  match-completeness (r₁ ⊕ r₂) s k ((xs , ys) , b , Inl c , d) = {!match-completeness r₁ s k ((xs , ys) , b , c , d)!}
+  match-completeness (r₁ ⊕ r₂) s k ((xs , ys) , b , Inr c , d) = {!match-completeness r₂ s k ((xs , ys) , b , c , d)!} -- with match r₁ s k | c
+
+  --... | True | _ = Refl
+  --... | False | Inr q = match-completeness r₂ s k ((xs , ys) , b , q , d)
+  --match-completeness (r₁ ⊕ r₂) s k ((xs , ys) , b , c , d) | False | Inl p = {!!}
