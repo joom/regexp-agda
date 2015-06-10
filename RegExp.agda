@@ -95,7 +95,15 @@ module RegExp where
                   → (k : List Char → Bool)
                   → match r s k == True
                   → Σ (λ p  → ( (fst p) ++ (snd p) == s) × (fst p) ∈L r × (k (snd p) == True))
-  match-soundness r s k = {!!}
+  match-soundness ∅ s k ()
+  match-soundness ε s k m = ([] , s) , Refl , Refl , m
+  match-soundness (Lit x) [] k ()
+  match-soundness (Lit x) (y :: ys) k m with Char.equalb y x | Char.equal y x
+  match-soundness (Lit x) (.x :: ys) k m | True | Inl Refl = (x :: [] , ys) , Refl , Refl , m
+  match-soundness (Lit x) (y :: ys) k m | True | Inr q = {!!}
+  match-soundness (Lit x) (y :: ys) k () | False | _
+  match-soundness (r₁ · r₂) s k m = {!!}
+  match-soundness (r₁ ⊕ r₂) s k m = {!!}
 
   match-completeness : (r : RegExp)
                      → (s : List Char)
