@@ -40,12 +40,17 @@ module RegExp where
   null : {A : Set} → List A → Bool
   null [] = True
   null _ = False
+
+  equalb : Char → Char → Bool
+  equalb x y with Char.equal x y
+  ... | Inl _ = True
+  ... | Inr _ = False
   -- end of simple stuff
 
   match : RegExp → List Char → (List Char → Bool) → Bool
   match ∅ _ _ = False
   match ε s k = k s
-  match (Lit c) (x :: xs) k = if (Char.equalb x c) then (k xs) else False -- lazy and
+  match (Lit c) (x :: xs) k = if (equalb x c) then (k xs) else False -- lazy and
   match (Lit _) _ _ = False
   match (r₁ · r₂) s k = match r₁ s (λ s' → match r₂ s' k)
   match (r₁ ⊕ r₂) s k = if (match r₁ s k) then True else (match r₂ s k) -- lazy or
@@ -90,6 +95,11 @@ module RegExp where
   append-assoc [] ys zs = Refl
   append-assoc (x :: xs) ys zs = cons-eq (append-assoc xs ys zs)
 
+  same-char : (c : Char) → equalb c c == True
+  same-char c with Char.equal c c
+  ... | Inl _ = Refl
+  ... | Inr f = abort (f Refl)
+
   match-soundness : (r : RegExp)
                   → (s : List Char)
                   → (k : List Char → Bool)
@@ -98,7 +108,7 @@ module RegExp where
   match-soundness ∅ s k ()
   match-soundness ε s k m = ([] , s) , Refl , Refl , m
   match-soundness (Lit x) [] k ()
-  match-soundness (Lit x) (y :: ys) k m with Char.equalb y x | Char.equal y x
+  match-soundness (Lit x) (y :: ys) k m with equalb y x | Char.equal y x
   match-soundness (Lit x) (.x :: ys) k m | True | Inl Refl = (x :: [] , ys) , Refl , Refl , m
   match-soundness (Lit x) (y :: ys) k () | True | Inr q
   match-soundness (Lit x) (y :: ys) k () | False | _
@@ -107,11 +117,6 @@ module RegExp where
   match-soundness (r₁ · r₂) .(xs ++ as ++ bs) k m | (xs , .(as ++ bs)) , Refl , b , c | (as , bs) , Refl , e , f = (xs ++ as , bs) , (! (append-assoc xs as bs) , (((xs , as) , (Refl , (b , e))) , f))
   match-soundness (r₁ ⊕ r₂) s k m = {!!}
 
-
-  lemma₁ : (c : Char) → Char.equalb c c == True
-  lemma₁ c with Char.equalb c c
-  ... | True = Refl
-  ... | False = {!!}
 
   match-completeness : (r : RegExp)
                      → (s : List Char)
@@ -122,10 +127,9 @@ module RegExp where
   match-completeness ε s k ((xs , ys) , b , c , d) with ys | s | (b ∘ !(append-lh-[] xs ys c))
   ... | p | .p | Refl = d
   match-completeness (Lit x) s k ((xs , ys) , b , c , d)  with !(singleton-append c b)
-  match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl = {!!}
-  -- match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl with (Char.equalb x x)
-  --match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl | True = d
-  --match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl | False = {!!}
+  match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl with equalb x x | same-char x
+  match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl | True | Refl = d
+  match-completeness (Lit x) .(x :: ys) k ((xs , ys) , b , c , d) | Refl | False | ()
   match-completeness (r₁ · r₂) s k ((xs , ys) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) with tot | b | append-assoc ms ns ys
   match-completeness (r₁ · r₂) .((ms ++ ns) ++ ys) k ((.(ms ++ ns) , ys) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) | Refl | Refl | p3
     with match-completeness r₂ (ns ++ ys) k ((ns , ys) , (Refl , (ns∈r₂ , d)))
