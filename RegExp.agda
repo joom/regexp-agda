@@ -12,6 +12,16 @@ module RegExp where
     _⊕_ : RegExp → RegExp → RegExp -- alternation/set union (type \oplus)
     _* : RegExp → RegExp -- Kleene star
 
+  data StdRegExp : RegExp → Set where
+    ∅ˢ : StdRegExp ∅
+    ∅ˢ' : StdRegExp ε
+    Litˢ : (c : Char) → StdRegExp (Lit c)
+    _·ˢ_ : {r₂ : RegExp} → (r₁ : RegExp) → (x : StdRegExp r₂) → StdRegExp (r₁ · r₂)
+    _ˢ·_ : {r₁ : RegExp} → (x : StdRegExp r₁) → (r₂ : RegExp) → StdRegExp (r₁ · r₂)
+    _ˢ·ˢ_ : {r₁ r₂ : RegExp} → StdRegExp r₁ → StdRegExp r₂ → StdRegExp (r₁ · r₂) -- unnecessary
+    _⊕ˢ_ : {r₁ r₂ : RegExp} → StdRegExp r₁ → StdRegExp r₂ → StdRegExp (r₁ ⊕ r₂)
+    _*ˢ : {r : RegExp} → StdRegExp r → StdRegExp (r *)
+
   infix 1 _*
   infixr 2 _·_
   infixr 3 _⊕_
@@ -51,13 +61,25 @@ module RegExp where
   ... | _ | _ = ∅
   δ(r *) = ε
 
-  standardize : RegExp → RegExp
-  standardize ∅ = ∅
-  standardize ε = ∅
-  standardize (Lit x) = Lit x
-  standardize (r₁ · r₂) = (δ r₁ · standardize r₂) ⊕ (standardize r₁ · δ r₂) ⊕ (standardize r₁ · standardize r₂)
-  standardize (r₁ ⊕ r₂) = standardize r₁ ⊕ standardize r₂
-  standardize (r *) = standardize r · (standardize r)*
+  -- standardize : RegExp → RegExp
+  -- standardize ∅ = ∅
+  -- standardize ε = ∅
+  -- standardize (Lit x) = Lit x
+  -- standardize (r₁ · r₂) = (δ r₁ · standardize r₂) ⊕ (standardize r₁ · δ r₂) ⊕ (standardize r₁ · standardize r₂)
+  -- standardize (r₁ ⊕ r₂) = standardize r₁ ⊕ standardize r₂
+  -- standardize (r *) = standardize r · (standardize r)*
+
+  *-lemma : {r : RegExp} → StdRegExp (r · (r *)) → StdRegExp (r *)
+  *-lemma = {!!}
+
+  standardize : (r : RegExp) → StdRegExp r
+  standardize ∅ = ∅ˢ
+  standardize ε = ∅ˢ'
+  standardize (Lit x) = Litˢ x
+  standardize (r₁ · r₂) = {!!}
+  standardize (r₁ ⊕ r₂) = {!!}
+  standardize (r *) with standardize r
+  ... | x = *-lemma (x ˢ·ˢ (x *ˢ))
 
   -- match : RegExp → List Char → (List Char → Bool) → Bool
   -- match ∅ _ _ = False
