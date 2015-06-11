@@ -106,6 +106,12 @@ module RegExp where
   eitherIf {False} (Inl ())
   eitherIf {False} (Inr Refl) = Refl
 
+  lazyOrEq : {a b : Bool} → if a then True else b == True → Either (a == True) (b == True)
+  lazyOrEq {True} {True} Refl = Inl Refl
+  lazyOrEq {True} {False} Refl = Inl Refl
+  lazyOrEq {False} {True} Refl = Inr Refl
+  lazyOrEq {False} {False} ()
+
   match-soundness : (r : RegExp)
                   → (s : List Char)
                   → (k : List Char → Bool)
@@ -121,7 +127,11 @@ module RegExp where
   match-soundness (r₁ · r₂) s k m with match-soundness r₁ s (λ s' → match r₂ s' k) m
   match-soundness (r₁ · r₂) s k m | (xs , ys) , a , b , c with match-soundness r₂ ys k c
   match-soundness (r₁ · r₂) .(xs ++ as ++ bs) k m | (xs , .(as ++ bs)) , Refl , b , c | (as , bs) , Refl , e , f = (xs ++ as , bs) , (! (append-assoc xs as bs) , (((xs , as) , (Refl , (b , e))) , f))
-  match-soundness (r₁ ⊕ r₂) s k m = {!!}
+  match-soundness (r₁ ⊕ r₂) s k m with lazyOrEq {match r₁ s k} {match r₂ s k} m
+  match-soundness (r₁ ⊕ r₂) s k m | Inl x with match-soundness r₁ s k x
+  match-soundness (r₁ ⊕ r₂) s k m | Inl x | (xs , ys) , a , b , c = (xs , ys) , a , Inl b , c
+  match-soundness (r₁ ⊕ r₂) s k m | Inr x with match-soundness r₂ s k x
+  match-soundness (r₁ ⊕ r₂) s k m | Inr x | (xs , ys) , a , b , c = (xs , ys) , a , Inr b , c
 
 
   match-completeness : (r : RegExp)
