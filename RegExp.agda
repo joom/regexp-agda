@@ -120,10 +120,9 @@ module RegExp where
   match-soundness ∅ s k ()
   match-soundness ε s k m = ([] , s) , Refl , Refl , m
   match-soundness (Lit x) [] k ()
-  match-soundness (Lit x) (y :: ys) k m with equalb y x | Char.equal y x
-  match-soundness (Lit x) (.x :: ys) k m | True | Inl Refl = (x :: [] , ys) , Refl , Refl , m
-  match-soundness (Lit x) (y :: ys) k () | True | Inr q
-  match-soundness (Lit x) (y :: ys) k () | False | _
+  match-soundness (Lit x) (y :: ys) k m with Char.equal y x
+  match-soundness (Lit x) (.x :: ys) k m | Inl Refl = (x :: [] , ys) , Refl , Refl , m
+  match-soundness (Lit x) (y :: ys) k () | Inr q
   match-soundness (r₁ · r₂) s k m with match-soundness r₁ s (λ s' → match r₂ s' k) m
   match-soundness (r₁ · r₂) s k m | (xs , ys) , a , b , c with match-soundness r₂ ys k c
   match-soundness (r₁ · r₂) .(xs ++ as ++ bs) k m | (xs , .(as ++ bs)) , Refl , b , c | (as , bs) , Refl , e , f = (xs ++ as , bs) , (! (append-assoc xs as bs) , (((xs , as) , (Refl , (b , e))) , f))
