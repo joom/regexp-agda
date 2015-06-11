@@ -12,19 +12,32 @@ module RegExp where
     _⊕_ : RegExp → RegExp → RegExp -- alternation/set union (type \oplus)
     _* : RegExp → RegExp -- Kleene star
 
+  data Δ : Set where
+    ∅ᵈ : Δ
+    εᵈ : Δ
+
+  demote-Δ : Δ → RegExp
+  demote-Δ ∅ᵈ = ∅
+  demote-Δ εᵈ = ε
+
   data StdRegExp : RegExp → Set where
     ∅ˢ : StdRegExp ∅
     ∅ˢ' : StdRegExp ε
     Litˢ : (c : Char) → StdRegExp (Lit c)
-    _·ˢ_ : {r₂ : RegExp} → (r₁ : RegExp) → (x : StdRegExp r₂) → StdRegExp (r₁ · r₂)
-    _ˢ·_ : {r₁ : RegExp} → (x : StdRegExp r₁) → (r₂ : RegExp) → StdRegExp (r₁ · r₂)
+    _·ˢ_ : {r₂ : RegExp} → (d : Δ) → StdRegExp r₂ → StdRegExp (demote-Δ d · r₂)
+    _ˢ·_ : {r₁ : RegExp} → StdRegExp r₁ → (d : Δ) → StdRegExp (r₁ · demote-Δ d)
     _ˢ·ˢ_ : {r₁ r₂ : RegExp} → StdRegExp r₁ → StdRegExp r₂ → StdRegExp (r₁ · r₂) -- unnecessary
     _⊕ˢ_ : {r₁ r₂ : RegExp} → StdRegExp r₁ → StdRegExp r₂ → StdRegExp (r₁ ⊕ r₂)
     _*ˢ : {r : RegExp} → StdRegExp r → StdRegExp (r *)
 
   infix 1 _*
+  infix 1 _*ˢ
   infixr 2 _·_
+  infixr 2 _ˢ·_
+  infixr 2 _·ˢ_
+  infixr 2 _ˢ·ˢ_
   infixr 3 _⊕_
+  infixr 3 _⊕ˢ_
   {-
     Example regexp:
       ((Lit 'a' ⊕ Lit 'b') · (Lit 'c')) accepts "ac"
@@ -45,22 +58,33 @@ module RegExp where
   equalb x y with Char.equal x y
   ... | Inl _ = True
   ... | Inr _ = False
+
+  {- Suffix xs ys means that xs is a suffix of ys -}
+
+  data Suffix {A : Set} : List A → List A → Set where
+    Stop : ∀ {x xs} → Suffix xs (x :: xs)
+    Drop : ∀ {y xs ys} → Suffix xs ys → Suffix xs (y :: ys)
+
+  {- TASK 2.1 : Show that suffix is transitive. -}
+  suffix-trans : {A : Set} → {xs ys zs : List A} → Suffix xs ys → Suffix ys zs → Suffix xs zs
+  suffix-trans s1 Stop = Drop s1
+  suffix-trans s1 (Drop s2) = Drop (suffix-trans s1 s2)
+
   -- end of simple stuff
 
-  δ : RegExp → RegExp
-  δ ∅ = ∅
-  δ ε = ε
-  δ (Lit x) = ∅
+  δ : {x : RegExp} → RegExp → Δ
+  δ ∅ = ∅ᵈ
+  δ ε = εᵈ
+  δ (Lit x) = ∅ᵈ
   δ (r₁ · r₂) with δ r₁ | δ r₂
-  ... | ∅ | _ = ∅
-  ... | _ | ∅ = ∅
-  ... | _ | _ = ε
+  ... | ∅ᵈ | _ = ∅ᵈ
+  ... | _ | ∅ᵈ = ∅ᵈ
+  ... | _ | _ = εᵈ
   δ (r₁ ⊕ r₂) with δ r₁ | δ r₂
-  ... | ε | _ = ε
-  ... | _ | ε = ε
-  ... | _ | _ = ∅
-  δ(r *) = ε
-
+  ... | εᵈ | _ = εᵈ
+  ... | _ | εᵈ = εᵈ
+  ... | _ | _ = ∅ᵈ
+  δ(r *) = εᵈ
   -- standardize : RegExp → RegExp
   -- standardize ∅ = ∅
   -- standardize ε = ∅
@@ -76,7 +100,8 @@ module RegExp where
   standardize ∅ = ∅ˢ
   standardize ε = ∅ˢ'
   standardize (Lit x) = Litˢ x
-  standardize (r₁ · r₂) = {!!}
+  standardize (r₁ · r₂) with standardize r₁ | standardize r₂
+  ... | x₁ | x₂ = {! (δ r₁ ·ˢ x₁) ⊕ˢ (x₁ ˢ· δ r₂) ⊕ˢ (x₁ ˢ·ˢ x₂) !}
   standardize (r₁ ⊕ r₂) = {!!}
   standardize (r *) with standardize r
   ... | x = *-lemma (x ˢ·ˢ (x *ˢ))
@@ -89,6 +114,9 @@ module RegExp where
   -- match (r₁ · r₂) s k = match r₁ s (λ s' → match r₂ s' k)
   -- match (r₁ ⊕ r₂) s k = if (match r₁ s k) then True else (match r₂ s k) -- lazy or
   -- match (r *) s k = if (k s) then True else (match r s (λ s' → match (r *) s' k)) -- lazy or
+
+  match : {re : RegExp} → {ys : List Char} → StdRegExp re → (xs : List Char) → (Suffix ys xs → Bool) → Bool
+  match r s k = {!!}
 
   -- _accepts_ : RegExp → String.String → Bool
   -- r accepts s = match (standardize r) (String.toList s) null
