@@ -20,15 +20,23 @@ module RegExp where
   demote-Δ ∅ᵈ = ∅
   demote-Δ εᵈ = ε
 
-  data StdRegExp : RegExp → Set where
-    ∅ˢ : StdRegExp ∅
-    ∅ˢ' : StdRegExp ε
-    Litˢ : (c : Char) → StdRegExp (Lit c)
-    _·ˢ_ : {r₂ : RegExp} → (d : Δ) → StdRegExp r₂ → StdRegExp (demote-Δ d · r₂)
-    _ˢ·_ : {r₁ : RegExp} → StdRegExp r₁ → (d : Δ) → StdRegExp (r₁ · demote-Δ d)
-    _ˢ·ˢ_ : {r₁ r₂ : RegExp} → StdRegExp r₁ → StdRegExp r₂ → StdRegExp (r₁ · r₂) -- unnecessary
-    _⊕ˢ_ : {r₁ r₂ : RegExp} → StdRegExp r₁ → StdRegExp r₂ → StdRegExp (r₁ ⊕ r₂)
-    _*ˢ : {r : RegExp} → StdRegExp r → StdRegExp (r *)
+  data StdRegExp : Set where
+    ∅ˢ : StdRegExp
+    Litˢ : (c : Char) → StdRegExp
+    _·ˢ_ : Δ → StdRegExp → StdRegExp
+    _ˢ·_ : StdRegExp → Δ → StdRegExp
+    _ˢ·ˢ_ : StdRegExp → StdRegExp → StdRegExp
+    _⊕ˢ_ : StdRegExp → StdRegExp → StdRegExp
+    _*ˢ : StdRegExp → StdRegExp
+
+  demote-std : StdRegExp → RegExp
+  demote-std ∅ˢ = ∅
+  demote-std (Litˢ c) = Lit c
+  demote-std (d ·ˢ r) = demote-Δ d · demote-std r
+  demote-std (r ˢ· d) = demote-std r · demote-Δ d
+  demote-std (r₁ ˢ·ˢ r₂) = demote-std r₁ · demote-std r₂
+  demote-std (r₁ ⊕ˢ r₂) = demote-std r₁ ⊕ demote-std r₂
+  demote-std (r *ˢ) = (demote-std r) *
 
   infix 1 _*
   infix 1 _*ˢ
@@ -65,14 +73,13 @@ module RegExp where
     Stop : ∀ {x xs} → Suffix xs (x :: xs)
     Drop : ∀ {y xs ys} → Suffix xs ys → Suffix xs (y :: ys)
 
-  {- TASK 2.1 : Show that suffix is transitive. -}
   suffix-trans : {A : Set} → {xs ys zs : List A} → Suffix xs ys → Suffix ys zs → Suffix xs zs
   suffix-trans s1 Stop = Drop s1
   suffix-trans s1 (Drop s2) = Drop (suffix-trans s1 s2)
 
   -- end of simple stuff
 
-  δ : {x : RegExp} → RegExp → Δ
+  δ : RegExp → Δ
   δ ∅ = ∅ᵈ
   δ ε = εᵈ
   δ (Lit x) = ∅ᵈ
@@ -93,18 +100,18 @@ module RegExp where
   -- standardize (r₁ ⊕ r₂) = standardize r₁ ⊕ standardize r₂
   -- standardize (r *) = standardize r · (standardize r)*
 
-  *-lemma : {r : RegExp} → StdRegExp (r · (r *)) → StdRegExp (r *)
-  *-lemma = {!!}
-
-  standardize : (r : RegExp) → StdRegExp r
+  standardize : RegExp → StdRegExp
   standardize ∅ = ∅ˢ
-  standardize ε = ∅ˢ'
+  standardize ε = ∅ˢ
   standardize (Lit x) = Litˢ x
   standardize (r₁ · r₂) with standardize r₁ | standardize r₂
-  ... | x₁ | x₂ = {! (δ r₁ ·ˢ x₁) ⊕ˢ (x₁ ˢ· δ r₂) ⊕ˢ (x₁ ˢ·ˢ x₂) !}
-  standardize (r₁ ⊕ r₂) = {!!}
+  ... | x₁ | x₂ =  (δ r₁ ·ˢ x₁) ⊕ˢ (x₁ ˢ· δ r₂) ⊕ˢ (x₁ ˢ·ˢ x₂)
+  standardize (r₁ ⊕ r₂) = standardize r₁ ⊕ˢ standardize r₂
   standardize (r *) with standardize r
-  ... | x = *-lemma (x ˢ·ˢ (x *ˢ))
+  ... | x = x ˢ·ˢ (x *ˢ)
+
+  data RecursionPermission {A : Set} : List A → Set where
+    CanRec : {ys : List A} → ((xs : List A) → Suffix xs ys → RecursionPermission xs) → RecursionPermission ys
 
   -- match : RegExp → List Char → (List Char → Bool) → Bool
   -- match ∅ _ _ = False
@@ -115,8 +122,18 @@ module RegExp where
   -- match (r₁ ⊕ r₂) s k = if (match r₁ s k) then True else (match r₂ s k) -- lazy or
   -- match (r *) s k = if (k s) then True else (match r s (λ s' → match (r *) s' k)) -- lazy or
 
-  match : {re : RegExp} → {ys : List Char} → StdRegExp re → (xs : List Char) → (Suffix ys xs → Bool) → Bool
-  match r s k = {!!}
+  rec-lemma : {s s' : List Char} → RecursionPermission s → Suffix s' s → RecursionPermission s'
+  rec-lemma {s}{s'} (CanRec f) sf = f s' sf
+
+  match : StdRegExp → (s : List Char) → (Σ (λ s' → Suffix s' s) → Bool) → RecursionPermission s → Bool
+  match ∅ˢ s k _ = False
+  match (Litˢ _) [] _ _ = False
+  match (Litˢ c) (x :: xs) k _ = if (equalb x c) then (k (xs , Stop)) else False
+  match (x ·ˢ r) s k _ = {!!}
+  match (r ˢ· x) s k _ = {!!}
+  match (r₁ ˢ·ˢ r₂) s k (CanRec f) = match r₁ s (λ { (xs , sf) → match r₂ xs {!!} (f xs sf) }) (CanRec f)
+  match (r₁ ⊕ˢ r₂) s k _ = {!!}
+  match (r *ˢ) s k (CanRec f) = match r s (λ { (s' , sf) → match (r *ˢ) s' {!!} (f s' sf)}) (CanRec f)
 
   -- _accepts_ : RegExp → String.String → Bool
   -- r accepts s = match (standardize r) (String.toList s) null
