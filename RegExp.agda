@@ -27,12 +27,9 @@ module RegExp where
   demote-std (r ⁺ˢ) = x · x *
     where x = demote-std r
 
-  infix 1 _*
-  infix 1 _⁺ˢ
-  infixr 2 _·_
-  infixr 2 _·ˢ_
-  infixr 3 _⊕_
-  infixr 3 _⊕ˢ_
+  infix 1 _* _⁺ˢ
+  infixr 2 _·_ _·ˢ_
+  infixr 3 _⊕_ _⊕ˢ_
   {-
     Example regexp:
       ((Lit 'a' ⊕ Lit 'b') · (Lit 'c')) accepts "ac"
@@ -84,23 +81,16 @@ module RegExp where
   ... | _ | True = True
   ... | _ | _ = False
   δ(r *) = True
-  -- standardize : RegExp → RegExp
-  -- standardize ∅ = ∅
-  -- standardize ε = ∅
-  -- standardize (Lit x) = Lit x
-  -- standardize (r₁ · r₂) = (δ r₁ · standardize r₂) ⊕ (standardize r₁ · δ r₂) ⊕ (standardize r₁ · standardize r₂)
-  -- standardize (r₁ ⊕ r₂) = standardize r₁ ⊕ standardize r₂
-  -- standardize (r *) = standardize r · (standardize r)*
 
   standardize : RegExp → StdRegExp
   standardize ∅ = ∅ˢ
   standardize ε = ∅ˢ
   standardize (Lit x) = Litˢ x
   standardize (r₁ · r₂) with standardize r₁ | standardize r₂ | δ r₁ | δ r₂
-  standardize (r₁ · r₂) | x₁ | x₂ | False | False = ∅ˢ
-  standardize (r₁ · r₂) | x₁ | x₂ | False | True = x₁ ⊕ˢ (x₁ ·ˢ x₂)
-  standardize (r₁ · r₂) | x₁ | x₂ | True | False = x₂ ⊕ˢ (x₁ ·ˢ x₂)
-  standardize (r₁ · r₂) | x₁ | x₂ | True | True = x₁ ⊕ˢ x₂ ⊕ˢ (x₁ ·ˢ x₂)
+  ... | x₁ | x₂ | False | False = x₁ ·ˢ x₂
+  ... | x₁ | x₂ | False | True = x₁ ⊕ˢ (x₁ ·ˢ x₂)
+  ... | x₁ | x₂ | True | False = x₂ ⊕ˢ (x₁ ·ˢ x₂)
+  ... | x₁ | x₂ | True | True = x₁ ⊕ˢ x₂ ⊕ˢ (x₁ ·ˢ x₂)
   standardize (r₁ ⊕ r₂) = standardize r₁ ⊕ˢ standardize r₂
   standardize (r *) = x ⁺ˢ
     where x = standardize r
