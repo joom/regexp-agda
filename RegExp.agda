@@ -51,6 +51,7 @@ module RegExp where
       ((Lit 'a' ⊕ Lit 'b') · (Lit 'c')) accepts "ac"
       (∅ *) accepts ""
       ((Lit 'd') *) accepts "ddd"
+      ((Lit 'd') *) accepts ""
   -}
 
   -- I can't believe these are not in the preliminaries file
@@ -138,8 +139,12 @@ module RegExp where
   match (r ˢ· εᵈ) s k perm = match r s k perm
   match (r₁ ˢ·ˢ r₂) s k (CanRec f) = match r₁ s (λ { (s' , sf) → match r₂ s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)
   match (r₁ ⊕ˢ r₂) s k perm = if match r₁ s k perm then True else match r₂ s k perm
-  match (r *ˢ) s k (CanRec f) = match r s (λ { (s' , sf) → match (r *ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf)}) (CanRec f)
+  match (r *ˢ) s k (CanRec f) = if null s then True else match r s (λ { (s' , sf) → match (r *ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf)}) (CanRec f) -- shouldn't use null, use k
+
+  match-plus : Δ × StdRegExp → (s : List Char) → (Σ (λ s' → Suffix s' s) → Bool) → RecursionPermission s → Bool
+  match-plus (∅ᵈ , r) s k perm = match r s k perm
+  match-plus (εᵈ , r) s k perm = if null s then True else match r s k perm -- shouldn't use null, use k
 
   _accepts_ : RegExp → String.String → Bool
-  r accepts s = match (standardize r) l (λ { (s , sf) → null s }) (well-founded l)
+  r accepts s = match-plus (δ r , standardize r) l (λ { (s , sf) → null s }) (well-founded l)
     where l = String.toList s
