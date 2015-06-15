@@ -113,19 +113,6 @@ module RegExp where
   data RecursionPermission {A : Set} : List A → Set where
     CanRec : {ys : List A} → ((xs : List A) → Suffix xs ys → RecursionPermission xs) → RecursionPermission ys
 
-  -- match : RegExp → List Char → (List Char → Bool) → Bool
-  -- match ∅ _ _ = False
-  -- match ε s k = k s
-  -- match (Lit c) (x :: xs) k = if (equalb x c) then (k xs) else False -- lazy and
-  -- match (Lit _) _ _ = False
-  -- match (r₁ · r₂) s k = match r₁ s (λ s' → match r₂ s' k)
-  -- match (r₁ ⊕ r₂) s k = if (match r₁ s k) then True else (match r₂ s k) -- lazy or
-  -- match (r *) s k = if (k s) then True else (match r s (λ s' → match (r *) s' k)) -- lazy or
-
-  match-Δ : Δ → List Char → (List Char → Bool) → Bool
-  match-Δ ∅ᵈ _ _ = False
-  match-Δ εᵈ s k = k s
-
   match : StdRegExp → (s : List Char) → (Σ (λ s' → Suffix s' s) → Bool) → RecursionPermission s → Bool
   match ∅ˢ s k _ = False
   match (Litˢ _) [] _ _ = False
