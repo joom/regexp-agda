@@ -50,6 +50,7 @@ module RegExp where
     Example regexp:
       ((Lit 'a' ⊕ Lit 'b') · (Lit 'c')) accepts "ac"
       (∅ *) accepts ""
+      ((Lit 'd') *) accepts "ddd"
   -}
 
   -- I can't believe these are not in the preliminaries file
@@ -113,6 +114,20 @@ module RegExp where
   data RecursionPermission {A : Set} : List A → Set where
     CanRec : {ys : List A} → ((xs : List A) → Suffix xs ys → RecursionPermission xs) → RecursionPermission ys
 
+  {- Prove that you can make a recursion permission for any suffix of [] -}
+  lemma1 : {A : Set} (xs : List A) → Suffix xs [] → RecursionPermission xs
+  lemma1 _ ()
+
+  lemma2 : {A : Set} {y : A} {xs ys : List A} → Suffix xs (y :: ys) → RecursionPermission ys → RecursionPermission xs
+  lemma2 Stop rec = rec
+  lemma2 (Drop s) (CanRec perm) = perm _ s
+
+  {- Using lemma1 and lemma2, make a recursion permission for any list. -}
+  well-founded : {A : Set} (ys : List A) → RecursionPermission ys
+  well-founded [] = CanRec lemma1
+  well-founded (y :: ys) = CanRec (\ xs suff → lemma2 suff (well-founded ys))
+
+  -- Matching algorithm
   match : StdRegExp → (s : List Char) → (Σ (λ s' → Suffix s' s) → Bool) → RecursionPermission s → Bool
   match ∅ˢ s k _ = False
   match (Litˢ _) [] _ _ = False
@@ -126,4 +141,5 @@ module RegExp where
   match (r *ˢ) s k (CanRec f) = match r s (λ { (s' , sf) → match (r *ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf)}) (CanRec f)
 
   _accepts_ : RegExp → String.String → Bool
-  r accepts s = match (standardize r) (String.toList s) (λ { (s , sf) → null s }) {!!}
+  r accepts s = match (standardize r) l (λ { (s , sf) → null s }) (well-founded l)
+    where l = String.toList s
