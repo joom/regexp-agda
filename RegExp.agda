@@ -122,15 +122,21 @@ module RegExp where
   -- match (r₁ ⊕ r₂) s k = if (match r₁ s k) then True else (match r₂ s k) -- lazy or
   -- match (r *) s k = if (k s) then True else (match r s (λ s' → match (r *) s' k)) -- lazy or
 
+  match-Δ : Δ → List Char → (List Char → Bool) → Bool
+  match-Δ ∅ᵈ _ _ = False
+  match-Δ εᵈ s k = k s
+
   match : StdRegExp → (s : List Char) → (Σ (λ s' → Suffix s' s) → Bool) → RecursionPermission s → Bool
   match ∅ˢ s k _ = False
   match (Litˢ _) [] _ _ = False
   match (Litˢ c) (x :: xs) k _ = if (equalb x c) then (k (xs , Stop)) else False
-  match (x ·ˢ r) s k _ = {!!}
-  match (r ˢ· x) s k _ = {!!}
+  match (∅ᵈ ·ˢ r) s k _ = False
+  match (εᵈ ·ˢ r) s k perm = match r s k perm
+  match (r ˢ· ∅ᵈ) s k _ = False
+  match (r ˢ· εᵈ) s k perm = match r s k perm
   match (r₁ ˢ·ˢ r₂) s k (CanRec f) = match r₁ s (λ { (s' , sf) → match r₂ s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)
-  match (r₁ ⊕ˢ r₂) s k _ = {!!}
+  match (r₁ ⊕ˢ r₂) s k perm = if match r₁ s k perm then True else match r₂ s k perm
   match (r *ˢ) s k (CanRec f) = match r s (λ { (s' , sf) → match (r *ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf)}) (CanRec f)
 
-  -- _accepts_ : RegExp → String.String → Bool
-  -- r accepts s = match (standardize r) (String.toList s) null
+  _accepts_ : RegExp → String.String → Bool
+  r accepts s = match (standardize r) (String.toList s) (λ { (s , sf) → null s }) {!!}
