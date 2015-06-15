@@ -25,9 +25,12 @@ module RegExp where
     Litˢ : (c : Char) → StdRegExp
     _·ˢ_ : Δ → StdRegExp → StdRegExp
     _ˢ·_ : StdRegExp → Δ → StdRegExp
+    -- do the simplification in the standardize function in different cases, remove the prev 2 cases
     _ˢ·ˢ_ : StdRegExp → StdRegExp → StdRegExp
     _⊕ˢ_ : StdRegExp → StdRegExp → StdRegExp
     _*ˢ : StdRegExp → StdRegExp
+
+-- r⁺
 
   demote-std : StdRegExp → RegExp
   demote-std ∅ˢ = ∅
@@ -52,7 +55,9 @@ module RegExp where
       (∅ *) accepts ""
       ((Lit 'd') *) accepts "ddd"
       ((Lit 'd') *) accepts ""
-  -}
+      (Lit '<' · (Lit '0' *) · Lit '>') accepts "<>"
+      (Lit '<' · (Lit '0' *) · Lit '>') accepts "<00>"
+   -}
 
   -- I can't believe these are not in the preliminaries file
   -- simple stuff
@@ -107,7 +112,7 @@ module RegExp where
   standardize ε = ∅ˢ
   standardize (Lit x) = Litˢ x
   standardize (r₁ · r₂) with standardize r₁ | standardize r₂
-  ... | x₁ | x₂ =  (δ r₁ ·ˢ x₁) ⊕ˢ (x₁ ˢ· δ r₂) ⊕ˢ (x₁ ˢ·ˢ x₂)
+  ... | x₁ | x₂ =  (δ r₁ ·ˢ x₂) ⊕ˢ (x₁ ˢ· δ r₂) ⊕ˢ (x₁ ˢ·ˢ x₂)
   standardize (r₁ ⊕ r₂) = standardize r₁ ⊕ˢ standardize r₂
   standardize (r *) with standardize r
   ... | x = x ˢ·ˢ (x *ˢ)
