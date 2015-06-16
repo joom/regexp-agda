@@ -196,7 +196,16 @@ module RegExp where
                      → match r s k perm == True
   match-completeness ∅ˢ _ _ _ (_ , _ , c , _) = abort c
   match-completeness (Litˢ x) s k perm ((xs , (ys , sf)) , b , c , d) with ! (singleton-append c b)
-  match-completeness (Litˢ x) .(x :: ys) k perm ((xs , ys , sf) , b , c , d) | Refl = {!!}
-  match-completeness (r ·ˢ r₁) s k perm m = {!!}
-  match-completeness (r ⊕ˢ r₁) s k perm m = {!!}
+  match-completeness (Litˢ x) .(x :: ys) k perm ((xs , ys , sf) , b , c , d) | Refl with equalb x x | same-char x
+  match-completeness (Litˢ x) .(x :: ys) k perm ((xs , ys , sf) , b , c , d) | Refl | True | Refl = {!!}
+  match-completeness (Litˢ x) .(x :: ys) k perm ((xs , ys , sf) , b , c , d) | Refl | False | ()
+  match-completeness (r₁ ·ˢ r₂) s k perm ((xs , (ys , sf)) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) with tot | b | append-assoc ms ns ys
+  match-completeness (r₁ ·ˢ r₂) .((ms ++ ns) ++ ys) k (CanRec f) ((.(ms ++ ns) , ys , sf) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) | Refl | Refl | p3
+    with match-completeness r₂ (ns ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' {!!}) }) (f (ns ++ ys) {!!}) ((ns , ys , {!!}) , Refl , ns∈r₂ , d)
+  ... | x = match-completeness r₁ ((ms ++ ns) ++ ys)
+                 (λ s'sf → match r₂ (fst s'sf) (λ s''sf' → k (fst s''sf' , suffix-trans (snd s''sf') (snd s'sf))) (f (fst s'sf) (snd s'sf)))
+                 (CanRec f) ((ms , ns ++ ys , {!!}) , p3 , ms∈r₁ , x)
+  match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inl c , d) = eitherIf (Inl (match-completeness r₁ s k perm ((xs , ys) , b , c , d) ))
+  match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inr c , d) = eitherIf {match r₁ s k perm} {match r₂ s k perm}
+                                                                       (Inr (match-completeness r₂ s k perm ((xs , ys) , b , c , d)))
   match-completeness (r ⁺ˢ) s k perm m = {!!}
