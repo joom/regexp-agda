@@ -146,6 +146,40 @@ module RegExp where
   s ∈Lˢ (r₁ ·ˢ r₂) = Σ (λ { (p , q)  → (p ++ q == s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
   s ∈Lˢ (r ⁺ˢ) = {!!}
 
+
+  -- Lemmas
+  append-lh-[] : ∀ {A : Set} → (xs : List A) → (ys : List A) → xs == [] → xs ++ ys == ys
+  append-lh-[] .[] ys Refl = Refl
+
+  singleton-append : {A : Set} → {x : A} → {xs ys s : List A} → xs == x :: [] → xs ++ ys == s → x :: ys == s
+  singleton-append Refl Refl = Refl
+
+  cons-eq : {A : Set} → {x : A} → {xs ys : List A} → xs == ys → x :: xs == x :: ys
+  cons-eq Refl = Refl
+
+  append-assoc : (xs ys zs : List Char) →  (xs ++ (ys ++ zs) == (xs ++ ys) ++ zs)
+  append-assoc [] ys zs = Refl
+  append-assoc (x :: xs) ys zs = cons-eq (append-assoc xs ys zs)
+
+  same-char : (c : Char) → equalb c c == True
+  same-char c with Char.equal c c
+  ... | Inl _ = Refl
+  ... | Inr f = abort (f Refl)
+
+  eitherIf : {a b : Bool} → Either (a == True) (b == True) → if a then True else b == True
+  eitherIf {True} (Inl Refl) = Refl
+  eitherIf {True} (Inr Refl) = Refl
+  eitherIf {False} (Inl ())
+  eitherIf {False} (Inr Refl) = Refl
+
+  lazyOrEq : {a b : Bool} → if a then True else b == True → Either (a == True) (b == True)
+  lazyOrEq {True} {True} Refl = Inl Refl
+  lazyOrEq {True} {False} Refl = Inl Refl
+  lazyOrEq {False} {True} Refl = Inr Refl
+  lazyOrEq {False} {False} ()
+
+  -- Proofs
+
   match-soundness : (r : StdRegExp)
                   → (s : List Char)
                   → (k : Σ (λ s' → Suffix s' s) → Bool)
@@ -160,4 +194,9 @@ module RegExp where
                      → (perm : RecursionPermission s)
                      → Σ {_}{_}{List Char × (Σ (λ s' → Suffix s' s))} (λ { (p , (s' , sf)) → (p ++ s' == s) × (p ∈Lˢ r) × (k (s' , sf) == True)})
                      → match r s k perm == True
-  match-completeness r s k perm m = {!!}
+  match-completeness ∅ˢ _ _ _ (_ , _ , c , _) = abort c
+  match-completeness (Litˢ x) s k perm ((xs , (ys , sf)) , b , c , d) with ! (singleton-append c b)
+  match-completeness (Litˢ x) .(x :: ys) k perm ((xs , ys , sf) , b , c , d) | Refl = {!!}
+  match-completeness (r ·ˢ r₁) s k perm m = {!!}
+  match-completeness (r ⊕ˢ r₁) s k perm m = {!!}
+  match-completeness (r ⁺ˢ) s k perm m = {!!}
