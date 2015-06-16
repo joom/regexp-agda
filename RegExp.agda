@@ -19,24 +19,6 @@ module RegExp where
     _⊕ˢ_ : StdRegExp → StdRegExp → StdRegExp
     _⁺ˢ : StdRegExp → StdRegExp
 
-
-  -- Shows a string accepted by the language of a regexp. Type "\in L".
-  _∈L_ : List Char → RegExp → Set
-  _ ∈L ∅ = Void
-  s ∈L ε = s == []
-  s ∈L (Lit c) = s == c :: []
-  s ∈L (r₁ ⊕ r₂) = Either (s ∈L r₁) (s ∈L r₂)
-  s ∈L (r₁ · r₂) = Σ (λ p  → ((fst p) ++ (snd p) == s) × (fst p) ∈L r₁ × (snd p) ∈L r₂)
-  s ∈L (r *) = {!!}
-
-  _∈Lˢ_ : List Char → StdRegExp → Set
-  _ ∈Lˢ ∅ˢ = Void
-  s ∈Lˢ (Litˢ c) = s == c :: []
-  s ∈Lˢ (r₁ ⊕ˢ r₂) = Either (s ∈Lˢ r₁) (s ∈Lˢ r₂)
-  s ∈Lˢ (r₁ ·ˢ r₂) = Σ (λ p  → ((fst p) ++ (snd p) == s) × (fst p) ∈Lˢ r₁ × (snd p) ∈Lˢ r₂)
-  s ∈Lˢ (r ⁺ˢ) = {!!}
-
-
   demote-std : StdRegExp → RegExp
   demote-std ∅ˢ = ∅
   demote-std (Litˢ c) = Lit c
@@ -145,3 +127,47 @@ module RegExp where
   _accepts_ : RegExp → String.String → Bool
   r accepts s = match-plus (δ r , standardize r) l (λ { (s , sf) → null s }) (well-founded l)
     where l = String.toList s
+
+  -- Proofs
+
+  -- Shows a string accepted by the language of a regexp. Type "\in L".
+  _∈L_ : List Char → RegExp → Set
+  _ ∈L ∅ = Void
+  s ∈L ε = s == []
+  s ∈L (Lit c) = s == c :: []
+  s ∈L (r₁ ⊕ r₂) = Either (s ∈L r₁) (s ∈L r₂)
+  s ∈L (r₁ · r₂) = Σ (λ { (p , q) → (p ++ q == s) × (p ∈L r₁) × (q ∈L r₂) })
+  s ∈L (r *) = {!!}
+
+  _∈Lˢ_ : List Char → StdRegExp → Set
+  _ ∈Lˢ ∅ˢ = Void
+  s ∈Lˢ (Litˢ c) = s == c :: []
+  s ∈Lˢ (r₁ ⊕ˢ r₂) = Either (s ∈Lˢ r₁) (s ∈Lˢ r₂)
+  s ∈Lˢ (r₁ ·ˢ r₂) = Σ (λ { (p , q)  → (p ++ q == s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
+  s ∈Lˢ (r ⁺ˢ) = {!!}
+
+  lemma : {p q s : List Char} → (p ++ q == s) → Either (p == []) (Suffix q s)
+  lemma {[]} {[]} {[]} Refl = Inl Refl
+  lemma {[]} {[]} {x :: s} ()
+  lemma {[]} {x :: q} {[]} ()
+  lemma {[]} {x :: q} {.x :: .q} Refl = Inl Refl
+  lemma {x :: p} {[]} {[]} ()
+  lemma {x :: p} {[]} {.x :: .(p ++ [])} Refl = Inr {!!}
+  lemma {x :: p} {x₁ :: q} {[]} ()
+  lemma {x :: p} {x₁ :: q} {.x :: .(p ++ x₁ :: q)} Refl = Inr {!!}
+
+  match-soundness : (r : StdRegExp)
+                  → (s : List Char)
+                  → (k : Σ (λ s' → Suffix s' s) → Bool)
+                  → (perm : RecursionPermission s)
+                  → match r s k perm == True
+                  → Σ (λ { (p , q) → (p ++ q == s) × (p ∈Lˢ r) × (k (q , {!!}) == True)})
+  match-soundness r s k perm m = {!!}
+
+  match-completeness : (r : StdRegExp)
+                     → (s : List Char)
+                     → (k : Σ (λ s' → Suffix s' s) → Bool)
+                     → (perm : RecursionPermission s)
+                     → Σ (λ { (p , q) → (p ++ q == s) × (p ∈Lˢ r) × (k (q , {!!}) == True)})
+                     → match r s k perm == True
+  match-completeness r s k perm m = {!!}
