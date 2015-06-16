@@ -146,28 +146,18 @@ module RegExp where
   s ∈Lˢ (r₁ ·ˢ r₂) = Σ (λ { (p , q)  → (p ++ q == s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
   s ∈Lˢ (r ⁺ˢ) = {!!}
 
-  lemma : {p q s : List Char} → (p ++ q == s) → Either (p == []) (Suffix q s)
-  lemma {[]} {[]} {[]} Refl = Inl Refl
-  lemma {[]} {[]} {x :: s} ()
-  lemma {[]} {x :: q} {[]} ()
-  lemma {[]} {x :: q} {.x :: .q} Refl = Inl Refl
-  lemma {x :: p} {[]} {[]} ()
-  lemma {x :: p} {[]} {.x :: .(p ++ [])} Refl = Inr {!!}
-  lemma {x :: p} {x₁ :: q} {[]} ()
-  lemma {x :: p} {x₁ :: q} {.x :: .(p ++ x₁ :: q)} Refl = Inr {!!}
-
   match-soundness : (r : StdRegExp)
                   → (s : List Char)
                   → (k : Σ (λ s' → Suffix s' s) → Bool)
                   → (perm : RecursionPermission s)
                   → match r s k perm == True
-                  → Σ (λ { (p , q) → (p ++ q == s) × (p ∈Lˢ r) × (k (q , {!!}) == True)})
+                  → Σ {_}{_}{List Char × (Σ (λ s' → Suffix s' s))} (λ { (p , (s' , sf)) → (p ++ s' == s) × (p ∈Lˢ r) × (k (s' , sf) == True)})
   match-soundness r s k perm m = {!!}
 
   match-completeness : (r : StdRegExp)
                      → (s : List Char)
                      → (k : Σ (λ s' → Suffix s' s) → Bool)
                      → (perm : RecursionPermission s)
-                     → Σ (λ { (p , q) → (p ++ q == s) × (p ∈Lˢ r) × (k (q , {!!}) == True)})
+                     → Σ {_}{_}{List Char × (Σ (λ s' → Suffix s' s))} (λ { (p , (s' , sf)) → (p ++ s' == s) × (p ∈Lˢ r) × (k (s' , sf) == True)})
                      → match r s k perm == True
   match-completeness r s k perm m = {!!}
