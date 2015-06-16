@@ -19,6 +19,24 @@ module RegExp where
     _⊕ˢ_ : StdRegExp → StdRegExp → StdRegExp
     _⁺ˢ : StdRegExp → StdRegExp
 
+
+  -- Shows a string accepted by the language of a regexp. Type "\in L".
+  _∈L_ : List Char → RegExp → Set
+  _ ∈L ∅ = Void
+  s ∈L ε = s == []
+  s ∈L (Lit c) = s == c :: []
+  s ∈L (r₁ ⊕ r₂) = Either (s ∈L r₁) (s ∈L r₂)
+  s ∈L (r₁ · r₂) = Σ (λ p  → ((fst p) ++ (snd p) == s) × (fst p) ∈L r₁ × (snd p) ∈L r₂)
+  s ∈L (r *) = {!!}
+
+  _∈Lˢ_ : List Char → StdRegExp → Set
+  _ ∈Lˢ ∅ˢ = Void
+  s ∈Lˢ (Litˢ c) = s == c :: []
+  s ∈Lˢ (r₁ ⊕ˢ r₂) = Either (s ∈Lˢ r₁) (s ∈Lˢ r₂)
+  s ∈Lˢ (r₁ ·ˢ r₂) = Σ (λ p  → ((fst p) ++ (snd p) == s) × (fst p) ∈Lˢ r₁ × (snd p) ∈Lˢ r₂)
+  s ∈Lˢ (r ⁺ˢ) = {!!}
+
+
   demote-std : StdRegExp → RegExp
   demote-std ∅ˢ = ∅
   demote-std (Litˢ c) = Lit c
