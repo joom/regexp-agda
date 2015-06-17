@@ -198,13 +198,15 @@ module RegExp where
   non-empty {_} {r ⁺ˢ} inL = {!!}
 
   append-suffix2 : {xs ys : List Char} → {r : StdRegExp} → xs ∈Lˢ r → Suffix ys (xs ++ ys)
-  append-suffix2 {xs} {ys} {r} inL = {!!}
+  append-suffix2 {xs} {ys} {r} inL with non-empty {xs} {r} inL
+  append-suffix2 {[]} inL | (.[] , .[] , ()) , Refl , Refl
+  append-suffix2 {x :: xs} inL | (.(x :: xs) , .[] , sf) , Refl , Refl = {!!}
 
   assoc-append-suffix : {ms ns ys : List Char}
                       → ms ++ ns ++ ys == (ms ++ ns) ++ ys
                       → Suffix (ns ++ ys) (ms ++ ns ++ ys)
                       → Suffix (ns ++ ys) ((ms ++ ns) ++ ys)
-  assoc-append-suffix eq sf = {!!}
+  assoc-append-suffix {ms} {ns} {ys} eq sf = {!!}
 
   -- Proofs
 
@@ -249,7 +251,7 @@ module RegExp where
   ... | t with match-completeness r₂ (ns ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' t) }) (f (ns ++ ys) t) ((ns , ys , append-suffix2 {ns} {ys} {r₂} ns∈r₂) , Refl , ns∈r₂ , {!!})
   ... | x = match-completeness r₁ ((ms ++ ns) ++ ys)
                  (λ s'sf → match r₂ (fst s'sf) (λ s''sf' → k (fst s''sf' , suffix-trans (snd s''sf') (snd s'sf))) (f (fst s'sf) (snd s'sf)))
-                 (CanRec f) ((ms , ns ++ ys , t) , p3 , ms∈r₁ , {!!})
+                 (CanRec f) ((ms , ns ++ ys , t) , p3 , ms∈r₁ , x)
   match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inl c , d) = eitherIf (Inl (match-completeness r₁ s k perm ((xs , ys) , b , c , d) ))
   match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inr c , d) = eitherIf {match r₁ s k perm} {match r₂ s k perm}
                                                                        (Inr (match-completeness r₂ s k perm ((xs , ys) , b , c , d)))
