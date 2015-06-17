@@ -254,10 +254,3 @@ module RegExp where
   match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inr c , d) = eitherIf {match r₁ s k perm} {match r₂ s k perm}
                                                                        (Inr (match-completeness r₂ s k perm ((xs , ys) , b , c , d)))
   match-completeness (r ⁺ˢ) s k perm m = {!!}
-
-  -- assoc-append-suffix : {ms ns ys : List Char}
-  --                     → (ms ++ ns) ++ ys == ms ++ ns ++ ys
-  --                     → Suffix (ns ++ ys) (ms ++ ns ++ ys)
-  --                     → Suffix (ns ++ ys) ((ms ++ ns) ++ ys)
-
-  -- append-suffix2 : {xs ys : List Char} → {r : StdRegExp} → xs ∈Lˢ r → Suffix ys (xs ++ ys)
