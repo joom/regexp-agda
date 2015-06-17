@@ -178,6 +178,21 @@ module RegExp where
   lazyOrEq {False} {True} Refl = Inr Refl
   lazyOrEq {False} {False} ()
 
+  append-suffix : {xs ys zs : List Char} → Suffix zs ys → Suffix zs (xs ++ ys)
+  append-suffix {xs} {ys} {zs} sf = {!!}
+
+  non-empty : {s : List Char}
+            → {r : StdRegExp}
+            → s ∈Lˢ r
+            → Σ {_}{_}{List Char × Σ (λ s' → Suffix s' s)}(λ { (xs , (ys , sf)) → (xs == s) × (ys == []) })
+  non-empty {r = ∅ˢ} ()
+  non-empty {r = Litˢ c} Refl = (c :: [] , ([] , Stop)) , Refl , Refl
+  non-empty {r = r₁ ·ˢ r₂} ((xs , ys) , a , b , c) with non-empty {xs} {r₁} b
+  non-empty {s} {r₁ ·ˢ r₂} ((xs , ys) , a , b , c) | (.xs , .[] , sf) , Refl , Refl with non-empty {ys} {r₂} c
+  non-empty {.(xs ++ ys)} {r₁ ·ˢ r₂} ((xs , ys) , Refl , b , c) | (.xs , .[] , sf) , Refl , Refl | (.ys , .[] , sf') , Refl , Refl = (xs ++ ys , ([] , append-suffix {xs} {ys} {[]} sf')) , Refl , Refl
+  non-empty {r = r₁ ⊕ˢ r₂} inL = {!!}
+  non-empty {r = r ⁺ˢ} inL = {!!}
+
   -- Proofs
 
   match-soundness : (r : StdRegExp)
