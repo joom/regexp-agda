@@ -177,9 +177,9 @@ module RegExp where
   lazyOrEq {False} {True} Refl = Inr Refl
   lazyOrEq {False} {False} ()
 
-  append-suffix : {xs ys zs : List Char} → Suffix zs ys → Suffix zs (xs ++ ys)
-  append-suffix {[]} {ys} {zs} sf = sf
-  append-suffix {x :: xs} {ys} {zs} sf with append-suffix {xs} {ys} {zs} sf
+  append-suffix3 : {xs ys zs : List Char} → Suffix zs ys → Suffix zs (xs ++ ys)
+  append-suffix3 {[]} {ys} {zs} sf = sf
+  append-suffix3 {x :: xs} {ys} {zs} sf with append-suffix3 {xs} {ys} {zs} sf
   ... | sf' = Drop sf'
 
   non-empty : {s : List Char}
@@ -190,12 +190,21 @@ module RegExp where
   non-empty {r = Litˢ c} Refl = (c :: [] , ([] , Stop)) , Refl , Refl
   non-empty {_} {r₁ ·ˢ r₂} ((xs , ys) , a , b , c) with non-empty {xs} {r₁} b
   non-empty {s} {r₁ ·ˢ r₂} ((xs , ys) , a , b , c) | (.xs , .[] , sf) , Refl , Refl with non-empty {ys} {r₂} c
-  non-empty {.(xs ++ ys)} {r₁ ·ˢ r₂} ((xs , ys) , Refl , b , c) | (.xs , .[] , sf) , Refl , Refl | (.ys , .[] , sf') , Refl , Refl = (xs ++ ys , ([] , append-suffix {xs} {ys} {[]} sf')) , Refl , Refl
+  non-empty {.(xs ++ ys)} {r₁ ·ˢ r₂} ((xs , ys) , Refl , b , c) | (.xs , .[] , sf) , Refl , Refl | (.ys , .[] , sf') , Refl , Refl = (xs ++ ys , ([] , append-suffix3 {xs} {ys} {[]} sf')) , Refl , Refl
   non-empty {s} {r₁ ⊕ˢ r₂} (Inl x) with non-empty {s} {r₁} x
   non-empty {.s} {r₁ ⊕ˢ r₂} (Inl x) | (s , .[] , sf) , Refl , Refl = ((s , ([] , sf)) , Refl , Refl)
   non-empty {s} {r₁ ⊕ˢ r₂} (Inr x) with non-empty {s} {r₂} x
   non-empty {.s} {r₁ ⊕ˢ r₂} (Inr x) | (s , .[] , sf) , Refl , Refl = ((s , ([] , sf)) , Refl , Refl)
   non-empty {_} {r ⁺ˢ} inL = {!!}
+
+  append-suffix2 : {xs ys : List Char} → {r : StdRegExp} → xs ∈Lˢ r → Suffix ys (xs ++ ys)
+  append-suffix2 {xs} {ys} {r} inL = {!!}
+
+  assoc-append-suffix : {ms ns ys : List Char}
+                      → ms ++ ns ++ ys == (ms ++ ns) ++ ys
+                      → Suffix (ns ++ ys) (ms ++ ns ++ ys)
+                      → Suffix (ns ++ ys) ((ms ++ ns) ++ ys)
+  assoc-append-suffix eq sf = {!!}
 
   -- Proofs
 
@@ -236,12 +245,19 @@ module RegExp where
   match-completeness (Litˢ x) .(x :: ys) k perm ((xs , ys , sf) , b , c , d) | Refl | True | Refl = {!!}
   match-completeness (Litˢ x) .(x :: ys) k perm ((xs , ys , sf) , b , c , d) | Refl | False | ()
   match-completeness (r₁ ·ˢ r₂) s k perm ((xs , (ys , sf)) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) with tot | b | append-assoc ms ns ys
-  match-completeness (r₁ ·ˢ r₂) .((ms ++ ns) ++ ys) k (CanRec f) ((.(ms ++ ns) , ys , sf) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) | Refl | Refl | p3
-    with match-completeness r₂ (ns ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' {!!}) }) (f (ns ++ ys) {!!}) ((ns , ys , {!!}) , Refl , ns∈r₂ , {!!})
+  match-completeness (r₁ ·ˢ r₂) .((ms ++ ns) ++ ys) k (CanRec f) ((.(ms ++ ns) , ys , sf) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) | Refl | Refl | p3 with assoc-append-suffix {ms}{ns}{ys} p3 (append-suffix2 {ms} {ns ++ ys} {r₁} ms∈r₁)
+  ... | t with match-completeness r₂ (ns ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' t) }) (f (ns ++ ys) t) ((ns , ys , append-suffix2 {ns} {ys} {r₂} ns∈r₂) , Refl , ns∈r₂ , {!!})
   ... | x = match-completeness r₁ ((ms ++ ns) ++ ys)
                  (λ s'sf → match r₂ (fst s'sf) (λ s''sf' → k (fst s''sf' , suffix-trans (snd s''sf') (snd s'sf))) (f (fst s'sf) (snd s'sf)))
-                 (CanRec f) ((ms , ns ++ ys , {!!}) , p3 , ms∈r₁ , {!!})
+                 (CanRec f) ((ms , ns ++ ys , t) , p3 , ms∈r₁ , {!!})
   match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inl c , d) = eitherIf (Inl (match-completeness r₁ s k perm ((xs , ys) , b , c , d) ))
   match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inr c , d) = eitherIf {match r₁ s k perm} {match r₂ s k perm}
                                                                        (Inr (match-completeness r₂ s k perm ((xs , ys) , b , c , d)))
   match-completeness (r ⁺ˢ) s k perm m = {!!}
+
+  -- assoc-append-suffix : {ms ns ys : List Char}
+  --                     → (ms ++ ns) ++ ys == ms ++ ns ++ ys
+  --                     → Suffix (ns ++ ys) (ms ++ ns ++ ys)
+  --                     → Suffix (ns ++ ys) ((ms ++ ns) ++ ys)
+
+  -- append-suffix2 : {xs ys : List Char} → {r : StdRegExp} → xs ∈Lˢ r → Suffix ys (xs ++ ys)
