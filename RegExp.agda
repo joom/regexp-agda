@@ -202,11 +202,11 @@ module RegExp where
   append-suffix2 {[]} inL | (.[] , .[] , ()) , Refl , Refl
   append-suffix2 {x :: xs} inL | (.(x :: xs) , .[] , sf) , Refl , Refl = {!!}
 
-  assoc-append-suffix : {ms ns ys : List Char}
-                      → ms ++ ns ++ ys == (ms ++ ns) ++ ys
-                      → Suffix (ns ++ ys) (ms ++ ns ++ ys)
-                      → Suffix (ns ++ ys) ((ms ++ ns) ++ ys)
-  assoc-append-suffix {ms} {ns} {ys} eq sf = {!!}
+  assoc-append-suffix : {xs ys zs : List Char}
+                      → ys == zs
+                      → Suffix xs ys
+                      → Suffix xs zs
+  assoc-append-suffix Refl sf = sf
 
   -- Proofs
 
@@ -247,7 +247,7 @@ module RegExp where
   match-completeness (Litˢ x) .(x :: ys) k perm ((xs , ys , sf) , b , c , d) | Refl | True | Refl = {!!}
   match-completeness (Litˢ x) .(x :: ys) k perm ((xs , ys , sf) , b , c , d) | Refl | False | ()
   match-completeness (r₁ ·ˢ r₂) s k perm ((xs , (ys , sf)) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) with tot | b | append-assoc ms ns ys
-  match-completeness (r₁ ·ˢ r₂) .((ms ++ ns) ++ ys) k (CanRec f) ((.(ms ++ ns) , ys , sf) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) | Refl | Refl | p3 with assoc-append-suffix {ms}{ns}{ys} p3 (append-suffix2 {ms} {ns ++ ys} {r₁} ms∈r₁)
+  match-completeness (r₁ ·ˢ r₂) .((ms ++ ns) ++ ys) k (CanRec f) ((.(ms ++ ns) , ys , sf) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) | Refl | Refl | p3 with assoc-append-suffix {ns ++ ys}{ms ++ ns ++ ys}{(ms ++ ns) ++ ys} p3 (append-suffix2 {ms} {ns ++ ys} {r₁} ms∈r₁)
   ... | t with match-completeness r₂ (ns ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' t) }) (f (ns ++ ys) t) ((ns , ys , append-suffix2 {ns} {ys} {r₂} ns∈r₂) , Refl , ns∈r₂ , {!!})
   ... | x = match-completeness r₁ ((ms ++ ns) ++ ys)
                  (λ s'sf → match r₂ (fst s'sf) (λ s''sf' → k (fst s''sf' , suffix-trans (snd s''sf') (snd s'sf))) (f (fst s'sf) (snd s'sf)))
