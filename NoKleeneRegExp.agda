@@ -1,6 +1,6 @@
 open import lib.Preliminaries
 
-module RegExp where
+module NoKleeneRegExp where
 
   open List
 
