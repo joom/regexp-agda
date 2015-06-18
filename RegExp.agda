@@ -140,11 +140,17 @@ module RegExp where
   s ∈L (r *) = {!!}
 
   _∈Lˢ_ : List Char → StdRegExp → Set
+  data _∈L⁺_ : List Char → StdRegExp → Set
+
   _ ∈Lˢ ∅ˢ = Void
   s ∈Lˢ (Litˢ c) = s == c :: []
   s ∈Lˢ (r₁ ⊕ˢ r₂) = Either (s ∈Lˢ r₁) (s ∈Lˢ r₂)
   s ∈Lˢ (r₁ ·ˢ r₂) = Σ (λ { (p , q)  → (p ++ q == s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
   s ∈Lˢ (r ⁺ˢ) = {!!}
+
+  data _∈L⁺_ where
+    S+ : ∀ {s r} → s ∈Lˢ r → s ∈L⁺ r
+    C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ == s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
 
   -- Lemmas
   append-lh-[] : ∀ {A : Set} → (xs : List A) → (ys : List A) → xs == [] → xs ++ ys == ys
@@ -181,6 +187,9 @@ module RegExp where
   append-suffix3 {[]} {ys} {zs} sf = sf
   append-suffix3 {x :: xs} {ys} {zs} sf with append-suffix3 {xs} {ys} {zs} sf
   ... | sf' = Drop sf'
+
+  -- non-empty : {r : StdRegExp}
+  --           → ([] ∈Lˢ r → Void)
 
   non-empty : {s : List Char}
             → {r : StdRegExp}
@@ -248,7 +257,7 @@ module RegExp where
   match-completeness (Litˢ x) .(x :: ys) k perm ((xs , ys , sf) , b , c , d) | Refl | False | ()
   match-completeness (r₁ ·ˢ r₂) s k perm ((xs , (ys , sf)) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) with tot | b | append-assoc ms ns ys
   match-completeness (r₁ ·ˢ r₂) .((ms ++ ns) ++ ys) k (CanRec f) ((.(ms ++ ns) , ys , sf) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) | Refl | Refl | p3 with assoc-append-suffix {ns ++ ys}{ms ++ ns ++ ys}{(ms ++ ns) ++ ys} p3 (append-suffix2 {ms} {ns ++ ys} {r₁} ms∈r₁)
-  ... | t with match-completeness r₂ (ns ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' t) }) (f (ns ++ ys) t) ((ns , ys , append-suffix2 {ns} {ys} {r₂} ns∈r₂) , Refl , ns∈r₂ , {!!})
+  ... | t with match-completeness r₂ (ns ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' t) }) (f (ns ++ ys) t) ((ns , ys , append-suffix2 {ns} {ys} {r₂} ns∈r₂) , Refl , ns∈r₂ , d ∘ ap (λ x → k (ys , x)) {!!})
   ... | x = match-completeness r₁ ((ms ++ ns) ++ ys)
                  (λ s'sf → match r₂ (fst s'sf) (λ s''sf' → k (fst s''sf' , suffix-trans (snd s''sf') (snd s'sf))) (f (fst s'sf) (snd s'sf)))
                  (CanRec f) ((ms , ns ++ ys , t) , p3 , ms∈r₁ , x)
