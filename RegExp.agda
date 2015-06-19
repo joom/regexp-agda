@@ -146,7 +146,7 @@ module RegExp where
   s ∈Lˢ (Litˢ c) = s == c :: []
   s ∈Lˢ (r₁ ⊕ˢ r₂) = Either (s ∈Lˢ r₁) (s ∈Lˢ r₂)
   s ∈Lˢ (r₁ ·ˢ r₂) = Σ (λ { (p , q)  → (p ++ q == s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
-  s ∈Lˢ (r ⁺ˢ) = {!!}
+  s ∈Lˢ (r ⁺ˢ) = s ∈L⁺ r
 
   data _∈L⁺_ where
     S+ : ∀ {s r} → s ∈Lˢ r → s ∈L⁺ r
@@ -188,8 +188,14 @@ module RegExp where
   append-suffix3 {x :: xs} {ys} {zs} sf with append-suffix3 {xs} {ys} {zs} sf
   ... | sf' = Drop sf'
 
-  -- non-empty : {r : StdRegExp}
-  --           → ([] ∈Lˢ r → Void)
+  nonempty : {r : StdRegExp} → ([] ∈Lˢ r → Void)
+  nonempty {∅ˢ} inL = inL
+  nonempty {Litˢ c} ()
+  nonempty {r₁ ·ˢ r₂} ((xs , ys) , a , b , c) = {!!}
+  nonempty {r₁ ⊕ˢ r₂} (Inl x) = nonempty {r₁} x
+  nonempty {r₁ ⊕ˢ r₂} (Inr x) = nonempty {r₂} x
+  nonempty {r ⁺ˢ} (S+ x) = nonempty {r} x
+  nonempty {r ⁺ˢ} (C+ p q inL) = {!!}
 
   non-empty : {s : List Char}
             → {r : StdRegExp}
