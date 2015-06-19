@@ -132,12 +132,18 @@ module RegExp where
 
   -- Shows a string accepted by the language of a regexp. Type "\in L".
   _∈L_ : List Char → RegExp → Set
+  data _∈Lˣ_ : List Char → RegExp → Set
+
   _ ∈L ∅ = Void
   s ∈L ε = s == []
   s ∈L (Lit c) = s == c :: []
   s ∈L (r₁ ⊕ r₂) = Either (s ∈L r₁) (s ∈L r₂)
   s ∈L (r₁ · r₂) = Σ (λ { (p , q) → (p ++ q == s) × (p ∈L r₁) × (q ∈L r₂) })
-  s ∈L (r *) = {!!}
+  s ∈L (r *) = s ∈Lˣ r
+
+  data _∈Lˣ_ where
+    Ex : ∀ {s r} → s == [] → r == ε → s ∈Lˣ r
+    Cx : ∀ {s s₁ s₂ r} → s₁ ++ s₂ == s → s₁ ∈L r → s₂ ∈Lˣ r → s ∈Lˣ r
 
   _∈Lˢ_ : List Char → StdRegExp → Set
   data _∈L⁺_ : List Char → StdRegExp → Set
