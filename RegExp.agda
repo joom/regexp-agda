@@ -196,11 +196,11 @@ module RegExp where
 
   empty-append : {xs ys : List Char} → xs ++ ys == [] → (xs == []) × (ys == [])
   empty-append {[]} {[]} Refl = Refl , Refl
-  empty-append {[]} {x :: ys} ()
-  empty-append {x :: xs} {[]} ()
-  empty-append {x :: xs} {x₁ :: ys} ()
+  empty-append {[]} {_ :: _} ()
+  empty-append {_ :: _} {[]} ()
+  empty-append {_ :: _} {_ :: _} ()
 
-  nonempty : {r : StdRegExp} → ([] ∈Lˢ r → Void)
+  nonempty : ∀ {r} → ([] ∈Lˢ r → Void)
   nonempty {∅ˢ} inL = inL
   nonempty {Litˢ c} ()
   nonempty {r₁ ·ˢ r₂} ((xs , ys) , a , b , c) with empty-append {xs} {ys} a
@@ -219,7 +219,7 @@ module RegExp where
   append-suffix2' {x :: []} {ys} f = Stop
   append-suffix2' {x :: y :: xs} {ys} f = Drop (append-suffix2' {y :: xs} {ys} (cons-empty {y} {xs}))
 
-  append-suffix2 : {xs ys : List Char} → {r : StdRegExp} → xs ∈Lˢ r → Suffix ys (xs ++ ys)
+  append-suffix2 : ∀ {xs ys r} → xs ∈Lˢ r → Suffix ys (xs ++ ys)
   append-suffix2 {xs} {ys} {r} inL with nonempty {r}
   append-suffix2 {[]} inL | q = abort (q inL)
   append-suffix2 {x :: xs} {ys} inL | q = append-suffix2' {x :: xs} {ys} (cons-empty {x} {xs})
@@ -277,4 +277,6 @@ module RegExp where
   match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inl c , d) = eitherIf (Inl (match-completeness r₁ s k perm ((xs , ys) , b , c , d) ))
   match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inr c , d) = eitherIf {match r₁ s k perm} {match r₂ s k perm}
                                                                        (Inr (match-completeness r₂ s k perm ((xs , ys) , b , c , d)))
-  match-completeness (r ⁺ˢ) s k perm ((xs , (ys , sf)) , b , c , d) = ?
+  match-completeness (r ⁺ˢ) s k perm ((xs , (ys , sf)) , b , c , d)
+    with match-completeness r s k perm (({!!} , ({!!} , {!!})) , {!!} , {!!} , {!!})
+  ... | x = {!!}
