@@ -254,8 +254,10 @@ module RegExp where
   match-soundness (r₁ ⊕ˢ r₂) s k perm m | Inr x | (p , q , r) , a , b , c = (p , (q , r)) , (a , (Inr b , c))
   match-soundness (r ⁺ˢ) s k (CanRec f) m with lazyOrEq {match r s k (CanRec f)} { match r s (λ { (s' , sf) → match (r ⁺ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)} m
   match-soundness (r ⁺ˢ) s k (CanRec f) m | Inl x with match-soundness r s k (CanRec f) x
-  ... | e = {!!}
-  match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x = {!!}
+  match-soundness (r ⁺ˢ) s k (CanRec f) m | Inl x | (xs , ys , sfYSs) , a , fst , snd = (xs , (ys , sfYSs)) , (a , (S+ fst , snd))
+  match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x with match-soundness r s (λ s'sf → match (r ⁺ˢ) (fst s'sf) (λ s''sf' → k (fst s''sf' , suffix-trans (snd s''sf') (snd s'sf))) (f (fst s'sf) (snd s'sf))) (CanRec f) x
+  match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x | (a1 , (a2 , sf1)) , b1 , c1 , d1 = (a1 , (a2 , sf1)) , (b1 , (S+ c1 , {!d1!}))
+
 
   match-completeness : (r : StdRegExp)
                      → (s : List Char)
