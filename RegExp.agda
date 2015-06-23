@@ -65,6 +65,25 @@ module RegExp where
   suffix-trans s1 Stop = Drop s1
   suffix-trans s1 (Drop s2) = Drop (suffix-trans s1 s2)
 
+  lemma : ∀ {A} → (xs ys : List A) → Suffix xs ys → (Suffix ys xs → Void)
+  lemma ._ ._ Stop (Drop sf2) = lemma _ _ (Drop Stop) sf2
+  lemma ._ ._ (Drop sf) Stop = lemma _ _ sf (Drop Stop)
+  lemma ._ ._ (Drop sf) (Drop sf2) = lemma _ _ sf (lemma3 sf2)
+    where
+        lemma3 : ∀ {A x y} → {xs ys : List A} → Suffix (x :: xs) ys → Suffix xs (y :: ys)
+        lemma3 Stop = Drop (Drop Stop)
+        lemma3 (Drop sf) = Drop (lemma3 sf)
+
+  not-suffix-self : ∀ {A} → (xs : List A) → Suffix xs xs → Void
+  not-suffix-self [] ()
+  not-suffix-self (x :: xs) (Drop sf) = lemma _ _ sf Stop
+
+  suffix-unique : ∀ {A} → {xs ys : List A} → (s1 s2 : Suffix xs ys) → s1 == s2
+  suffix-unique Stop Stop = Refl
+  suffix-unique Stop (Drop s2) = abort (not-suffix-self _ s2)
+  suffix-unique (Drop s1) Stop = abort (not-suffix-self _ s1)
+  suffix-unique (Drop s1) (Drop s2) = ap Drop (suffix-unique s1 s2)
+
   -- end of simple stuff
 
   -- Checks if a given regexp accepts empty string. True, if it accepts ε, False otherwise.
@@ -268,17 +287,17 @@ module RegExp where
   match-completeness ∅ˢ _ _ _ (_ , _ , c , _) = abort c
   match-completeness (Litˢ x) s k perm ((xs , (ys , sf)) , b , c , d) with ! (singleton-append c b)
   match-completeness (Litˢ x) .(x :: ys) k perm ((xs , ys , sf) , b , c , d) | Refl with equalb x x | same-char x
-  match-completeness (Litˢ x) .(x :: ys) k perm ((xs , ys , sf) , b , c , d) | Refl | True | Refl = {!!}
+  match-completeness (Litˢ x) .(x :: ys) k perm ((xs , ys , sf) , b , c , d) | Refl | True | Refl = transport (λ (h : Suffix ys (x :: ys) ) → k (ys , h) == True) (suffix-unique sf Stop) d
   match-completeness (Litˢ x) .(x :: ys) k perm ((xs , ys , sf) , b , c , d) | Refl | False | ()
   match-completeness (r₁ ·ˢ r₂) s k perm ((xs , (ys , sf)) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) with tot | b | append-assoc ms ns ys
   match-completeness (r₁ ·ˢ r₂) .((ms ++ ns) ++ ys) k (CanRec f) ((.(ms ++ ns) , ys , sf) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) | Refl | Refl | p3 with assoc-append-suffix {ns ++ ys}{ms ++ ns ++ ys}{(ms ++ ns) ++ ys} p3 (append-suffix2 {ms} {ns ++ ys} {r₁} ms∈r₁)
-  ... | t with match-completeness r₂ (ns ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' t) }) (f (ns ++ ys) t) ((ns , ys , append-suffix2 {ns} {ys} {r₂} ns∈r₂) , Refl , ns∈r₂ , d ∘ ap (λ x → k (ys , x)) {!!})
+  ... | t with match-completeness r₂ (ns ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' t) }) (f (ns ++ ys) t) ((ns , ys , append-suffix2 {ns} {ys} {r₂} ns∈r₂) , Refl , ns∈r₂ , d ∘ ap (λ x → k (ys , x)) (suffix-unique _ _))
   ... | x = match-completeness r₁ ((ms ++ ns) ++ ys)
                  (λ s'sf → match r₂ (fst s'sf) (λ s''sf' → k (fst s''sf' , suffix-trans (snd s''sf') (snd s'sf))) (f (fst s'sf) (snd s'sf)))
                  (CanRec f) ((ms , ns ++ ys , t) , p3 , ms∈r₁ , x)
   match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inl c , d) = eitherIf (Inl (match-completeness r₁ s k perm ((xs , ys) , b , c , d) ))
   match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inr c , d) = eitherIf {match r₁ s k perm} {match r₂ s k perm}
                                                                        (Inr (match-completeness r₂ s k perm ((xs , ys) , b , c , d)))
-  match-completeness (r ⁺ˢ) s k perm ((xs , (ys , sf)) , b , c , d)
-    with match-completeness r s k perm (({!!} , ({!!} , {!!})) , {!!} , {!!} , {!!})
-  ... | x = {!!}
+  match-completeness (r ⁺ˢ) s k (CanRec f) ((xs , ys , sf) , b , S+ x , d) = eitherIf (Inl (match-completeness r s k (CanRec f) ((xs , (ys , sf)) , b , x , d)))
+  match-completeness (r ⁺ˢ) s k (CanRec f) ((xs , ys , sf) , b , C+ x x₁ c , d) = {!!}
+  --eitherIf (Inr (match-completeness (r ⁺ˢ) s (λ { (s' , sf) → match (r ⁺ˢ) s'(λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f) ((xs , (ys , sf)) , (b , ({!!} , {!!})))))
