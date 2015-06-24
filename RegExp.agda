@@ -65,18 +65,17 @@ module RegExp where
   suffix-trans s1 Stop = Drop s1
   suffix-trans s1 (Drop s2) = Drop (suffix-trans s1 s2)
 
-  lemma : ∀ {A} → (xs ys : List A) → Suffix xs ys → (Suffix ys xs → Void)
-  lemma ._ ._ Stop (Drop sf2) = lemma _ _ (Drop Stop) sf2
-  lemma ._ ._ (Drop sf) Stop = lemma _ _ sf (Drop Stop)
-  lemma ._ ._ (Drop sf) (Drop sf2) = lemma _ _ sf (lemma3 sf2)
-    where
-        lemma3 : ∀ {A x y} → {xs ys : List A} → Suffix (x :: xs) ys → Suffix xs (y :: ys)
-        lemma3 Stop = Drop (Drop Stop)
-        lemma3 (Drop sf) = Drop (lemma3 sf)
+  suffix-not-symmetric : ∀ {A} → (xs ys : List A) → Suffix xs ys → (Suffix ys xs → Void)
+  suffix-not-symmetric ._ ._ Stop (Drop sf2) = suffix-not-symmetric _ _ (Drop Stop) sf2
+  suffix-not-symmetric ._ ._ (Drop sf) Stop = suffix-not-symmetric _ _ sf (Drop Stop)
+  suffix-not-symmetric ._ ._ (Drop sf) (Drop sf2) = suffix-not-symmetric _ _ sf (sub-lemma sf2)
+    where sub-lemma : ∀ {A x y} → {xs ys : List A} → Suffix (x :: xs) ys → Suffix xs (y :: ys)
+          sub-lemma Stop = Drop (Drop Stop)
+          sub-lemma (Drop sf) = Drop (sub-lemma sf)
 
   not-suffix-self : ∀ {A} → (xs : List A) → Suffix xs xs → Void
   not-suffix-self [] ()
-  not-suffix-self (x :: xs) (Drop sf) = lemma _ _ sf Stop
+  not-suffix-self (x :: xs) (Drop sf) = suffix-not-symmetric _ _ sf Stop
 
   suffix-unique : ∀ {A} → {xs ys : List A} → (s1 s2 : Suffix xs ys) → s1 == s2
   suffix-unique Stop Stop = Refl
@@ -118,17 +117,17 @@ module RegExp where
     CanRec : {ys : List A} → ((xs : List A) → Suffix xs ys → RecursionPermission xs) → RecursionPermission ys
 
   {- Prove that you can make a recursion permission for any suffix of [] -}
-  lemma1 : {A : Set} (xs : List A) → Suffix xs [] → RecursionPermission xs
-  lemma1 _ ()
+  perm-suffix-[] : {A : Set} (xs : List A) → Suffix xs [] → RecursionPermission xs
+  perm-suffix-[] _ ()
 
-  lemma2 : {A : Set} {y : A} {xs ys : List A} → Suffix xs (y :: ys) → RecursionPermission ys → RecursionPermission xs
-  lemma2 Stop rec = rec
-  lemma2 (Drop s) (CanRec perm) = perm _ s
+  perm-suffix : {A : Set} {y : A} {xs ys : List A} → Suffix xs (y :: ys) → RecursionPermission ys → RecursionPermission xs
+  perm-suffix Stop rec = rec
+  perm-suffix (Drop s) (CanRec perm) = perm _ s
 
-  {- Using lemma1 and lemma2, make a recursion permission for any list. -}
+  {- Using perm-suffix-[] and perm-suffix, make a recursion permission for any list. -}
   well-founded : {A : Set} (ys : List A) → RecursionPermission ys
-  well-founded [] = CanRec lemma1
-  well-founded (y :: ys) = CanRec (\ xs suff → lemma2 suff (well-founded ys))
+  well-founded [] = CanRec perm-suffix-[]
+  well-founded (y :: ys) = CanRec (λ xs suff → perm-suffix suff (well-founded ys))
 
   -- Matching algorithm
   match : StdRegExp → (s : List Char) → (Σ (λ s' → Suffix s' s) → Bool) → RecursionPermission s → Bool
@@ -196,17 +195,17 @@ module RegExp where
   ... | Inl _ = Refl
   ... | Inr f = abort (f Refl)
 
-  eitherIf : {a b : Bool} → Either (a == True) (b == True) → if a then True else b == True
-  eitherIf {True} (Inl Refl) = Refl
-  eitherIf {True} (Inr Refl) = Refl
-  eitherIf {False} (Inl ())
-  eitherIf {False} (Inr Refl) = Refl
+  either-if : {a b : Bool} → Either (a == True) (b == True) → if a then True else b == True
+  either-if {True} (Inl Refl) = Refl
+  either-if {True} (Inr Refl) = Refl
+  either-if {False} (Inl ())
+  either-if {False} (Inr Refl) = Refl
 
-  lazyOrEq : {a b : Bool} → if a then True else b == True → Either (a == True) (b == True)
-  lazyOrEq {True} {True} Refl = Inl Refl
-  lazyOrEq {True} {False} Refl = Inl Refl
-  lazyOrEq {False} {True} Refl = Inr Refl
-  lazyOrEq {False} {False} ()
+  lazy-or-eq : {a b : Bool} → if a then True else b == True → Either (a == True) (b == True)
+  lazy-or-eq {True} {True} Refl = Inl Refl
+  lazy-or-eq {True} {False} Refl = Inl Refl
+  lazy-or-eq {False} {True} Refl = Inr Refl
+  lazy-or-eq {False} {False} ()
 
   append-suffix3 : {xs ys zs : List Char} → Suffix zs ys → Suffix zs (xs ++ ys)
   append-suffix3 {[]} {ys} {zs} sf = sf
@@ -219,16 +218,16 @@ module RegExp where
   empty-append {_ :: _} {[]} ()
   empty-append {_ :: _} {_ :: _} ()
 
-  nonempty : ∀ {r} → ([] ∈Lˢ r → Void)
-  nonempty {∅ˢ} inL = inL
-  nonempty {Litˢ c} ()
-  nonempty {r₁ ·ˢ r₂} ((xs , ys) , a , b , c) with empty-append {xs} {ys} a
-  nonempty {r₁ ·ˢ r₂} ((.[] , .[]) , a , b , c) | Refl , Refl = nonempty b
-  nonempty {r₁ ⊕ˢ r₂} (Inl x) = nonempty {r₁} x
-  nonempty {r₁ ⊕ˢ r₂} (Inr x) = nonempty {r₂} x
-  nonempty {r ⁺ˢ} (S+ x) = nonempty {r} x
-  nonempty {r ⁺ˢ} (C+ {.[]}{s₁}{s₂} p q inL) with empty-append {s₁} {s₂} p
-  nonempty {r ⁺ˢ} (C+ p q inL) | Refl , Refl = nonempty q
+  non-empty : ∀ {r} → ([] ∈Lˢ r → Void)
+  non-empty {∅ˢ} inL = inL
+  non-empty {Litˢ c} ()
+  non-empty {r₁ ·ˢ r₂} ((xs , ys) , a , b , c) with empty-append {xs} {ys} a
+  non-empty {r₁ ·ˢ r₂} ((.[] , .[]) , a , b , c) | Refl , Refl = non-empty b
+  non-empty {r₁ ⊕ˢ r₂} (Inl x) = non-empty {r₁} x
+  non-empty {r₁ ⊕ˢ r₂} (Inr x) = non-empty {r₂} x
+  non-empty {r ⁺ˢ} (S+ x) = non-empty {r} x
+  non-empty {r ⁺ˢ} (C+ {.[]}{s₁}{s₂} p q inL) with empty-append {s₁} {s₂} p
+  non-empty {r ⁺ˢ} (C+ p q inL) | Refl , Refl = non-empty q
 
   cons-empty : {x : Char} → {xs : List Char} → x :: xs == [] → Void
   cons-empty ()
@@ -239,7 +238,7 @@ module RegExp where
   append-suffix2' {x :: y :: xs} {ys} f = Drop (append-suffix2' {y :: xs} {ys} (cons-empty {y} {xs}))
 
   append-suffix2 : ∀ {xs ys r} → xs ∈Lˢ r → Suffix ys (xs ++ ys)
-  append-suffix2 {xs} {ys} {r} inL with nonempty {r}
+  append-suffix2 {xs} {ys} {r} inL with non-empty {r}
   append-suffix2 {[]} inL | q = abort (q inL)
   append-suffix2 {x :: xs} {ys} inL | q = append-suffix2' {x :: xs} {ys} (cons-empty {x} {xs})
 
@@ -266,12 +265,12 @@ module RegExp where
   match-soundness (r₁ ·ˢ r₂) s k (CanRec f) m | (xs , ys , r) , a , b , c
     with match-soundness r₂ ys (λ { (s' , sf) → k (s' , (suffix-trans sf r)) }) (f ys r) c
   match-soundness (r₁ ·ˢ r₂) .(xs ++ as ++ bs) k (CanRec f) m | (xs , .(as ++ bs) , r) , Refl , b , c | (as , bs , r1) , Refl , b1 , c1 = ((xs ++ as) , (bs , suffix-trans r1 r)) , ((! (append-assoc xs as bs)) , (((xs , as) , (Refl , (b , b1))) , c1))
-  match-soundness (r₁ ⊕ˢ r₂) s k perm m with lazyOrEq {match r₁ s k perm} {match r₂ s k perm} m
+  match-soundness (r₁ ⊕ˢ r₂) s k perm m with lazy-or-eq {match r₁ s k perm} {match r₂ s k perm} m
   match-soundness (r₁ ⊕ˢ r₂) s k perm m | Inl x with match-soundness r₁ s k perm x
   match-soundness (r₁ ⊕ˢ r₂) s k perm m | Inl x | (p , q , r) , a , b , c = (p , (q , r)) , (a , (Inl b , c))
   match-soundness (r₁ ⊕ˢ r₂) s k perm m | Inr x with match-soundness r₂ s k perm x
   match-soundness (r₁ ⊕ˢ r₂) s k perm m | Inr x | (p , q , r) , a , b , c = (p , (q , r)) , (a , (Inr b , c))
-  match-soundness (r ⁺ˢ) s k (CanRec f) m with lazyOrEq {match r s k (CanRec f)} { match r s (λ { (s' , sf) → match (r ⁺ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)} m
+  match-soundness (r ⁺ˢ) s k (CanRec f) m with lazy-or-eq {match r s k (CanRec f)} { match r s (λ { (s' , sf) → match (r ⁺ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)} m
   match-soundness (r ⁺ˢ) s k (CanRec f) m | Inl x with match-soundness r s k (CanRec f) x
   match-soundness (r ⁺ˢ) s k (CanRec f) m | Inl x | (xs , ys , sfYSs) , a , fst , snd = (xs , (ys , sfYSs)) , (a , (S+ fst , snd))
   match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x with match-soundness r s (λ s'sf → match (r ⁺ˢ) (fst s'sf) (λ s''sf' → k (fst s''sf' , suffix-trans (snd s''sf') (snd s'sf))) (f (fst s'sf) (snd s'sf))) (CanRec f) x
@@ -295,9 +294,9 @@ module RegExp where
   ... | x = match-completeness r₁ ((ms ++ ns) ++ ys)
                  (λ s'sf → match r₂ (fst s'sf) (λ s''sf' → k (fst s''sf' , suffix-trans (snd s''sf') (snd s'sf))) (f (fst s'sf) (snd s'sf)))
                  (CanRec f) ((ms , ns ++ ys , t) , p3 , ms∈r₁ , x)
-  match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inl c , d) = eitherIf (Inl (match-completeness r₁ s k perm ((xs , ys) , b , c , d) ))
-  match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inr c , d) = eitherIf {match r₁ s k perm} {match r₂ s k perm}
+  match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inl c , d) = either-if (Inl (match-completeness r₁ s k perm ((xs , ys) , b , c , d) ))
+  match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inr c , d) = either-if {match r₁ s k perm} {match r₂ s k perm}
                                                                        (Inr (match-completeness r₂ s k perm ((xs , ys) , b , c , d)))
-  match-completeness (r ⁺ˢ) s k (CanRec f) ((xs , ys , sf) , b , S+ x , d) = eitherIf (Inl (match-completeness r s k (CanRec f) ((xs , (ys , sf)) , b , x , d)))
+  match-completeness (r ⁺ˢ) s k (CanRec f) ((xs , ys , sf) , b , S+ x , d) = either-if (Inl (match-completeness r s k (CanRec f) ((xs , (ys , sf)) , b , x , d)))
   match-completeness (r ⁺ˢ) s k (CanRec f) ((xs , ys , sf) , b , C+ x x₁ c , d) = {!!}
-  --eitherIf (Inr (match-completeness (r ⁺ˢ) s (λ { (s' , sf) → match (r ⁺ˢ) s'(λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f) ((xs , (ys , sf)) , (b , ({!!} , {!!})))))
+  -- either-if (Inr (match-completeness (r ⁺ˢ) s (λ { (s' , sf) → match (r ⁺ˢ) s'(λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f) ((xs , (ys , sf)) , (b , ({!!} , {!!})))))

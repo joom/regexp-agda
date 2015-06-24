@@ -1,0 +1,109 @@
+\documentclass{beamer}
+
+\usepackage{listings}
+
+\usetheme{default}
+
+\title{Proof of Regular Expression Matching CPS Algorithm Termination in Agda}
+
+\author{Joomy Korkut \and Maksim Trifunovski \and Dan Licata}
+
+\institute {
+Department of Mathematics and Computer Science\\
+Wesleyan University
+}
+
+\date{June 24th, 2015}
+
+\begin{document}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\begin{frame}{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Definitions}
+
+\subsection{Agda}
+
+\begin{frame}{Agda}
+\begin{itemize}
+\item Agda is a dependently typed functional programming language mostly used to write proofs.
+\item Agda is a \emph{total} language, which means all functions in Agda must terminate and return a value.
+\end{itemize}
+\end{frame}
+
+\subsection{Regular Expressions}
+
+\begin{frame}{Regular Expressions}
+\begin{itemize}
+\item Regular expressions (regex) are a way of checking for patterns and extracting information from sequences of characters.
+\item Examples include: checking if an e-mail address is valid, finding the type of a credit card number.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Definition of Regular Expressions}
+\begin{itemize}
+\item $\emptyset$ : The empty set.
+\item $\varepsilon$ : The empty string.
+\item $a$ : The character literal, if $a$ is in our alphabet ($a \in \Sigma$).
+\item Suppose $r_1, r_2$ are regular expressions.\\
+$r_1 + r_2$ : Alteration. (matches $r_1$ or $r_2$)
+\item Suppose $r_1, r_2$ are regular expressions.\\
+$r_1 r_2$ : Concatenation. (a prefix matches $r_1$ and the following suffix matches $r_2$)
+\item Suppose $r$ is a regular expression.\\
+$r^*$ : Kleene star. (matches $r$ zero or more times)
+\end{itemize}
+\begin{example}
+$(a + ... + z + 0 + 1 + ... + 9)^* @ (a + ... + z + 0 + 1 + ... + 9)^* . (com + net + org + edu + ...)$
+\end{example}
+\end{frame}
+
+\subsection{Continuation Passing Style}
+
+\begin{frame}{Continuation Passing Style}
+\begin{itemize}
+\item The first matching function that comes to mind would be \\
+$\text{match} : \text{RegExp} \to \text{List Char} \to \text{Bool}$
+
+However, in the $r_1 r_2$ case we have to check that there exists a split of the string $s = s_1 s_2$, such that $s_1 \in L(r_1)$ and $s_2 \in L(r_2)$.
+
+\item Hence, we make a generalization such that our function matches a prefix of the char list, calls the continuation function with the rest of the list and return the result. \\
+$\text{match} : \text{RegExp} \to \text{List Char} \to (\text{List Char} \to \text{Bool}) \to \text{Bool}$
+
+\item Overall, if match r s $(\lambda x \to x == [])$ returns true, then the regex accepts our string.
+\end{itemize}
+\end{frame}
+
+\section{Our Research}
+
+\subsection{Termination Proof}
+
+\begin{frame}{Termination Problem}
+\begin{itemize}
+\item  In the case of the regex $r^*$, since the regex accepts any number of strings that match $r$, including $0$, the string that we pass to the continuation function might stay the same as the original string.
+\item Agda doesn't believe that this function will always terminate. In order to create a workaround, we used regexes in standard form, such that $L(standardize(r)) = L(r) - \{\varepsilon\}$.
+\item In standard form, $r^+$ can only accept one or more number of strings that match $r$. Hence the continuation function always passes a smaller string than the string we started with and therefore Agda believes that the program terminates.
+\end{itemize}
+\end{frame}
+
+\subsection{Soundness, Completeness and Future Work}
+
+\begin{frame}{Soundness, Completeness and Future Work}
+We are now working on the soundness and completeness of the algorithm, and we are mostly done.
+\begin{itemize}
+\item Soundness: Show that if match $r$ $s$ $k$ is true, then there is a split of $s$, namely $s_1 s_2$, such that $s_1 \in L(r)$ and $k$ $s_2$ is true.
+\item Completeness: Show that if there is a split of $s$, namely $s_1 s_2$, such that $s_1 \in L(r)$ and $k$ $s_2$ is true, then match $r$ $s$ $k$ is true.
+\item Standardization: Our next step is to show that for any regex $r$, $L(r) = L(standardize(r)) \cup \delta(r)$, where $\delta(r) = \varepsilon$ if $r$ accepts the empty string, $\emptyset$ otherwise.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Code}
+The Agda code is available at\\
+\url{http://github.com/joom/regexp-agda}
+\end{frame}
+
+\end{document}
