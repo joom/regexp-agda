@@ -255,17 +255,6 @@ module RegExp where
                       → Suffix xs zs
   assoc-append-suffix Refl sf = sf
 
-
-  new-lemma3 : {r : StdRegExp} → (xs : List Char) → (ys : List Char) → xs ∈Lˢ r → ys ∈L⁺ r → (xs ++ ys) ∈L⁺ r
-  new-lemma3 [] [] in1 (S+ x) = S+ x
-  new-lemma3 [] [] in1 (C+ x x₁ in2) = S+ in1
-  new-lemma3 [] (x :: ys) in1 (S+ x₁) = S+ x₁
-  new-lemma3 [] (x :: ys) in1 (C+ x₁ x₂ in2) = {!!}
-  new-lemma3 (x :: xs) [] in1 (S+ x₁) = {!!}
-  new-lemma3 (x :: xs) [] in1 (C+ x₁ x₂ in2) = {!!}
-  new-lemma3 (x :: xs) (x₁ :: ys) in1 (S+ x₂) = {!!}
-  new-lemma3 (x :: xs) (x₁ :: ys) in1 (C+ x₂ x₃ in2) = {!!}
-
   -- Proofs
 
   match-soundness : (r : StdRegExp)
@@ -294,7 +283,7 @@ module RegExp where
   match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x with match-soundness r s (λ s'sf → match (r ⁺ˢ) (fst s'sf) (λ s''sf' → k (fst s''sf' , suffix-trans (snd s''sf') (snd s'sf))) (f (fst s'sf) (snd s'sf))) (CanRec f) x
   match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x | (xs , (ys , ysSFs)) , eq , xsINrS , d with match-soundness (r ⁺ˢ) ys (λ { (s' , sf') → k (s' , suffix-trans sf' ysSFs) } ) (f ys ysSFs) d
   match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x | (xs , (ys , ysSFs)) , eq , xsINrS , d | (ys' , ys'' , ys''SFys) , eq1 , ys'INrP , d1 with !(append-assoc xs ys' ys'')
-  match-soundness (r ⁺ˢ) .(xs ++ ys' ++ ys'') k (CanRec f) m | Inr x | (xs , .(ys' ++ ys'') , ysSFs) , Refl , xsINrS , d | (ys' , ys'' , ys''SFys) , Refl , ys'INrP , d1 | app = (xs ++ ys' , (ys'' , suffix-trans ys''SFys ysSFs)) , (app , (new-lemma3 xs ys' xsINrS ys'INrP , d1))
+  match-soundness (r ⁺ˢ) .(xs ++ ys' ++ ys'') k (CanRec f) m | Inr x | (xs , .(ys' ++ ys'') , ysSFs) , Refl , xsINrS , d | (ys' , ys'' , ys''SFys) , Refl , ys'INrP , d1 | app = (xs ++ ys' , (ys'' , suffix-trans ys''SFys ysSFs)) , (app , (C+ Refl xsINrS ys'INrP , d1))
 
 
   match-completeness : (r : StdRegExp)
