@@ -242,6 +242,13 @@ module RegExp where
   append-suffix2 {[]} inL | q = abort (q inL)
   append-suffix2 {x :: xs} {ys} inL | q = append-suffix2' {x :: xs} {ys} (cons-empty {x} {xs})
 
+  append-suffix2⁺ : ∀ {xs ys r} → xs ∈L⁺ r → Suffix ys (xs ++ ys)
+  append-suffix2⁺ {xs}{ys}{r} inL with non-empty {r}
+  append-suffix2⁺ {[]} (S+ x) | q = abort (q x)
+  append-suffix2⁺ {[]} (C+ {._}{s₁}{s₂} x x₁ inL) | q with empty-append {s₁} {s₂} x
+  append-suffix2⁺ {[]} (C+ x x₁ inL) | q | Refl , Refl = abort (q x₁)
+  append-suffix2⁺ {x :: xs} {ys} inL | q = append-suffix2' {x :: xs} {ys} (cons-empty {x} {xs})
+
   assoc-append-suffix : {xs ys zs : List Char}
                       → ys == zs
                       → Suffix xs ys
@@ -291,12 +298,14 @@ module RegExp where
   match-completeness (r₁ ·ˢ r₂) s k perm ((xs , (ys , sf)) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) with tot | b | append-assoc ms ns ys
   match-completeness (r₁ ·ˢ r₂) .((ms ++ ns) ++ ys) k (CanRec f) ((.(ms ++ ns) , ys , sf) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) | Refl | Refl | p3 with assoc-append-suffix {ns ++ ys}{ms ++ ns ++ ys}{(ms ++ ns) ++ ys} p3 (append-suffix2 {ms} {ns ++ ys} {r₁} ms∈r₁)
   ... | t with match-completeness r₂ (ns ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' t) }) (f (ns ++ ys) t) ((ns , ys , append-suffix2 {ns} {ys} {r₂} ns∈r₂) , Refl , ns∈r₂ , d ∘ ap (λ x → k (ys , x)) (suffix-unique _ _))
-  ... | x = match-completeness r₁ ((ms ++ ns) ++ ys)
-                 (λ s'sf → match r₂ (fst s'sf) (λ s''sf' → k (fst s''sf' , suffix-trans (snd s''sf') (snd s'sf))) (f (fst s'sf) (snd s'sf)))
-                 (CanRec f) ((ms , ns ++ ys , t) , p3 , ms∈r₁ , x)
+  ... | x = match-completeness r₁ ((ms ++ ns) ++ ys) _ (CanRec f) ((ms , ns ++ ys , t) , p3 , ms∈r₁ , x)
   match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inl c , d) = either-if (Inl (match-completeness r₁ s k perm ((xs , ys) , b , c , d) ))
   match-completeness (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , b , Inr c , d) = either-if {match r₁ s k perm} {match r₂ s k perm}
                                                                        (Inr (match-completeness r₂ s k perm ((xs , ys) , b , c , d)))
   match-completeness (r ⁺ˢ) s k (CanRec f) ((xs , ys , sf) , b , S+ x , d) = either-if (Inl (match-completeness r s k (CanRec f) ((xs , (ys , sf)) , b , x , d)))
-  match-completeness (r ⁺ˢ) s k (CanRec f) ((xs , ys , sf) , b , C+ x x₁ c , d) = {!!}
-  -- either-if (Inr (match-completeness (r ⁺ˢ) s (λ { (s' , sf) → match (r ⁺ˢ) s'(λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f) ((xs , (ys , sf)) , (b , ({!!} , {!!})))))
+  match-completeness (r ⁺ˢ) s k (CanRec f) ((._ , ys , sf) , b , C+ {.(s₁ ++ s₂)}{s₁}{s₂} Refl q c , d) with match r s k (CanRec f)
+  match-completeness (r ⁺ˢ) s k (CanRec f) ((._ , ys , sf) , b , C+ Refl q c , d) | True = Refl
+  match-completeness (r ⁺ˢ) s k (CanRec f) ((._ , ys , sf) , b , C+ {.(s₁ ++ s₂)}{s₁}{s₂} Refl q c , d) | False
+    with assoc-append-suffix {s₂ ++ ys}{(s₁ ++ s₂) ++ ys}{s} b (assoc-append-suffix (append-assoc s₁ s₂ ys) (append-suffix2 q))
+  ... | t with match-completeness (r ⁺ˢ) (s₂ ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' t) }) (f (s₂ ++ ys) t) ((s₂ , ys , append-suffix2⁺ {s₂}{ys}{r} c) , Refl , c , d ∘ ap (λ x → k (ys , x)) (suffix-unique _ _) )
+  match-completeness (r ⁺ˢ) ._ k (CanRec f) ((._ , ys , sf) , Refl , C+ {.(s₁ ++ s₂)}{s₁}{s₂} Refl q c , d) | False | t | x = match-completeness r ((s₁ ++ s₂) ++ ys) _ (CanRec f) ((s₁ , s₂ ++ ys , t) , append-assoc s₁ s₂ ys , q , x)
