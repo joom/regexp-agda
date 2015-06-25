@@ -59,69 +59,6 @@ module RegExp where
 
   -- end of simple stuff
 
-  -- Checks if a given regexp accepts empty string. True, if it accepts ε, False otherwise.
-  δ : RegExp → Bool
-  δ ∅ = False
-  δ ε = True
-  δ (Lit x) = False
-  δ (r₁ · r₂) with δ r₁ | δ r₂
-  ... | False | _ = False
-  ... | _ | False = False
-  ... | _ | _ = True
-  δ (r₁ ⊕ r₂) with δ r₁ | δ r₂
-  ... | True | _ = True
-  ... | _ | True = True
-  ... | _ | _ = False
-  δ(r *) = True
-
-  standardize : RegExp → StdRegExp
-  standardize ∅ = ∅ˢ
-  standardize ε = ∅ˢ
-  standardize (Lit x) = Litˢ x
-  standardize (r₁ · r₂) with standardize r₁ | standardize r₂ | δ r₁ | δ r₂
-  ... | x₁ | x₂ | False | False = x₁ ·ˢ x₂
-  ... | x₁ | x₂ | False | True = x₁ ⊕ˢ (x₁ ·ˢ x₂)
-  ... | x₁ | x₂ | True | False = x₂ ⊕ˢ (x₁ ·ˢ x₂)
-  ... | x₁ | x₂ | True | True = x₁ ⊕ˢ x₂ ⊕ˢ (x₁ ·ˢ x₂)
-  standardize (r₁ ⊕ r₂) = standardize r₁ ⊕ˢ standardize r₂
-  standardize (r *) = x ⁺ˢ
-    where x = standardize r
-
-  data RecursionPermission {A : Set} : List A → Set where
-    CanRec : {ys : List A} → ((xs : List A) → Suffix xs ys → RecursionPermission xs) → RecursionPermission ys
-
-  {- Prove that you can make a recursion permission for any suffix of [] -}
-  perm-suffix-[] : {A : Set} (xs : List A) → Suffix xs [] → RecursionPermission xs
-  perm-suffix-[] _ ()
-
-  perm-suffix : {A : Set} {y : A} {xs ys : List A} → Suffix xs (y :: ys) → RecursionPermission ys → RecursionPermission xs
-  perm-suffix Stop rec = rec
-  perm-suffix (Drop s) (CanRec perm) = perm _ s
-
-  {- Using perm-suffix-[] and perm-suffix, make a recursion permission for any list. -}
-  well-founded : {A : Set} (ys : List A) → RecursionPermission ys
-  well-founded [] = CanRec perm-suffix-[]
-  well-founded (y :: ys) = CanRec (λ xs suff → perm-suffix suff (well-founded ys))
-
-  -- Matching algorithm
-  match : StdRegExp → (s : List Char) → (Σ (λ s' → Suffix s' s) → Bool) → RecursionPermission s → Bool
-  match ∅ˢ s k _ = False
-  match (Litˢ _) [] _ _ = False
-  match (Litˢ c) (x :: xs) k _ = if (equalb x c) then (k (xs , Stop)) else False
-  match (r₁ ·ˢ r₂) s k (CanRec f) = match r₁ s (λ { (s' , sf) → match r₂ s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)
-  match (r₁ ⊕ˢ r₂) s k perm = if match r₁ s k perm then True else match r₂ s k perm
-  match (r ⁺ˢ) s k (CanRec f) = if match r s k (CanRec f) then True else match r s (λ { (s' , sf) → match (r ⁺ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)
-
-  match-plus : Bool × StdRegExp → (s : List Char) → (Σ (λ s' → Suffix s' s) → Bool) → RecursionPermission s → Bool
-  match-plus (False , r) s k perm = match r s k perm
-  match-plus (True , r) s k perm = if null s then True else match r s k perm
-
-  _accepts_ : RegExp → String.String → Bool
-  r accepts s = match-plus (δ r , standardize r) l (λ { (s , sf) → null s }) (well-founded l)
-    where l = String.toList s
-
-  -- Proofs
-
   -- Shows a string accepted by the language of a regexp. Type "\in L".
   _∈L_ : List Char → RegExp → Set
   data _∈Lˣ_ : List Char → RegExp → Set
@@ -149,6 +86,31 @@ module RegExp where
   data _∈L⁺_ where
     S+ : ∀ {s r} → s ∈Lˢ r → s ∈L⁺ r
     C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ == s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
+
+  data RecursionPermission {A : Set} : List A → Set where
+    CanRec : {ys : List A} → ((xs : List A) → Suffix xs ys → RecursionPermission xs) → RecursionPermission ys
+
+  {- Prove that you can make a recursion permission for any suffix of [] -}
+  perm-suffix-[] : {A : Set} (xs : List A) → Suffix xs [] → RecursionPermission xs
+  perm-suffix-[] _ ()
+
+  perm-suffix : {A : Set} {y : A} {xs ys : List A} → Suffix xs (y :: ys) → RecursionPermission ys → RecursionPermission xs
+  perm-suffix Stop rec = rec
+  perm-suffix (Drop s) (CanRec perm) = perm _ s
+
+  {- Using perm-suffix-[] and perm-suffix, make a recursion permission for any list. -}
+  well-founded : {A : Set} (ys : List A) → RecursionPermission ys
+  well-founded [] = CanRec perm-suffix-[]
+  well-founded (y :: ys) = CanRec (λ xs suff → perm-suffix suff (well-founded ys))
+
+  -- Matching algorithm
+  match : StdRegExp → (s : List Char) → (Σ (λ s' → Suffix s' s) → Bool) → RecursionPermission s → Bool
+  match ∅ˢ s k _ = False
+  match (Litˢ _) [] _ _ = False
+  match (Litˢ c) (x :: xs) k _ = if (equalb x c) then (k (xs , Stop)) else False
+  match (r₁ ·ˢ r₂) s k (CanRec f) = match r₁ s (λ { (s' , sf) → match r₂ s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)
+  match (r₁ ⊕ˢ r₂) s k perm = if match r₁ s k perm then True else match r₂ s k perm
+  match (r ⁺ˢ) s k (CanRec f) = if match r s k (CanRec f) then True else match r s (λ { (s' , sf) → match (r ⁺ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)
 
   -- Lemmas
 
@@ -306,19 +268,74 @@ module RegExp where
   ... | t with match-completeness (r ⁺ˢ) (s₂ ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' t) }) (f (s₂ ++ ys) t) ((s₂ , ys , append-suffix2⁺ {s₂}{ys}{r} c) , Refl , c , d ∘ ap (λ x → k (ys , x)) (suffix-unique _ _) )
   match-completeness (r ⁺ˢ) ._ k (CanRec f) ((._ , ys , sf) , Refl , C+ {.(s₁ ++ s₂)}{s₁}{s₂} Refl q c , d) | False | t | x = match-completeness r ((s₁ ++ s₂) ++ ys) _ (CanRec f) ((s₁ , s₂ ++ ys , t) , append-assoc s₁ s₂ ys , q , x)
 
+  -- Overall regular expression matching functions & proofs.
+
+  empty-append-δ : ∀ {x y r} → x ++ y == [] → Either (x ∈L r) (y ∈L r) → ([] ∈L r → Void) → Void
+  empty-append-δ {x}{y}{r} eq inL f with empty-append {x}{y} eq
+  empty-append-δ eq (Inl inL) f | Refl , Refl = f inL
+  empty-append-δ eq (Inr inL) f | Refl , Refl = f inL
+
+  -- Checks if a given regexp accepts empty string.
+  δ' : (r : RegExp) → Either ([] ∈L r) ([] ∈L r → Void)
+  δ' ∅ = Inr (λ ())
+  δ' ε = Inl Refl
+  δ' (Lit x) = Inr (λ ())
+  δ' (r₁ · r₂) with δ' r₁ | δ' r₂
+  ... | Inr p | _ = Inr (λ {((x , y) , (a , (b , _))) → empty-append-δ {x}{y}{r₁} a (Inl b) p})
+  ... | _ | Inr q = Inr (λ {((x , y) , (a , (_ , c))) → empty-append-δ {x}{y}{r₂} a (Inr c) q})
+  ... | Inl p | Inl q = Inl (([] , []) , Refl , p , q)
+  δ' (r₁ ⊕ r₂) with δ' r₁ | δ' r₂
+  ... | (Inl p) | _ = Inl (Inl p)
+  ... | _ | (Inl q) = Inl (Inr q)
+  ... | (Inr p) | (Inr q) = Inr (sub-lemma p q)
+    where sub-lemma : ∀ {a b} → (a → Void) → (b → Void) → Either a b → Void
+          sub-lemma f _ (Inl a) = f a
+          sub-lemma _ g (Inr b) = g b
+  δ' (r *) = Inl (Ex Refl)
+
+  -- Checks if a given regexp accepts empty string. True, if it accepts ε, False otherwise.
+  δ : RegExp → Bool
+  δ r with δ' r
+  ... | Inl _ = True
+  ... | Inr _ = False
+
+  standardize : RegExp → StdRegExp
+  standardize ∅ = ∅ˢ
+  standardize ε = ∅ˢ
+  standardize (Lit x) = Litˢ x
+  standardize (r₁ · r₂) with standardize r₁ | standardize r₂ | δ r₁ | δ r₂
+  ... | x₁ | x₂ | False | False = x₁ ·ˢ x₂
+  ... | x₁ | x₂ | False | True = x₁ ⊕ˢ (x₁ ·ˢ x₂)
+  ... | x₁ | x₂ | True | False = x₂ ⊕ˢ (x₁ ·ˢ x₂)
+  ... | x₁ | x₂ | True | True = x₁ ⊕ˢ x₂ ⊕ˢ (x₁ ·ˢ x₂)
+  standardize (r₁ ⊕ r₂) = standardize r₁ ⊕ˢ standardize r₂
+  standardize (r *) = x ⁺ˢ
+    where x = standardize r
+
+  match-plus : Bool × StdRegExp → (s : List Char) → (Σ (λ s' → Suffix s' s) → Bool) → RecursionPermission s → Bool
+  match-plus (False , r) s k perm = match r s k perm
+  match-plus (True , r) s k perm = if null s then True else match r s k perm
+
+  _accepts_ : RegExp → String.String → Bool
+  r accepts s = match-plus (δ r , standardize r) l (λ { (s , sf) → null s }) (well-founded l)
+    where l = String.toList s
+
   -- Standardization proofs
 
   ∈L-soundness : (s : List Char)
                → (r : RegExp)
                → Either ((δ r == True) × (s == [])) (s ∈Lˢ (standardize r))
                → s ∈L r
-  ∈L-soundness s r either = {!!}
+  ∈L-soundness .[] r (Inl (d , Refl)) with δ' r
+  ... | Inl p = p
+  ∈L-soundness .[] r (Inl (() , Refl)) | Inr q
+  ∈L-soundness s r (Inr x) = {!!}
 
   ∈L-completeness : (s : List Char)
                   → (r : RegExp)
                   → s ∈L r
                   → Either ((δ r == True) × (s == [])) (s ∈Lˢ (standardize r))
-  ∈L-completeness s r inL = ?
+  ∈L-completeness s r inL = {!!}
 
   -- Overall correctness
 
