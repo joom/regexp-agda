@@ -329,7 +329,24 @@ module RegExp where
   ∈L-soundness .[] r (Inl (d , Refl)) with δ' r
   ... | Inl p = p
   ∈L-soundness .[] r (Inl (() , Refl)) | Inr q
-  ∈L-soundness s r (Inr x) = {!!}
+  ∈L-soundness s ∅ (Inr x) = x
+  ∈L-soundness s ε (Inr ())
+  ∈L-soundness s (Lit x) (Inr q) = q
+  ∈L-soundness s (r₁ · r₂) (Inr q) with δ' r₁ | δ' r₂
+  ∈L-soundness s (r₁ · r₂) (Inr (Inl x)) | Inl a | Inl b = {!!}
+  ∈L-soundness s (r₁ · r₂) (Inr (Inr (Inl x))) | Inl a | Inl b = {!!}
+  ∈L-soundness s (r₁ · r₂) (Inr (Inr (Inr ((x , y) , n , p , q)))) | Inl a | Inl b = (x , y) , n , ∈L-soundness x r₁ (Inr p) , ∈L-soundness y r₂ (Inr q)
+  ∈L-soundness s (r₁ · r₂) (Inr (Inl x)) | Inl a | Inr b = {!!}
+  ∈L-soundness s (r₁ · r₂) (Inr (Inl x)) | Inr a | Inl b = {!∈L-soundness s r₁ (Inr x) !}
+  ∈L-soundness s (r₁ · r₂) (Inr (Inr ((x , y) , n , p , q))) | Inl a | Inr b = (x , y) , n , ∈L-soundness x r₁ (Inr p) , ∈L-soundness y r₂ (Inr q)
+  ∈L-soundness s (r₁ · r₂) (Inr (Inr ((x , y) , n , p , q))) | Inr a | Inl b = (x , y) , n , ∈L-soundness x r₁ (Inr p) , ∈L-soundness y r₂ (Inr q)
+  ∈L-soundness s (r₁ · r₂) (Inr ((x , y) , n , p , q)) | Inr a | Inr b = (x , y) , n , ∈L-soundness x r₁ (Inr p) , ∈L-soundness y r₂ (Inr q)
+  ∈L-soundness s (r₁ ⊕ r₂) (Inr (Inl x)) = Inl (∈L-soundness s r₁ (Inr x))
+  ∈L-soundness s (r₁ ⊕ r₂) (Inr (Inr x)) = Inr (∈L-soundness s r₂ (Inr x))
+  ∈L-soundness s (r *) (Inr (S+ x)) with ∈L-soundness s r (Inr x)
+  ... | q = {!!}
+  ∈L-soundness s (r *) (Inr (C+ a b c)) with ∈L-soundness _ {!!} (Inr b)
+  ... | q = {!!}
 
   ∈L-completeness : (s : List Char)
                   → (r : RegExp)
