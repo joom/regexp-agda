@@ -160,7 +160,7 @@ module RegExp where
   s ∈L (r *) = s ∈Lˣ r
 
   data _∈Lˣ_ where
-    Ex : ∀ {s r} → s == [] → r == ε → s ∈Lˣ r
+    Ex : ∀ {s r} → s == [] → s ∈Lˣ r
     Cx : ∀ {s s₁ s₂ r} → s₁ ++ s₂ == s → s₁ ∈L r → s₂ ∈Lˣ r → s ∈Lˣ r
 
   _∈Lˢ_ : List Char → StdRegExp → Set
@@ -311,3 +311,16 @@ module RegExp where
     with assoc-append-suffix {s₂ ++ ys}{(s₁ ++ s₂) ++ ys}{s} b (assoc-append-suffix (append-assoc s₁ s₂ ys) (append-suffix2 q))
   ... | t with match-completeness (r ⁺ˢ) (s₂ ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' t) }) (f (s₂ ++ ys) t) ((s₂ , ys , append-suffix2⁺ {s₂}{ys}{r} c) , Refl , c , d ∘ ap (λ x → k (ys , x)) (suffix-unique _ _) )
   match-completeness (r ⁺ˢ) ._ k (CanRec f) ((._ , ys , sf) , Refl , C+ {.(s₁ ++ s₂)}{s₁}{s₂} Refl q c , d) | False | t | x = match-completeness r ((s₁ ++ s₂) ++ ys) _ (CanRec f) ((s₁ , s₂ ++ ys , t) , append-assoc s₁ s₂ ys , q , x)
+
+
+  ∈L-soundness : (s : List Char) → (r : StdRegExp) → s ∈Lˢ r → s ∈L (demote-std r)
+  ∈L-soundness s ∅ˢ inL = inL
+  ∈L-soundness s (Litˢ c) inL = inL
+  ∈L-soundness s (r₁ ·ˢ r₂) ((xs , ys) , eq , inLsr1 , inLsr2) = (xs , ys) , (eq , (∈L-soundness xs r₁ inLsr1 , ∈L-soundness ys r₂ inLsr2))
+  ∈L-soundness s (r₁ ⊕ˢ r₂) (Inl x) = Inl (∈L-soundness s r₁ x)
+  ∈L-soundness s (r₁ ⊕ˢ r₂) (Inr x) = Inr (∈L-soundness s r₂ x)
+  ∈L-soundness s (r ⁺ˢ) (S+ x) = {!!}
+  ∈L-soundness s (r ⁺ˢ) (C+ .{s} {s₁} {s₂} x y inL) = Cx {s} {s₁} {s₂} x {!!} {!!}
+
+  ∈L-completeness : (s : List Char) → (r : RegExp) → s ∈L r → Either ({!!}) (s ∈Lˢ (standardize r))
+  ∈L-completeness s r inL = {!!}
