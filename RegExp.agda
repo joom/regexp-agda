@@ -308,22 +308,28 @@ module RegExp where
 
   -- Standardization proofs
 
-  ∈L-soundness : (s : List Char) → (r : StdRegExp) → s ∈Lˢ r → s ∈L (demote-std r)
-  ∈L-soundness s ∅ˢ inL = inL
-  ∈L-soundness s (Litˢ c) inL = inL
-  ∈L-soundness s (r₁ ·ˢ r₂) ((xs , ys) , eq , inLsr1 , inLsr2) = (xs , ys) , (eq , (∈L-soundness xs r₁ inLsr1 , ∈L-soundness ys r₂ inLsr2))
-  ∈L-soundness s (r₁ ⊕ˢ r₂) (Inl x) = Inl (∈L-soundness s r₁ x)
-  ∈L-soundness s (r₁ ⊕ˢ r₂) (Inr x) = Inr (∈L-soundness s r₂ x)
-  ∈L-soundness s (r ⁺ˢ) (S+ x) = {!!}
-  ∈L-soundness s (r ⁺ˢ) (C+ .{s} {s₁} {s₂} x y inL) = Cx {s} {s₁} {s₂} x {!!} {!!}
+  ∈L-soundness : (s : List Char)
+               → (r : RegExp)
+               → Either ((δ r == True) × (s == [])) (s ∈Lˢ (standardize r))
+               → s ∈L r
+  ∈L-soundness s r either = {!!}
 
   ∈L-completeness : (s : List Char)
                   → (r : RegExp)
                   → s ∈L r
                   → Either ((δ r == True) × (s == [])) (s ∈Lˢ (standardize r))
-  ∈L-completeness s ∅ inL = Inr inL
-  ∈L-completeness s ε inL = Inl (Refl , inL)
-  ∈L-completeness s (Lit x) inL = Inr inL
-  ∈L-completeness s (r · r₁) inL = {!!}
-  ∈L-completeness s (r ⊕ r₁) inL = {!!}
-  ∈L-completeness s (r *) inL = {!!}
+  ∈L-completeness s r inL = ?
+
+  -- Overall correctness
+
+  correct-soundness : (r : RegExp)
+                    → (s : String.String)
+                    → r accepts s == True
+                    → (String.toList s) ∈L r
+  correct-soundness r s eq = {!!}
+
+  correct-completeness : (r : RegExp)
+                       → (s : String.String)
+                       → r accepts s == True
+                       → (String.toList s) ∈L r
+  correct-completeness r s inL = {!!}
