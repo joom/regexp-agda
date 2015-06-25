@@ -40,23 +40,15 @@ module RegExp where
       (Lit '<' · (Lit '0' *) · Lit '>') accepts "<00>"
   -}
 
-  -- I can't believe these are not in the preliminaries file
   -- simple stuff
-  if_then_else_ : {A : Set} → Bool → A → A → A
-  if True then x else _ = x
-  if False then _ else y = y
 
-  null : {A : Set} → List A → Bool
-  null [] = True
-  null _ = False
-
+  {- Our boolean char equality function that isn't directly primitive. -}
   equalb : Char → Char → Bool
   equalb x y with Char.equal x y
   ... | Inl _ = True
   ... | Inr _ = False
 
   {- Suffix xs ys means that xs is a suffix of ys -}
-
   data Suffix {A : Set} : List A → List A → Set where
     Stop : ∀ {x xs} → Suffix xs (x :: xs)
     Drop : ∀ {y xs ys} → Suffix xs ys → Suffix xs (y :: ys)
@@ -258,6 +250,7 @@ module RegExp where
 
   -- Proofs
 
+  {- Show that if match r s k perm is true, then there is a split of s, namely s₁ s₂, such that s₁ ∈L r and k s₂ is true. -}
   match-soundness : (r : StdRegExp)
                   → (s : List Char)
                   → (k : Σ (λ s' → Suffix s' s) → Bool)
@@ -286,6 +279,7 @@ module RegExp where
   match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x | (xs , (ys , sf)) , eq , xs∈rS , d | (ys' , ys'' , sf') , eq1 , ys'∈rP , d1 with ! (append-assoc xs ys' ys'')
   match-soundness (r ⁺ˢ) .(xs ++ ys' ++ ys'') k (CanRec f) m | Inr x | (xs , .(ys' ++ ys'') , sf) , Refl , xs∈rS , d | (ys' , ys'' , sf') , Refl , ys'∈rP , d1 | app = (xs ++ ys' , (ys'' , suffix-trans sf' sf)) , (app , (C+ Refl xs∈rS ys'∈rP , d1))
 
+  {- Show that if there is a split of s, namely s₁ s₂, such that s₁ ∈L r and k s₂ is true, then match r s k perm is true. -}
   match-completeness : (r : StdRegExp)
                      → (s : List Char)
                      → (k : Σ (λ s' → Suffix s' s) → Bool)
@@ -312,6 +306,7 @@ module RegExp where
   ... | t with match-completeness (r ⁺ˢ) (s₂ ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' t) }) (f (s₂ ++ ys) t) ((s₂ , ys , append-suffix2⁺ {s₂}{ys}{r} c) , Refl , c , d ∘ ap (λ x → k (ys , x)) (suffix-unique _ _) )
   match-completeness (r ⁺ˢ) ._ k (CanRec f) ((._ , ys , sf) , Refl , C+ {.(s₁ ++ s₂)}{s₁}{s₂} Refl q c , d) | False | t | x = match-completeness r ((s₁ ++ s₂) ++ ys) _ (CanRec f) ((s₁ , s₂ ++ ys , t) , append-assoc s₁ s₂ ys , q , x)
 
+  -- Standardization proofs
 
   ∈L-soundness : (s : List Char) → (r : StdRegExp) → s ∈Lˢ r → s ∈L (demote-std r)
   ∈L-soundness s ∅ˢ inL = inL
@@ -322,5 +317,8 @@ module RegExp where
   ∈L-soundness s (r ⁺ˢ) (S+ x) = {!!}
   ∈L-soundness s (r ⁺ˢ) (C+ .{s} {s₁} {s₂} x y inL) = Cx {s} {s₁} {s₂} x {!!} {!!}
 
-  ∈L-completeness : (s : List Char) → (r : RegExp) → s ∈L r → Either ({!!}) (s ∈Lˢ (standardize r))
+  ∈L-completeness : (s : List Char)
+                  → (r : RegExp)
+                  → s ∈L r
+                  → if δ r then (Either (s == []) (s ∈Lˢ (standardize r))) else (s ∈Lˢ (standardize r))
   ∈L-completeness s r inL = {!!}

@@ -90,6 +90,10 @@ module lib.Preliminaries where
   {-# BUILTIN TRUE  True  #-}
   {-# BUILTIN FALSE False #-}
 
+  if_then_else_ : {l : Level}{A : Set l} → Bool → A → A → A
+  if True then x else _ = x
+  if False then _ else y = y
+
   -- ----------------------------------------------------------------------
   -- order
 
@@ -203,6 +207,10 @@ module lib.Preliminaries where
     map-id [] = Refl
     map-id (x :: l) with map (\ x -> x) l | map-id l
     ... | ._ | Refl = Refl
+
+    null : {l : Level} {A : Set l} → List A → Bool
+    null [] = True
+    null _ = False
 
     module Uninformative where
       -- simply typed version
