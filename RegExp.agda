@@ -320,5 +320,10 @@ module RegExp where
   ∈L-completeness : (s : List Char)
                   → (r : RegExp)
                   → s ∈L r
-                  → if δ r then (Either (s == []) (s ∈Lˢ (standardize r))) else (s ∈Lˢ (standardize r))
-  ∈L-completeness s r inL = {!!}
+                  → Either ((δ r == True) × (s == [])) (s ∈Lˢ (standardize r))
+  ∈L-completeness s ∅ inL = Inr inL
+  ∈L-completeness s ε inL = Inl (Refl , inL)
+  ∈L-completeness s (Lit x) inL = Inr inL
+  ∈L-completeness s (r · r₁) inL = {!!}
+  ∈L-completeness s (r ⊕ r₁) inL = {!!}
+  ∈L-completeness s (r *) inL = {!!}
