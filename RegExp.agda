@@ -65,24 +65,6 @@ module RegExp where
   suffix-trans s1 Stop = Drop s1
   suffix-trans s1 (Drop s2) = Drop (suffix-trans s1 s2)
 
-  suffix-not-symmetric : ∀ {A} → (xs ys : List A) → Suffix xs ys → (Suffix ys xs → Void)
-  suffix-not-symmetric ._ ._ Stop (Drop sf2) = suffix-not-symmetric _ _ (Drop Stop) sf2
-  suffix-not-symmetric ._ ._ (Drop sf) Stop = suffix-not-symmetric _ _ sf (Drop Stop)
-  suffix-not-symmetric ._ ._ (Drop sf) (Drop sf2) = suffix-not-symmetric _ _ sf (sub-lemma sf2)
-    where sub-lemma : ∀ {A x y} → {xs ys : List A} → Suffix (x :: xs) ys → Suffix xs (y :: ys)
-          sub-lemma Stop = Drop (Drop Stop)
-          sub-lemma (Drop sf) = Drop (sub-lemma sf)
-
-  not-suffix-self : ∀ {A} → (xs : List A) → Suffix xs xs → Void
-  not-suffix-self [] ()
-  not-suffix-self (x :: xs) (Drop sf) = suffix-not-symmetric _ _ sf Stop
-
-  suffix-unique : ∀ {A} → {xs ys : List A} → (s1 s2 : Suffix xs ys) → s1 == s2
-  suffix-unique Stop Stop = Refl
-  suffix-unique Stop (Drop s2) = abort (not-suffix-self _ s2)
-  suffix-unique (Drop s1) Stop = abort (not-suffix-self _ s1)
-  suffix-unique (Drop s1) (Drop s2) = ap Drop (suffix-unique s1 s2)
-
   -- end of simple stuff
 
   -- Checks if a given regexp accepts empty string. True, if it accepts ε, False otherwise.
@@ -177,6 +159,25 @@ module RegExp where
     C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ == s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
 
   -- Lemmas
+
+  suffix-not-symmetric : ∀ {A} → (xs ys : List A) → Suffix xs ys → (Suffix ys xs → Void)
+  suffix-not-symmetric ._ ._ Stop (Drop sf2) = suffix-not-symmetric _ _ (Drop Stop) sf2
+  suffix-not-symmetric ._ ._ (Drop sf) Stop = suffix-not-symmetric _ _ sf (Drop Stop)
+  suffix-not-symmetric ._ ._ (Drop sf) (Drop sf2) = suffix-not-symmetric _ _ sf (sub-lemma sf2)
+    where sub-lemma : ∀ {A x y} → {xs ys : List A} → Suffix (x :: xs) ys → Suffix xs (y :: ys)
+          sub-lemma Stop = Drop (Drop Stop)
+          sub-lemma (Drop sf) = Drop (sub-lemma sf)
+
+  not-suffix-self : ∀ {A} → (xs : List A) → Suffix xs xs → Void
+  not-suffix-self [] ()
+  not-suffix-self (x :: xs) (Drop sf) = suffix-not-symmetric _ _ sf Stop
+
+  suffix-unique : ∀ {A} → {xs ys : List A} → (s1 s2 : Suffix xs ys) → s1 == s2
+  suffix-unique Stop Stop = Refl
+  suffix-unique Stop (Drop s2) = abort (not-suffix-self _ s2)
+  suffix-unique (Drop s1) Stop = abort (not-suffix-self _ s1)
+  suffix-unique (Drop s1) (Drop s2) = ap Drop (suffix-unique s1 s2)
+
   append-lh-[] : ∀ {A : Set} → (xs : List A) → (ys : List A) → xs == [] → xs ++ ys == ys
   append-lh-[] .[] ys Refl = Refl
 
@@ -279,12 +280,11 @@ module RegExp where
   match-soundness (r₁ ⊕ˢ r₂) s k perm m | Inr x | (p , q , r) , a , b , c = (p , (q , r)) , (a , (Inr b , c))
   match-soundness (r ⁺ˢ) s k (CanRec f) m with lazy-or-eq {match r s k (CanRec f)} { match r s (λ { (s' , sf) → match (r ⁺ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)} m
   match-soundness (r ⁺ˢ) s k (CanRec f) m | Inl x with match-soundness r s k (CanRec f) x
-  match-soundness (r ⁺ˢ) s k (CanRec f) m | Inl x | (xs , ys , sfYSs) , a , fst , snd = (xs , (ys , sfYSs)) , (a , (S+ fst , snd))
-  match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x with match-soundness r s (λ s'sf → match (r ⁺ˢ) (fst s'sf) (λ s''sf' → k (fst s''sf' , suffix-trans (snd s''sf') (snd s'sf))) (f (fst s'sf) (snd s'sf))) (CanRec f) x
-  match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x | (xs , (ys , ysSFs)) , eq , xsINrS , d with match-soundness (r ⁺ˢ) ys (λ { (s' , sf') → k (s' , suffix-trans sf' ysSFs) } ) (f ys ysSFs) d
-  match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x | (xs , (ys , ysSFs)) , eq , xsINrS , d | (ys' , ys'' , ys''SFys) , eq1 , ys'INrP , d1 with !(append-assoc xs ys' ys'')
-  match-soundness (r ⁺ˢ) .(xs ++ ys' ++ ys'') k (CanRec f) m | Inr x | (xs , .(ys' ++ ys'') , ysSFs) , Refl , xsINrS , d | (ys' , ys'' , ys''SFys) , Refl , ys'INrP , d1 | app = (xs ++ ys' , (ys'' , suffix-trans ys''SFys ysSFs)) , (app , (C+ Refl xsINrS ys'INrP , d1))
-
+  match-soundness (r ⁺ˢ) s k (CanRec f) m | Inl x | (xs , ys , sf) , a , fst , snd = (xs , (ys , sf)) , (a , (S+ fst , snd))
+  match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x with match-soundness r s (λ { (s' , sf) → match (r ⁺ˢ) s' _ (f s' sf) }) (CanRec f) x
+  match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x | (xs , (ys , sf)) , eq , xs∈rS , d with match-soundness (r ⁺ˢ) ys (λ { (s' , sf') → k (s' , suffix-trans sf' sf) } ) (f ys sf) d
+  match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x | (xs , (ys , sf)) , eq , xs∈rS , d | (ys' , ys'' , sf') , eq1 , ys'∈rP , d1 with ! (append-assoc xs ys' ys'')
+  match-soundness (r ⁺ˢ) .(xs ++ ys' ++ ys'') k (CanRec f) m | Inr x | (xs , .(ys' ++ ys'') , sf) , Refl , xs∈rS , d | (ys' , ys'' , sf') , Refl , ys'∈rP , d1 | app = (xs ++ ys' , (ys'' , suffix-trans sf' sf)) , (app , (C+ Refl xs∈rS ys'∈rP , d1))
 
   match-completeness : (r : StdRegExp)
                      → (s : List Char)
