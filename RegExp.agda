@@ -114,6 +114,10 @@ module RegExp where
 
   -- Lemmas
 
+  suffix-[]-cons : {A : Set} → {x : A} → {xs : List A} → Suffix [] (x :: xs)
+  suffix-[]-cons {xs = []} = Stop
+  suffix-[]-cons {xs = y :: xs} = Drop suffix-[]-cons
+
   suffix-not-symmetric : ∀ {A} → (xs ys : List A) → Suffix xs ys → (Suffix ys xs → Void)
   suffix-not-symmetric ._ ._ Stop (Drop sf2) = suffix-not-symmetric _ _ (Drop Stop) sf2
   suffix-not-symmetric ._ ._ (Drop sf) Stop = suffix-not-symmetric _ _ sf (Drop Stop)
@@ -135,15 +139,16 @@ module RegExp where
   append-lh-[] : ∀ {A : Set} → (xs : List A) → (ys : List A) → xs == [] → xs ++ ys == ys
   append-lh-[] .[] ys Refl = Refl
 
+  append-rh-[] : ∀ {A} (xs : List A) → (xs ++ []) == xs
+  append-rh-[] [] = Refl
+  append-rh-[] (x :: xs) = ap (λ l → x :: l) (append-rh-[] xs)
+
   singleton-append : {A : Set} → {x : A} → {xs ys s : List A} → xs == x :: [] → xs ++ ys == s → x :: ys == s
   singleton-append Refl Refl = Refl
 
-  cons-eq : {A : Set} → {x : A} → {xs ys : List A} → xs == ys → x :: xs == x :: ys
-  cons-eq Refl = Refl
-
   append-assoc : (xs ys zs : List Char) →  (xs ++ (ys ++ zs) == (xs ++ ys) ++ zs)
   append-assoc [] ys zs = Refl
-  append-assoc (x :: xs) ys zs = cons-eq (append-assoc xs ys zs)
+  append-assoc (x :: xs) ys zs = ap (λ l → x :: l) (append-assoc xs ys zs)
 
   same-char : (c : Char) → equalb c c == True
   same-char c with Char.equal c c
@@ -345,8 +350,7 @@ module RegExp where
   ∈L-soundness s (r₁ ⊕ r₂) (Inr (Inr x)) = Inr (∈L-soundness s r₂ (Inr x))
   ∈L-soundness s (r *) (Inr (S+ x)) with ∈L-soundness s r (Inr x)
   ... | q = {!!}
-  ∈L-soundness s (r *) (Inr (C+ a b c)) with ∈L-soundness _ {!!} (Inr b)
-  ... | q = {!!}
+  ∈L-soundness s (r *) (Inr (C+ a b c)) = {!!}
 
   ∈L-completeness : (s : List Char)
                   → (r : RegExp)
@@ -360,10 +364,30 @@ module RegExp where
                     → (s : String.String)
                     → r accepts s == True
                     → (String.toList s) ∈L r
-  correct-soundness r s eq = {!!}
+  correct-soundness r s eq with String.toList s | δ' r
+  ... | xs | Inr q with match-soundness (standardize r) xs _ (well-founded xs) eq
+  ... | ((as , (bs , sf)) , a , b , c) with ∈L-soundness as r (Inr b)
+  correct-soundness r s eq | xs | Inr q | (_ , _ :: _ , _) , _ , _ , () | as∈Lr
+  correct-soundness r s eq | xs | Inr q | (as , [] , sf) , a , b , c | as∈Lr with a ∘ ! (append-rh-[] as)
+  correct-soundness r s eq | as | Inr q | (.as , [] , sf) , a , b , c | as∈Lr | Refl = as∈Lr
+  correct-soundness r s eq | [] | Inl p = p
+  correct-soundness r s eq | x :: xs | Inl p with match-soundness (standardize r) (x :: xs) _ (well-founded (x :: xs)) eq
+  ... | ((as , (bs , sf)) , a , b , c) with ∈L-soundness as r (Inr b)
+  correct-soundness r s eq | x :: xs | Inl p | (_ , _ :: _ , _) , _ , _ , () | _
+  correct-soundness r s eq | x :: xs | Inl p | (as , [] , sf) , a , b , Refl | inL-sn with a ∘ ! (append-rh-[] as)
+  correct-soundness r s eq | x :: xs | Inl p | (.(x :: xs) , [] , sf) , a , b , Refl | inL-sn | Refl = inL-sn
 
   correct-completeness : (r : RegExp)
                        → (s : String.String)
-                       → r accepts s == True
                        → (String.toList s) ∈L r
-  correct-completeness r s inL = {!!}
+                       → r accepts s == True
+  correct-completeness r s inL with String.toList s | δ' r
+  correct-completeness r s inL | [] | Inl p = Refl
+  correct-completeness r s inL | x :: xs | Inl p with ∈L-completeness (x :: xs) r inL
+  correct-completeness r s inL | x :: xs | Inl p | Inl (d , ())
+  correct-completeness r s inL | x :: xs | Inl p | Inr q = match-completeness _ _ _ _ ((x :: xs , [] , suffix-[]-cons) , ap (λ l → x :: l) (append-rh-[] xs) , q , Refl)
+  correct-completeness r s inL | xs | Inr q with ∈L-completeness xs r inL
+  correct-completeness r s inL | .[] | Inr q | Inl (d , Refl) = abort (q inL)
+  correct-completeness r s inL | xs | Inr q | Inr p with non-empty {standardize r}
+  correct-completeness r s inL | [] | Inr q | Inr p | f = abort (q inL)
+  correct-completeness r s inL | x :: xs | Inr q | Inr p | f = match-completeness _ _ _ _ ((x :: xs , [] , suffix-[]-cons) , ap (λ l → x :: l) (append-rh-[] xs) , p , Refl)
