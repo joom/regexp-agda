@@ -4,6 +4,8 @@ module RegExp where
 
   open List
 
+  -- Definitions
+
   data RegExp : Set where
     ∅ : RegExp  -- empty set (type \emptyset)
     ε : RegExp   -- empty string (type \epsilon)
@@ -12,24 +14,18 @@ module RegExp where
     _⊕_ : RegExp → RegExp → RegExp -- alternation/set union (type \oplus)
     _* : RegExp → RegExp -- Kleene star
 
+  {- The regular expressions that do not accept empty string. -}
   data StdRegExp : Set where
     ∅ˢ : StdRegExp
-    Litˢ : (c : Char) → StdRegExp
+    Litˢ : Char → StdRegExp
     _·ˢ_ : StdRegExp → StdRegExp → StdRegExp
     _⊕ˢ_ : StdRegExp → StdRegExp → StdRegExp
-    _⁺ˢ : StdRegExp → StdRegExp
-
-  demote-std : StdRegExp → RegExp
-  demote-std ∅ˢ = ∅
-  demote-std (Litˢ c) = Lit c
-  demote-std (r₁ ·ˢ r₂) = demote-std r₁ · demote-std r₂
-  demote-std (r₁ ⊕ˢ r₂) = demote-std r₁ ⊕ demote-std r₂
-  demote-std (r ⁺ˢ) = x · x *
-    where x = demote-std r
+    _⁺ˢ : StdRegExp → StdRegExp -- accepts one or more of the given StdRegExp
 
   infix 1 _* _⁺ˢ
   infixr 2 _·_ _·ˢ_
   infixr 3 _⊕_ _⊕ˢ_
+
   {-
     Example regexp:
       ((Lit 'a' ⊕ Lit 'b') · (Lit 'c')) accepts "ac"
@@ -39,25 +35,6 @@ module RegExp where
       (Lit '<' · (Lit '0' *) · Lit '>') accepts "<>"
       (Lit '<' · (Lit '0' *) · Lit '>') accepts "<00>"
   -}
-
-  -- simple stuff
-
-  {- Our boolean char equality function that isn't directly primitive. -}
-  equalb : Char → Char → Bool
-  equalb x y with Char.equal x y
-  ... | Inl _ = True
-  ... | Inr _ = False
-
-  {- Suffix xs ys means that xs is a suffix of ys -}
-  data Suffix {A : Set} : List A → List A → Set where
-    Stop : ∀ {x xs} → Suffix xs (x :: xs)
-    Drop : ∀ {y xs ys} → Suffix xs ys → Suffix xs (y :: ys)
-
-  suffix-trans : {A : Set} → {xs ys zs : List A} → Suffix xs ys → Suffix ys zs → Suffix xs zs
-  suffix-trans s1 Stop = Drop s1
-  suffix-trans s1 (Drop s2) = Drop (suffix-trans s1 s2)
-
-  -- end of simple stuff
 
   -- Shows a string accepted by the language of a regexp. Type "\in L".
   _∈L_ : List Char → RegExp → Set
@@ -87,6 +64,25 @@ module RegExp where
     S+ : ∀ {s r} → s ∈Lˢ r → s ∈L⁺ r
     C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ == s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
 
+  -- Functions & lemmas used in the definition of match
+
+  {- Our boolean char equality function that isn't directly primitive. -}
+  equalb : Char → Char → Bool
+  equalb x y with Char.equal x y
+  ... | Inl _ = True
+  ... | Inr _ = False
+
+  {- Suffix xs ys means that xs is a suffix of ys -}
+  data Suffix {A : Set} : List A → List A → Set where
+    Stop : ∀ {x xs} → Suffix xs (x :: xs)
+    Drop : ∀ {y xs ys} → Suffix xs ys → Suffix xs (y :: ys)
+
+  {- Transitivity of suffixes -}
+  suffix-trans : {A : Set} → {xs ys zs : List A} → Suffix xs ys → Suffix ys zs → Suffix xs zs
+  suffix-trans s1 Stop = Drop s1
+  suffix-trans s1 (Drop s2) = Drop (suffix-trans s1 s2)
+
+  {- A type to make it obvious to Agda that our function will terminate. -}
   data RecursionPermission {A : Set} : List A → Set where
     CanRec : {ys : List A} → ((xs : List A) → Suffix xs ys → RecursionPermission xs) → RecursionPermission ys
 
@@ -136,9 +132,6 @@ module RegExp where
   suffix-unique (Drop s1) Stop = abort (not-suffix-self _ s1)
   suffix-unique (Drop s1) (Drop s2) = ap Drop (suffix-unique s1 s2)
 
-  append-lh-[] : ∀ {A : Set} → (xs : List A) → (ys : List A) → xs == [] → xs ++ ys == ys
-  append-lh-[] .[] ys Refl = Refl
-
   append-rh-[] : ∀ {A} (xs : List A) → (xs ++ []) == xs
   append-rh-[] [] = Refl
   append-rh-[] (x :: xs) = ap (λ l → x :: l) (append-rh-[] xs)
@@ -155,22 +148,19 @@ module RegExp where
   ... | Inl _ = Refl
   ... | Inr f = abort (f Refl)
 
+  {- Moves logical or to our lazy or implementation. -}
   either-if : {a b : Bool} → Either (a == True) (b == True) → if a then True else b == True
   either-if {True} (Inl Refl) = Refl
   either-if {True} (Inr Refl) = Refl
   either-if {False} (Inl ())
   either-if {False} (Inr Refl) = Refl
 
+  {- Moves our lazy or implementation to logical or. -}
   lazy-or-eq : {a b : Bool} → if a then True else b == True → Either (a == True) (b == True)
   lazy-or-eq {True} {True} Refl = Inl Refl
   lazy-or-eq {True} {False} Refl = Inl Refl
   lazy-or-eq {False} {True} Refl = Inr Refl
   lazy-or-eq {False} {False} ()
-
-  append-suffix3 : {xs ys zs : List Char} → Suffix zs ys → Suffix zs (xs ++ ys)
-  append-suffix3 {[]} {ys} {zs} sf = sf
-  append-suffix3 {x :: xs} {ys} {zs} sf with append-suffix3 {xs} {ys} {zs} sf
-  ... | sf' = Drop sf'
 
   empty-append : {xs ys : List Char} → xs ++ ys == [] → (xs == []) × (ys == [])
   empty-append {[]} {[]} Refl = Refl , Refl
@@ -320,15 +310,15 @@ module RegExp where
   standardize (r *) = x ⁺ˢ
     where x = standardize r
 
-  match-plus : Bool × StdRegExp → (s : List Char) → (Σ (λ s' → Suffix s' s) → Bool) → RecursionPermission s → Bool
-  match-plus (False , r) s k perm = match r s k perm
-  match-plus (True , r) s k perm = if null s then True else match r s k perm
-
   _accepts_ : RegExp → String.String → Bool
   r accepts s = match-plus (δ r , standardize r) l (λ { (s , sf) → null s }) (well-founded l)
     where l = String.toList s
+          match-plus : Bool × StdRegExp → (s : List Char) → (Σ (λ s' → Suffix s' s) → Bool) → RecursionPermission s → Bool
+          match-plus (False , r) s k perm = match r s k perm
+          match-plus (True , r) s k perm = if null s then True else match r s k perm
 
   -- Standardization proofs
+  -- Overall, we are to prove that ∀ (r : RegExp) L(r) = L(standardize(r)) ∪ δ (if δ r then ε else ∅)
 
   ∈L-soundness : (s : List Char)
                → (r : RegExp)
