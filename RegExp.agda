@@ -215,6 +215,9 @@ module RegExp where
                       → Suffix xs zs
   assoc-append-suffix Refl sf = sf
 
+  same-list-language : {xs ys : List Char} → {r : StdRegExp} → xs == ys → xs ∈Lˢ r → ys ∈Lˢ r
+  same-list-language Refl inL = inL
+
   -- Proofs
 
   {- Show that if match r s k perm is true, then there is a split of s, namely s₁ s₂, such that s₁ ∈L r and k s₂ is true. -}
@@ -357,7 +360,48 @@ module RegExp where
                   → (r : RegExp)
                   → s ∈L r
                   → Either ((δ r == True) × (s == [])) (s ∈Lˢ (standardize r))
-  ∈L-completeness s r inL = {!!}
+  ∈L-completeness s ∅ inL = Inr inL
+  ∈L-completeness s ε inL = Inl (Refl , inL)
+  ∈L-completeness .(x :: []) (Lit x) Refl = Inr Refl
+  ∈L-completeness s (r₁ · r₂) inL with δ' r₁ | δ' r₂
+  ∈L-completeness .(x ++ y) (r₁ · r₂) ((x , y) , Refl , b , c) | Inl p | Inl q with ∈L-completeness x r₁ b | ∈L-completeness y r₂ c
+  ∈L-completeness .([] ++ []) (r₁ · r₂) ((.[] , .[]) , Refl , b , c) | Inl p | Inl q | Inl (m , Refl) | Inl (t , Refl) = Inl (Refl , Refl)
+  ∈L-completeness .([] ++ y) (r₁ · r₂) ((.[] , y) , Refl , b , c) | Inl p | Inl q | Inl (m , Refl) | Inr t = Inr (Inr (Inl t))
+  ∈L-completeness .(x ++ []) (r₁ · r₂) ((x , .[]) , Refl , b , c) | Inl p | Inl q | Inr m | Inl (t , Refl) = Inr (Inl (same-list-language (! (append-rh-[] x)) m))
+  ∈L-completeness .(x ++ y) (r₁ · r₂) ((x , y) , Refl , b , c) | Inl p | Inl q | Inr m | Inr t = Inr (Inr (Inr ((x , y) , Refl , m , t)))
+  ∈L-completeness s (r₁ · r₂) ((x , y) , a , b , c) | Inl p | Inr q with ∈L-completeness x r₁ b | ∈L-completeness y r₂ c
+  ∈L-completeness .[] (r₁ · r₂) ((.[] , .[]) , Refl , b , c) | Inl p | Inr q | Inl (m , Refl) | Inl (t , Refl) = abort (q c)
+  ∈L-completeness y (r₁ · r₂) ((.[] , .y) , Refl , b , c) | Inl p | Inr q | Inl (m , Refl) | Inr t = Inr (Inl t)
+  ∈L-completeness .(x ++ []) (r₁ · r₂) ((x , .[]) , Refl , b , c) | Inl p | Inr q | Inr m | Inl (t , Refl) = abort (q c)
+  ∈L-completeness .(x ++ y) (r₁ · r₂) ((x , y) , Refl , b , c) | Inl p | Inr q | Inr m | Inr t = Inr (Inr ((x , y) , Refl , m , t))
+  ∈L-completeness s (r₁ · r₂) ((x , y) , a , b , c) | Inr p | Inl q with ∈L-completeness x r₁ b | ∈L-completeness y r₂ c
+  ∈L-completeness s (r₁ · r₂) ((.[] , .[]) , a , b , c) | Inr p | Inl q | Inl (m , Refl) | Inl (t , Refl) = abort (p b)
+  ∈L-completeness y (r₁ · r₂) ((.[] , .y) , Refl , b , c) | Inr p | Inl q | Inl (m , Refl) | Inr t = abort (p b)
+  ∈L-completeness .(x ++ []) (r₁ · r₂) ((x , .[]) , Refl , b , c) | Inr p | Inl q | Inr m | Inl (t , Refl) = Inr (Inl (same-list-language (! (append-rh-[] x)) m))
+  ∈L-completeness s (r₁ · r₂) ((x , y) , a , b , c) | Inr p | Inl q | Inr m | Inr t = Inr (Inr ((x , y) , a , m , t))
+  ∈L-completeness s (r₁ · r₂) ((x , y) , a , b , c) | Inr p | Inr q with ∈L-completeness x r₁ b | ∈L-completeness y r₂ c
+  ∈L-completeness .[] (r₁ · r₂) ((.[] , .[]) , Refl , b , c) | Inr p | Inr q | Inl (m , Refl) | Inl (t , Refl) = abort (p b)
+  ∈L-completeness y (r₁ · r₂) ((.[] , .y) , Refl , b , c) | Inr p | Inr q | Inl (m , Refl) | Inr t = abort (p b)
+  ∈L-completeness .(x ++ []) (r₁ · r₂) ((x , .[]) , Refl , b , c) | Inr p | Inr q | Inr m | Inl (t , Refl) = abort (q c)
+  ∈L-completeness .(x ++ y) (r₁ · r₂) ((x , y) , Refl , b , c) | Inr p | Inr q | Inr m | Inr t = Inr ((x , y) , Refl , m , t)
+  ∈L-completeness s (r₁ ⊕ r₂) (Inl x) with ∈L-completeness s r₁ x
+  ∈L-completeness .[] (r₁ ⊕ r₂) (Inl x) | Inl (d , Refl) with δ' r₁
+  ∈L-completeness .[] (r₁ ⊕ r₂) (Inl x₁) | Inl (d , Refl) | Inl x = Inl (Refl , Refl)
+  ∈L-completeness .[] (_ ⊕ _) (Inl _) | Inl (() , Refl) | Inr _
+  ∈L-completeness s (r₁ ⊕ r₂) (Inl x) | Inr q = Inr (Inl q)
+  ∈L-completeness s (r₁ ⊕ r₂) (Inr x) with ∈L-completeness s r₂ x
+  ∈L-completeness .[] (r₁ ⊕ r₂) (Inr x) | Inl (d , Refl) with δ' r₂
+  ∈L-completeness .[] (r₁ ⊕ r₂) (Inr x) | Inl (Refl , Refl) | Inl a with δ' r₁
+  ∈L-completeness .[] (r₁ ⊕ r₂) (Inr x₁) | Inl (Refl , Refl) | Inl a | Inl x = Inl (Refl , Refl)
+  ∈L-completeness .[] (r₁ ⊕ r₂) (Inr x₁) | Inl (Refl , Refl) | Inl a | Inr x = Inl (Refl , Refl)
+  ∈L-completeness .[] (_ ⊕ _) (Inr _) | Inl (() , Refl) | Inr _
+  ∈L-completeness s (r₁ ⊕ r₂) (Inr x) | Inr q = Inr (Inr q)
+  ∈L-completeness .[] (r *) (Ex Refl) = Inl (Refl , Refl)
+  ∈L-completeness s (r *) (Cx {.s}{s₁}{s₂} x x₁ inL) with ∈L-completeness s₁ r x₁ | ∈L-completeness s₂ (r *) inL
+  ∈L-completeness s (r *) (Cx x x₁ inL) | Inl (m , Refl) | Inl (t , Refl) = Inl (Refl , (! x))
+  ∈L-completeness s₂ (r *) (Cx Refl x₁ inL) | Inl (m , Refl) | Inr t = Inr t
+  ∈L-completeness ._ (r *) (Cx {._}{s₁}{.[]} Refl x₁ inL) | Inr m | Inl (Refl , Refl) = Inr (S+ (same-list-language (! (append-rh-[] s₁)) m))
+  ∈L-completeness s (r *) (Cx x x₁ inL) | Inr m | Inr t = Inr (C+ x m t)
 
   -- Overall correctness
 
