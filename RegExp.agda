@@ -338,19 +338,20 @@ module RegExp where
   ∈L-soundness s ε (Inr ())
   ∈L-soundness s (Lit x) (Inr q) = q
   ∈L-soundness s (r₁ · r₂) (Inr q) with δ' r₁ | δ' r₂
-  ∈L-soundness s (r₁ · r₂) (Inr (Inl x)) | Inl a | Inl b = {!!}
-  ∈L-soundness s (r₁ · r₂) (Inr (Inr (Inl x))) | Inl a | Inl b = {!!}
+  ∈L-soundness [] (r₁ · r₂) (Inr (Inl x)) | Inl a | Inl b = ([] , []) , Refl , a , b
+  ∈L-soundness (x :: s) (r₁ · r₂) (Inr (Inl x₁)) | Inl a | Inl b = (x :: s , []) , ap (λ l → x :: l) (append-rh-[] s) , ∈L-soundness (x :: s) r₁ (Inr x₁) , b
+  ∈L-soundness [] (r₁ · r₂) (Inr (Inr (Inl x))) | Inl a | Inl b = ([] , []) , Refl , a , b
+  ∈L-soundness (x :: s) (r₁ · r₂) (Inr (Inr (Inl x₁))) | Inl a | Inl b = ([] , x :: s) , Refl , a , ∈L-soundness (x :: s) r₂ (Inr x₁)
   ∈L-soundness s (r₁ · r₂) (Inr (Inr (Inr ((x , y) , n , p , q)))) | Inl a | Inl b = (x , y) , n , ∈L-soundness x r₁ (Inr p) , ∈L-soundness y r₂ (Inr q)
-  ∈L-soundness s (r₁ · r₂) (Inr (Inl x)) | Inl a | Inr b = {!!}
-  ∈L-soundness s (r₁ · r₂) (Inr (Inl x)) | Inr a | Inl b = {!∈L-soundness s r₁ (Inr x) !}
+  ∈L-soundness s (r₁ · r₂) (Inr (Inl x)) | Inl a | Inr b = ([] , s) , Refl , a , ∈L-soundness s r₂ (Inr x)
+  ∈L-soundness s (r₁ · r₂) (Inr (Inl x)) | Inr a | Inl b = (s , []) , append-rh-[] s , ∈L-soundness s r₁ (Inr x) , b
   ∈L-soundness s (r₁ · r₂) (Inr (Inr ((x , y) , n , p , q))) | Inl a | Inr b = (x , y) , n , ∈L-soundness x r₁ (Inr p) , ∈L-soundness y r₂ (Inr q)
   ∈L-soundness s (r₁ · r₂) (Inr (Inr ((x , y) , n , p , q))) | Inr a | Inl b = (x , y) , n , ∈L-soundness x r₁ (Inr p) , ∈L-soundness y r₂ (Inr q)
   ∈L-soundness s (r₁ · r₂) (Inr ((x , y) , n , p , q)) | Inr a | Inr b = (x , y) , n , ∈L-soundness x r₁ (Inr p) , ∈L-soundness y r₂ (Inr q)
   ∈L-soundness s (r₁ ⊕ r₂) (Inr (Inl x)) = Inl (∈L-soundness s r₁ (Inr x))
   ∈L-soundness s (r₁ ⊕ r₂) (Inr (Inr x)) = Inr (∈L-soundness s r₂ (Inr x))
-  ∈L-soundness s (r *) (Inr (S+ x)) with ∈L-soundness s r (Inr x)
-  ... | q = {!!}
-  ∈L-soundness s (r *) (Inr (C+ a b c)) = {!!}
+  ∈L-soundness s (r *) (Inr (S+ x)) = Cx {s}{s}{[]}{r} (append-rh-[] s) (∈L-soundness s r (Inr x)) (Ex Refl)
+  ∈L-soundness s (r *) (Inr (C+ {.s}{s₁}{s₂} a b c)) = Cx a (∈L-soundness s₁ r (Inr b)) (∈L-soundness s₂ (r *) (Inr c))
 
   ∈L-completeness : (s : List Char)
                   → (r : RegExp)
