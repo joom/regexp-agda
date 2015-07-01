@@ -442,3 +442,43 @@ module RegExp where
   correct-completeness r s inL | xs | Inr q | Inr p with non-empty {standardize r}
   correct-completeness r s inL | [] | Inr q | Inr p | f = abort (q inL)
   correct-completeness r s inL | x :: xs | Inr q | Inr p | f = match-completeness (standardize r) _ _ _ ((x :: xs , [] , suffix-[]-cons) , ap (λ l → x :: l) (append-rh-[] xs) , p , Refl)
+
+  -- Using groups
+
+  open Maybe
+
+  eq-pred : {A B : Set} → (a : A) → (b : B) → (f : A → B → Bool) → Either (f a b == True) (f a b == False)
+  eq-pred {_}{_} a b f with f a b
+  ... | True = Inl Refl
+  ... | False = Inr Refl
+
+  extract : {r : RegExp} → {xs : List Char} → xs ∈L r → List (List Char)
+  extract {∅} ()
+  extract {ε} Refl = []
+  extract {Lit x} Refl = []
+  extract {r₁ · r₂}{xs} ((as , bs) , a , b , c) = extract {r₁}{as} b ++ extract {r₂}{bs} c
+  extract {r₁ ⊕ r₂}{xs} (Inl x) = extract {r₁}{xs} x
+  extract {r₁ ⊕ r₂}{xs} (Inr x) = extract {r₂}{xs} x
+  extract {r *} (Ex Refl) = []
+  extract {r *} (Cx {s}{s₁}{s₂} x x₁ inL) = extract {r}{s₁} x₁ ++ extract {r *}{s₂} inL
+  extract {G r}{xs} inL = xs :: extract {r}{xs} inL
+
+  exec : RegExp → String.String → Maybe (List String.String)
+  exec r s with eq-pred r s _accepts_
+  ... | Inr q = None
+  ... | Inl p with correct-soundness r s p
+  ...            | w = Some (map String.fromList (extract {r}{String.toList s} w))
+
+  -- Example
+  foldl : {A B : Set} → (B → A → B) → B → List A → B
+  foldl f z [] = z
+  foldl f z (x :: xs) = foldl f (f z x) xs
+
+  alphanumeric : RegExp
+  alphanumeric = foldl _⊕_ ∅ (map Lit (String.toList "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"))
+
+  e-mail : RegExp
+  e-mail = G (alphanumeric *) · Lit '@' · G (alphanumeric *) · Lit '.' · G (alphanumeric *)
+
+  ex1 : Maybe (List String.String)
+  ex1 = exec e-mail "jdoe@wesleyan.edu"
