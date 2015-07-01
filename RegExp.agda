@@ -13,6 +13,7 @@ module RegExp where
     _·_ : RegExp → RegExp → RegExp -- concatenation (type \cdot)
     _⊕_ : RegExp → RegExp → RegExp -- alternation/set union (type \oplus)
     _* : RegExp → RegExp -- Kleene star
+    G : RegExp → RegExp
 
   {- The regular expressions that do not accept empty string. -}
   data StdRegExp : Set where
@@ -21,6 +22,7 @@ module RegExp where
     _·ˢ_ : StdRegExp → StdRegExp → StdRegExp
     _⊕ˢ_ : StdRegExp → StdRegExp → StdRegExp
     _⁺ˢ : StdRegExp → StdRegExp -- accepts one or more of the given StdRegExp
+    Gˢ : StdRegExp → StdRegExp
 
   infix 1 _* _⁺ˢ
   infixr 2 _·_ _·ˢ_
@@ -46,6 +48,7 @@ module RegExp where
   s ∈L (r₁ ⊕ r₂) = Either (s ∈L r₁) (s ∈L r₂)
   s ∈L (r₁ · r₂) = Σ (λ { (p , q) → (p ++ q == s) × (p ∈L r₁) × (q ∈L r₂) })
   s ∈L (r *) = s ∈Lˣ r
+  s ∈L (G r) = s ∈L r
 
   data _∈Lˣ_ where
     Ex : ∀ {s r} → s == [] → s ∈Lˣ r
@@ -59,6 +62,7 @@ module RegExp where
   s ∈Lˢ (r₁ ⊕ˢ r₂) = Either (s ∈Lˢ r₁) (s ∈Lˢ r₂)
   s ∈Lˢ (r₁ ·ˢ r₂) = Σ (λ { (p , q)  → (p ++ q == s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
   s ∈Lˢ (r ⁺ˢ) = s ∈L⁺ r
+  s ∈Lˢ (Gˢ r) = s ∈Lˢ r
 
   data _∈L⁺_ where
     S+ : ∀ {s r} → s ∈Lˢ r → s ∈L⁺ r
@@ -107,6 +111,7 @@ module RegExp where
   match (r₁ ·ˢ r₂) s k (CanRec f) = match r₁ s (λ { (s' , sf) → match r₂ s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)
   match (r₁ ⊕ˢ r₂) s k perm = if match r₁ s k perm then True else match r₂ s k perm
   match (r ⁺ˢ) s k (CanRec f) = if match r s k (CanRec f) then True else match r s (λ { (s' , sf) → match (r ⁺ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)
+  match (Gˢ r) s k perm = match r s k perm
 
   -- Lemmas
 
@@ -172,12 +177,13 @@ module RegExp where
   non-empty {∅ˢ} inL = inL
   non-empty {Litˢ c} ()
   non-empty {r₁ ·ˢ r₂} ((xs , ys) , a , b , c) with empty-append {xs} {ys} a
-  non-empty {r₁ ·ˢ r₂} ((.[] , .[]) , a , b , c) | Refl , Refl = non-empty b
+  non-empty {r₁ ·ˢ r₂} ((.[] , .[]) , a , b , c) | Refl , Refl = non-empty {r₁} b
   non-empty {r₁ ⊕ˢ r₂} (Inl x) = non-empty {r₁} x
   non-empty {r₁ ⊕ˢ r₂} (Inr x) = non-empty {r₂} x
   non-empty {r ⁺ˢ} (S+ x) = non-empty {r} x
   non-empty {r ⁺ˢ} (C+ {.[]}{s₁}{s₂} p q inL) with empty-append {s₁} {s₂} p
-  non-empty {r ⁺ˢ} (C+ p q inL) | Refl , Refl = non-empty q
+  non-empty {r ⁺ˢ} (C+ p q inL) | Refl , Refl = non-empty {r} q
+  non-empty {Gˢ r} inL = non-empty {r} inL
 
   cons-empty : {x : Char} → {xs : List Char} → x :: xs == [] → Void
   cons-empty ()
@@ -238,6 +244,7 @@ module RegExp where
   match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x | (xs , (ys , sf)) , eq , xs∈rS , d with match-soundness (r ⁺ˢ) ys (λ { (s' , sf') → k (s' , suffix-trans sf' sf) } ) (f ys sf) d
   match-soundness (r ⁺ˢ) s k (CanRec f) m | Inr x | (xs , (ys , sf)) , eq , xs∈rS , d | (ys' , ys'' , sf') , eq1 , ys'∈rP , d1 with ! (append-assoc xs ys' ys'')
   match-soundness (r ⁺ˢ) .(xs ++ ys' ++ ys'') k (CanRec f) m | Inr x | (xs , .(ys' ++ ys'') , sf) , Refl , xs∈rS , d | (ys' , ys'' , sf') , Refl , ys'∈rP , d1 | app = (xs ++ ys' , (ys'' , suffix-trans sf' sf)) , (app , (C+ Refl xs∈rS ys'∈rP , d1))
+  match-soundness (Gˢ r) s k perm m = match-soundness r s k perm m
 
   {- Show that if there is a split of s, namely s₁ s₂, such that s₁ ∈L r and k s₂ is true, then match r s k perm is true. -}
   match-completeness : (r : StdRegExp)
@@ -262,9 +269,10 @@ module RegExp where
   match-completeness (r ⁺ˢ) s k (CanRec f) ((._ , ys , sf) , b , C+ {.(s₁ ++ s₂)}{s₁}{s₂} Refl q c , d) with match r s k (CanRec f)
   match-completeness (r ⁺ˢ) s k (CanRec f) ((._ , ys , sf) , b , C+ Refl q c , d) | True = Refl
   match-completeness (r ⁺ˢ) s k (CanRec f) ((._ , ys , sf) , b , C+ {.(s₁ ++ s₂)}{s₁}{s₂} Refl q c , d) | False
-    with assoc-append-suffix {s₂ ++ ys}{(s₁ ++ s₂) ++ ys}{s} b (assoc-append-suffix (append-assoc s₁ s₂ ys) (append-suffix2 q))
+    with assoc-append-suffix {s₂ ++ ys}{(s₁ ++ s₂) ++ ys}{s} b (assoc-append-suffix (append-assoc s₁ s₂ ys) (append-suffix2 {s₁}{s₂ ++ ys}{r} q))
   ... | t with match-completeness (r ⁺ˢ) (s₂ ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' t) }) (f (s₂ ++ ys) t) ((s₂ , ys , append-suffix2⁺ {s₂}{ys}{r} c) , Refl , c , d ∘ ap (λ x → k (ys , x)) (suffix-unique _ _) )
   match-completeness (r ⁺ˢ) ._ k (CanRec f) ((._ , ys , sf) , Refl , C+ {.(s₁ ++ s₂)}{s₁}{s₂} Refl q c , d) | False | t | x = match-completeness r ((s₁ ++ s₂) ++ ys) _ (CanRec f) ((s₁ , s₂ ++ ys , t) , append-assoc s₁ s₂ ys , q , x)
+  match-completeness (Gˢ r) s k perm inL = match-completeness r s k perm inL
 
   -- Overall regular expression matching functions & proofs.
 
@@ -290,6 +298,7 @@ module RegExp where
           sub-lemma f _ (Inl a) = f a
           sub-lemma _ g (Inr b) = g b
   δ' (r *) = Inl (Ex Refl)
+  δ' (G r) = δ' r
 
   -- Checks if a given regexp accepts empty string. True, if it accepts ε, False otherwise.
   δ : RegExp → Bool
@@ -309,6 +318,7 @@ module RegExp where
   standardize (r₁ ⊕ r₂) = standardize r₁ ⊕ˢ standardize r₂
   standardize (r *) = x ⁺ˢ
     where x = standardize r
+  standardize (G r) = Gˢ (standardize r)
 
   _accepts_ : RegExp → String.String → Bool
   r accepts s = match-plus (δ r , standardize r) l (λ { (s , sf) → null s }) (well-founded l)
@@ -345,6 +355,7 @@ module RegExp where
   ∈L-soundness s (r₁ ⊕ r₂) (Inr (Inr x)) = Inr (∈L-soundness s r₂ (Inr x))
   ∈L-soundness s (r *) (Inr (S+ x)) = Cx {s}{s}{[]}{r} (append-rh-[] s) (∈L-soundness s r (Inr x)) (Ex Refl)
   ∈L-soundness s (r *) (Inr (C+ {.s}{s₁}{s₂} a b c)) = Cx a (∈L-soundness s₁ r (Inr b)) (∈L-soundness s₂ (r *) (Inr c))
+  ∈L-soundness s (G r) (Inr x) = ∈L-soundness s r (Inr x)
 
   ∈L-completeness : (s : List Char)
                   → (r : RegExp)
@@ -357,7 +368,7 @@ module RegExp where
   ∈L-completeness .(x ++ y) (r₁ · r₂) ((x , y) , Refl , b , c) | Inl p | Inl q with ∈L-completeness x r₁ b | ∈L-completeness y r₂ c
   ∈L-completeness .([] ++ []) (r₁ · r₂) ((.[] , .[]) , Refl , b , c) | Inl p | Inl q | Inl (m , Refl) | Inl (t , Refl) = Inl (Refl , Refl)
   ∈L-completeness .([] ++ y) (r₁ · r₂) ((.[] , y) , Refl , b , c) | Inl p | Inl q | Inl (m , Refl) | Inr t = Inr (Inr (Inl t))
-  ∈L-completeness .(x ++ []) (r₁ · r₂) ((x , .[]) , Refl , b , c) | Inl p | Inl q | Inr m | Inl (t , Refl) = Inr (Inl (same-list-language (! (append-rh-[] x)) m))
+  ∈L-completeness .(x ++ []) (r₁ · r₂) ((x , .[]) , Refl , b , c) | Inl p | Inl q | Inr m | Inl (t , Refl) = Inr (Inl (same-list-language {_}{_}{standardize r₁} (! (append-rh-[] x)) m))
   ∈L-completeness .(x ++ y) (r₁ · r₂) ((x , y) , Refl , b , c) | Inl p | Inl q | Inr m | Inr t = Inr (Inr (Inr ((x , y) , Refl , m , t)))
   ∈L-completeness s (r₁ · r₂) ((x , y) , a , b , c) | Inl p | Inr q with ∈L-completeness x r₁ b | ∈L-completeness y r₂ c
   ∈L-completeness .[] (r₁ · r₂) ((.[] , .[]) , Refl , b , c) | Inl p | Inr q | Inl (m , Refl) | Inl (t , Refl) = abort (q c)
@@ -367,7 +378,7 @@ module RegExp where
   ∈L-completeness s (r₁ · r₂) ((x , y) , a , b , c) | Inr p | Inl q with ∈L-completeness x r₁ b | ∈L-completeness y r₂ c
   ∈L-completeness s (r₁ · r₂) ((.[] , .[]) , a , b , c) | Inr p | Inl q | Inl (m , Refl) | Inl (t , Refl) = abort (p b)
   ∈L-completeness y (r₁ · r₂) ((.[] , .y) , Refl , b , c) | Inr p | Inl q | Inl (m , Refl) | Inr t = abort (p b)
-  ∈L-completeness .(x ++ []) (r₁ · r₂) ((x , .[]) , Refl , b , c) | Inr p | Inl q | Inr m | Inl (t , Refl) = Inr (Inl (same-list-language (! (append-rh-[] x)) m))
+  ∈L-completeness .(x ++ []) (r₁ · r₂) ((x , .[]) , Refl , b , c) | Inr p | Inl q | Inr m | Inl (t , Refl) = Inr (Inl (same-list-language {_}{_}{standardize r₁}(! (append-rh-[] x)) m))
   ∈L-completeness s (r₁ · r₂) ((x , y) , a , b , c) | Inr p | Inl q | Inr m | Inr t = Inr (Inr ((x , y) , a , m , t))
   ∈L-completeness s (r₁ · r₂) ((x , y) , a , b , c) | Inr p | Inr q with ∈L-completeness x r₁ b | ∈L-completeness y r₂ c
   ∈L-completeness .[] (r₁ · r₂) ((.[] , .[]) , Refl , b , c) | Inr p | Inr q | Inl (m , Refl) | Inl (t , Refl) = abort (p b)
@@ -390,8 +401,13 @@ module RegExp where
   ∈L-completeness s (r *) (Cx {.s}{s₁}{s₂} x x₁ inL) with ∈L-completeness s₁ r x₁ | ∈L-completeness s₂ (r *) inL
   ∈L-completeness s (r *) (Cx x x₁ inL) | Inl (m , Refl) | Inl (t , Refl) = Inl (Refl , (! x))
   ∈L-completeness s₂ (r *) (Cx Refl x₁ inL) | Inl (m , Refl) | Inr t = Inr t
-  ∈L-completeness ._ (r *) (Cx {._}{s₁}{.[]} Refl x₁ inL) | Inr m | Inl (Refl , Refl) = Inr (S+ (same-list-language (! (append-rh-[] s₁)) m))
+  ∈L-completeness ._ (r *) (Cx {._}{s₁}{.[]} Refl x₁ inL) | Inr m | Inl (Refl , Refl) = Inr (S+ (same-list-language {_}{_}{standardize r} (! (append-rh-[] s₁)) m))
   ∈L-completeness s (r *) (Cx x x₁ inL) | Inr m | Inr t = Inr (C+ x m t)
+  ∈L-completeness s (G r) inL with ∈L-completeness s r inL
+  ∈L-completeness s (G r) inL | Inl (a , b) with δ' (G r)
+  ... | Inl x = Inl (Refl , b)
+  ... | Inr x = Inl (a , b)
+  ∈L-completeness s (G r) inL | Inr x = Inr x
 
   -- Overall correctness
 
@@ -420,9 +436,9 @@ module RegExp where
   correct-completeness r s inL | [] | Inl p = Refl
   correct-completeness r s inL | x :: xs | Inl p with ∈L-completeness (x :: xs) r inL
   correct-completeness r s inL | x :: xs | Inl p | Inl (d , ())
-  correct-completeness r s inL | x :: xs | Inl p | Inr q = match-completeness _ _ _ _ ((x :: xs , [] , suffix-[]-cons) , ap (λ l → x :: l) (append-rh-[] xs) , q , Refl)
+  correct-completeness r s inL | x :: xs | Inl p | Inr q = match-completeness (standardize r) _ _ _ ((x :: xs , [] , suffix-[]-cons) , ap (λ l → x :: l) (append-rh-[] xs) , q , Refl)
   correct-completeness r s inL | xs | Inr q with ∈L-completeness xs r inL
   correct-completeness r s inL | .[] | Inr q | Inl (d , Refl) = abort (q inL)
   correct-completeness r s inL | xs | Inr q | Inr p with non-empty {standardize r}
   correct-completeness r s inL | [] | Inr q | Inr p | f = abort (q inL)
-  correct-completeness r s inL | x :: xs | Inr q | Inr p | f = match-completeness _ _ _ _ ((x :: xs , [] , suffix-[]-cons) , ap (λ l → x :: l) (append-rh-[] xs) , p , Refl)
+  correct-completeness r s inL | x :: xs | Inr q | Inr p | f = match-completeness (standardize r) _ _ _ ((x :: xs , [] , suffix-[]-cons) , ap (λ l → x :: l) (append-rh-[] xs) , p , Refl)
