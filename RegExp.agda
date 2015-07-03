@@ -447,10 +447,50 @@ module RegExp where
 
   open Maybe
 
-  eq-pred : {A B : Set} → (a : A) → (b : B) → (f : A → B → Bool) → Either (f a b == True) (f a b == False)
-  eq-pred {_}{_} a b f with f a b
+  eq-pred : {A : Set} → (a : A) → (f : A →  Bool) → Either (f a == True) (f a == False)
+  eq-pred {_} a f with f a
   ... | True = Inl Refl
   ... | False = Inr Refl
+
+  eitherToBool : ∀ {A B} → Either A B → Bool
+  eitherToBool (Inl _) = False
+  eitherToBool (Inr _) = True
+
+  -- Doing the matching and soundness proof at the same time.
+  intrinsic : (r : StdRegExp)
+            → (s : List Char)
+            → (k : Σ (λ s' → Suffix s' s) → Bool)
+            → (perm : RecursionPermission s)
+            → Either Unit (Σ (λ { (p , (s' , sf)) → (p ++ s' == s) × (p ∈Lˢ r) × (k (s' , sf) == True)}))
+  intrinsic ∅ˢ s k perm = Inl <>
+  intrinsic (Litˢ _) [] _ _ = Inl <>
+  intrinsic (Litˢ c) (x :: xs) k perm with Char.equal x c
+  ... | Inr q = Inl <>
+  ... | Inl p with eq-pred (xs , Stop) k
+  ...            | Inr _ = Inl <>
+  ...            | Inl w = Inr ((x :: [] , xs , Stop) , Refl , ap (λ y → y :: []) p , w)
+  intrinsic (r₁ ·ˢ r₂) s k (CanRec f)
+    with intrinsic r₁ s (λ { (s' , sf) → eitherToBool (intrinsic r₂ s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf)}) (f s' sf)) }) (CanRec f)
+  ... | Inl <> = Inl <>
+  ... | Inr ((xs , ys , sf) , a , b , c) with intrinsic r₂ ys (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf)}) (f ys sf)
+  ...      | Inl <> = Inl <>
+  intrinsic (r₁ ·ˢ r₂) .(xs ++ as ++ bs) k (CanRec f) | Inr ((xs , .(as ++ bs) , sf) , Refl , b , c) | Inr ((as , bs , sf') , Refl , q , w) =
+      Inr ((xs ++ as , bs , suffix-trans sf' sf) , ! (append-assoc xs as bs) , ((xs , as) , Refl , b , q) , w)
+  intrinsic (r₁ ⊕ˢ r₂) s k perm with intrinsic r₁ s k perm
+  ... | Inr ((xs , ys , sf) , a , b , c) = Inr ((xs , ys , sf) , a , Inl b , c)
+  ... | Inl <> with intrinsic r₂ s k perm
+  ...             | Inr ((xs , ys , sf) , a , b , c) = Inr ((xs , ys , sf) , a , Inr b , c)
+  ...             | Inl <> = Inl <>
+  intrinsic (r ⁺ˢ) s k (CanRec f) with intrinsic r s k (CanRec f)
+  ... | Inr ((xs , ys , sf) , a , b , c) = Inr ((xs , ys , sf) , a , S+ b , c)
+  ... | Inl <> with intrinsic r s (λ {(s' , sf) → eitherToBool (intrinsic (r ⁺ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf)) }) (CanRec f)
+  ...       | Inl <> = Inl <>
+  intrinsic (r ⁺ˢ) .(as ++ bs) k (CanRec f) | Inl <> | Inr ((as , bs , sf') , Refl , q , w)
+    with intrinsic (r ⁺ˢ) bs (λ {(s' , sf'') → k (s' , suffix-trans sf'' sf')}) (f bs sf')
+  ... | Inl <> = Inl <>
+  intrinsic (r ⁺ˢ) .(as ++ xs ++ ys) k (CanRec f) | Inl <> | Inr ((as , .(xs ++ ys) , sf') , Refl , q , w) | Inr ((xs , ys , sf) , Refl , b , c) =
+      Inr ((as ++ xs , ys , suffix-trans sf sf') , ! (append-assoc as xs ys) , C+ Refl q b , c)
+  intrinsic (Gˢ r) s k perm = intrinsic r s k perm
 
   extract : {r : RegExp} → {xs : List Char} → xs ∈L r → List (List Char)
   extract {∅} ()
@@ -463,11 +503,27 @@ module RegExp where
   extract {r *} (Cx {s}{s₁}{s₂} x x₁ inL) = extract {r}{s₁} x₁ ++ extract {r *}{s₂} inL
   extract {G r}{xs} inL = xs :: extract {r}{xs} inL
 
+  null-lemma : {ys : List Char} → null ys == True → ys == []
+  null-lemma {[]} eq = Refl
+  null-lemma {_ :: _} ()
+
+  inL-intrinsic : (r : RegExp)
+                → (s : String.String)
+                → Either Unit ((String.toList s) ∈L r)
+  inL-intrinsic r s with String.toList s | δ' r
+  inL-intrinsic r s | [] | Inl x = Inr x
+  inL-intrinsic r s | l | d with intrinsic (standardize r) l (λ { (s' , sf) → null s' }) (well-founded l)
+  inL-intrinsic r s | l | d | Inl <> = Inl <>
+  inL-intrinsic r s | .(xs ++ ys) | d | Inr ((xs , ys , sf) , Refl , b , c) with null-lemma {ys} c
+  inL-intrinsic r s | .(xs ++ []) | d | Inr ((xs , .[] , sf) , Refl , b , c) | Refl with ap2 {_}{_}{_}{_}{_}{_}{_}{_}{r}{r} _∈L_ (append-rh-[] xs) Refl
+  ... | eq = Inr (eq-replace (! eq) (∈L-soundness xs r (Inr b)))
+    where eq-replace : {a b : Set} → a == b → a → b
+          eq-replace Refl x = x
+
   exec : RegExp → String.String → Maybe (List String.String)
-  exec r s with eq-pred r s _accepts_
-  ... | Inr q = None
-  ... | Inl p with correct-soundness r s p
-  ...            | w = Some (map String.fromList (extract {r}{String.toList s} w))
+  exec r s with inL-intrinsic r s
+  ... | Inl <> = None
+  ... | Inr inL = Some (map String.fromList (extract {r}{String.toList s} inL))
 
   -- Example
   foldl : {A B : Set} → (B → A → B) → B → List A → B
@@ -482,3 +538,6 @@ module RegExp where
 
   ex1 : Maybe (List String.String)
   ex1 = exec e-mail "jdoe@wesleyan.edu"
+
+  ex2 : Maybe (List String.String)
+  ex2 = exec (G ((Lit 'a') *) · G ((Lit 'b') *)) "aaaabbb"
