@@ -480,7 +480,11 @@ module RegExp where
   ... | None = None
   intrinsic (r₁ ·ˢ r₂) .(p ++ as ++ bs) k perm | Some ((p , .(as ++ bs) , sf) , Refl , inL , (as , bs , sf') , Refl , inL' , inLK) =
         Some ((p ++ as , bs , suffix-trans (append-suffix2 {as}{bs}{r₂} inL') (append-suffix2 {p}{as ++ bs}{r₁} inL)) , ! (append-assoc p as bs) , ((p , as) , Refl , inL , inL') , inLK)
-  intrinsic (r₁ ⊕ˢ r₂) s k perm = {!!}
+  intrinsic (r₁ ⊕ˢ r₂) s k perm with intrinsic r₁ s k perm
+  intrinsic (r₁ ⊕ˢ r₂) s k perm | Some ((p , s' , sf) , eq , inL , oth) = Some ((p , (s' , sf)) , (eq , ((Inl inL) , oth)))
+  intrinsic (r₁ ⊕ˢ r₂) s k perm | None with intrinsic r₂ s k perm
+  intrinsic (r₁ ⊕ˢ r₂) s k perm | None | Some ((p , s' , sf) , eq , inL , oth) = Some ((p , (s' , sf)) , (eq , ((Inr inL) , oth)))
+  intrinsic (r₁ ⊕ˢ r₂) s k perm | None | None = None
   intrinsic (r ⁺ˢ) s k perm = {!!}
   intrinsic (Gˢ r) s k perm = intrinsic r s k perm
 
