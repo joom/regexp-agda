@@ -463,10 +463,26 @@ module RegExp where
   -- Doing the matching and soundness proof at the same time.
   intrinsic : (r : StdRegExp)
             → (s : List Char)
-            → (k : Σ (λ s' → Suffix s' s) → Bool)
+            → (k : List StdRegExp)
             → (perm : RecursionPermission s)
-            → Either Unit (Σ (λ { (p , (s' , sf)) → (p ++ s' == s) × (p ∈Lˢ r) × (k (s' , sf) == True)}))
-  intrinsic = {!!}
+            → Maybe (Σ {_}{_}{List Char × Σ (λ s' → Suffix s' s)} (λ { (p , s' , sf) → (p ++ s' == s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
+  intrinsic ∅ˢ s k perm = None
+  intrinsic (Litˢ c) [] k perm = None
+  intrinsic (Litˢ c) (x :: xs) k perm with Char.equal x c
+  ... | Inr q = None
+  ... | Inl p with k
+  intrinsic (Litˢ c) (x :: []) k perm | Inl p | [] = Some (((x :: [] , [] , Stop)) , Refl , ap (λ y → y :: []) p , Refl)
+  intrinsic (Litˢ c) (_ :: _ :: _) _ _ | Inl _ | [] = None
+  intrinsic (Litˢ c) (x :: xs) k (CanRec f) | Inl p | r :: rs  with intrinsic r xs rs (f xs Stop)
+  ... | None = None
+  ... | Some pf = Some (((x :: [] , xs , Stop)) , Refl , ap (λ y → y :: []) p , pf)
+  intrinsic (r₁ ·ˢ r₂) s k perm with intrinsic r₁ s (r₂ :: k) perm
+  ... | None = None
+  intrinsic (r₁ ·ˢ r₂) .(p ++ as ++ bs) k perm | Some ((p , .(as ++ bs) , sf) , Refl , inL , (as , bs , sf') , Refl , inL' , inLK) =
+        Some ((p ++ as , bs , suffix-trans (append-suffix2 {as}{bs}{r₂} inL') (append-suffix2 {p}{as ++ bs}{r₁} inL)) , ! (append-assoc p as bs) , ((p , as) , Refl , inL , inL') , inLK)
+  intrinsic (r₁ ⊕ˢ r₂) s k perm = {!!}
+  intrinsic (r ⁺ˢ) s k perm = {!!}
+  intrinsic (Gˢ r) s k perm = intrinsic r s k perm
 
   extract : {r : RegExp} → {xs : List Char} → xs ∈L r → List (List Char)
   extract {∅} ()
