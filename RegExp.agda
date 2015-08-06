@@ -485,7 +485,12 @@ module RegExp where
   intrinsic (r₁ ⊕ˢ r₂) s k perm | None with intrinsic r₂ s k perm
   intrinsic (r₁ ⊕ˢ r₂) s k perm | None | Some ((p , s' , sf) , eq , inL , oth) = Some ((p , (s' , sf)) , (eq , ((Inr inL) , oth)))
   intrinsic (r₁ ⊕ˢ r₂) s k perm | None | None = None
-  intrinsic (r ⁺ˢ) s k perm = {!!}
+  intrinsic (r ⁺ˢ) s k perm with intrinsic r s k perm
+  ... | Some ((p , s' , sf) , eq , inL , rest) = Some (((p , s' , sf) , eq , S+ {p}{r} inL , rest))
+  ... | None with intrinsic r s ((r ⁺ˢ) :: k) perm
+  ...           | None = None
+  intrinsic (r ⁺ˢ) .(p ++ as ++ bs) k perm | None | Some ((p , .(as ++ bs) , sf) , Refl , inL , (as , bs , sf') , Refl , inL' , inLK) =
+        Some (((p ++ as , bs , suffix-trans (append-suffix2⁺ {as}{bs}{r} inL') (append-suffix2 {p}{as ++ bs}{r} inL)) , ! (append-assoc p as bs) , C+ {p ++ as}{p}{as}{r} Refl inL inL' , inLK))
   intrinsic (Gˢ r) s k perm = intrinsic r s k perm
 
   extract : {r : RegExp} → {xs : List Char} → xs ∈L r → List (List Char)
@@ -505,13 +510,20 @@ module RegExp where
 
   inL-intrinsic : (r : RegExp)
                 → (s : String.String)
-                → Either Unit ((String.toList s) ∈L r)
-  inL-intrinsic = {!!}
+                → Maybe ((String.toList s) ∈L r)
+  inL-intrinsic r s with String.toList s | δ' r
+  ... | [] | Inl x = Some x
+  ... | l | d with intrinsic (standardize r) l [] (well-founded l)
+  ...            | None = None
+  inL-intrinsic r s | .(xs ++ []) | d | Some ((xs , .[] , sf) , Refl , inL , Refl) =
+          Some (eq-replace (! (ap2 {_}{_}{_}{_}{_}{_}{_}{_}{r}{r} _∈L_ (append-rh-[] xs) Refl)) (∈L-soundness xs r (Inr inL)))
+    where eq-replace : {a b : Set} → a == b → a → b
+          eq-replace Refl x = x
 
   exec : RegExp → String.String → Maybe (List String.String)
   exec r s with inL-intrinsic r s
-  ... | Inl <> = None
-  ... | Inr inL = Some (map String.fromList (extract {r}{String.toList s} inL))
+  ... | None = None
+  ... | Some inL = Some (map String.fromList (extract {r}{String.toList s} inL))
 
   -- Example
   foldl : {A B : Set} → (B → A → B) → B → List A → B
@@ -525,7 +537,7 @@ module RegExp where
   e-mail = G (alphanumeric *) · Lit '@' · G (alphanumeric *) · Lit '.' · G (alphanumeric *)
 
   ex1 : Maybe (List String.String)
-  ex1 = exec e-mail "jdoe@wesleyan.edu"
+  ex1 = exec (G ((Lit 'a') *) · G ((Lit 'b') *)) "aaaabbb"
 
   ex2 : Maybe (List String.String)
-  ex2 = exec (G ((Lit 'a') *) · G ((Lit 'b') *)) "aaaabbb"
+  ex2 = exec e-mail "jdoe@wesleyan.edu"
