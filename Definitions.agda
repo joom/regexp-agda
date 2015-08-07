@@ -135,5 +135,4 @@ module Definitions where
 
   _∈Lᵏ_ : List Char → List StdRegExp → Set
   s ∈Lᵏ [] = s == []
-  s ∈Lᵏ (r :: rs) = Σ {_}{_}{List Char × Σ (λ s' → Suffix s' s) } (λ { (p , s' , sf) → (p ++ s' == s) × (p ∈Lˢ r) × (s' ∈Lᵏ rs) })
-
+  s ∈Lᵏ (r :: rs) = Σ (λ { (p , s') → (p ++ s' == s) × (p ∈Lˢ r) × (s' ∈Lᵏ rs) })
