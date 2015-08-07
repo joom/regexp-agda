@@ -493,6 +493,29 @@ module RegExp where
         Some (((p ++ as , bs , suffix-trans (append-suffix2⁺ {as}{bs}{r} inL') (append-suffix2 {p}{as ++ bs}{r} inL)) , ! (append-assoc p as bs) , C+ {p ++ as}{p}{as}{r} Refl inL inL' , inLK))
   intrinsic (Gˢ r) s k perm = intrinsic r s k perm
 
+  isSome : {A : Set} → Maybe A → Set
+  isSome (Some _) = Unit
+  isSome _ = Void
+
+  intrinsic-completeness : (r : StdRegExp)
+                         → (s : List Char)
+                         → (k : List StdRegExp)
+                         → (perm : RecursionPermission s)
+                         → Σ {_}{_}{List Char × Σ (λ s' → Suffix s' s)} (λ { (p , s' , sf) → (p ++ s' == s) × (p ∈Lˢ r) × s' ∈Lᵏ k})
+                         → isSome (intrinsic r s k perm)
+  intrinsic-completeness ∅ˢ _ _ _ (_ , _ , () , _)
+  intrinsic-completeness (Litˢ x) .(x :: xs) k perm ((.(x :: []) , xs , sf) , Refl , Refl , rest) with Char.equal x x
+  ... | Inr q = abort (q Refl)
+  intrinsic-completeness (Litˢ x) .(x :: [] ++ []) [] perm ((.(x :: []) , .[] , sf) , Refl , Refl , Refl) | Inl Refl = <>
+  intrinsic-completeness (Litˢ x) .(x :: [] ++ p ++ s') (r :: rs) perm ((.(x :: []) , .(p ++ s') , sf) , Refl , Refl , (p , s' , sf') , Refl , inL , inLK) | Inl Refl = {!!}
+  intrinsic-completeness (r₁ ·ˢ r₂) s k perm ((p , s' , sf) , eq , inL , rest) with intrinsic r₁ s (r₂ :: k) perm
+  intrinsic-completeness (r₁ ·ˢ r₂) .(p ++ s') k perm ((p , s' , sf) , Refl , ((as , bs) , a , b , c) , rest) | None = {!!}
+  ... | Some pf = {!!}
+  intrinsic-completeness (r₁ ⊕ˢ r₂) s k perm pf = {!!}
+  intrinsic-completeness (r ⁺ˢ) s k perm pf = {!!}
+  intrinsic-completeness (Gˢ r) s k perm pf = intrinsic-completeness r s k perm pf
+
+
   extract : {r : RegExp} → {xs : List Char} → xs ∈L r → List (List Char)
   extract {∅} ()
   extract {ε} Refl = []
