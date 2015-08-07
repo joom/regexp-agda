@@ -10,58 +10,55 @@ module IntrinsicMatcher where
   -- Using groups
 
   mutual
-    intrinsic-helper : (k : List StdRegExp) → (s : List Char) → (perm : RecursionPermission s) → Maybe (s ∈Lᵏ k)
-    intrinsic-helper [] [] perm = Some Refl
-    intrinsic-helper [] (x :: s) perm = None
-    intrinsic-helper (r :: rs) s perm = intrinsic r s rs perm
+    intrinsic-helper : (k : List StdRegExp) → (s : List Char) → Maybe (s ∈Lᵏ k)
+    intrinsic-helper [] [] = Some Refl
+    intrinsic-helper [] (x :: s) = None
+    intrinsic-helper (r :: rs) s = intrinsic r s rs
 
     -- Doing the matching and soundness proof at the same time.
     intrinsic : (r : StdRegExp)
               → (s : List Char)
               → (k : List StdRegExp)
-              → (perm : RecursionPermission s)
               → Maybe (Σ (λ { (p , s') → (p ++ s' == s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
-    intrinsic ∅ˢ s k perm = None
-    intrinsic (Litˢ c) [] k perm = None
-    intrinsic (Litˢ c) (x :: xs) k perm with Char.equal x c
+    intrinsic ∅ˢ s k = None
+    intrinsic (Litˢ c) [] k = None
+    intrinsic (Litˢ c) (x :: xs) k with Char.equal x c
     ... | Inr q = None
-    intrinsic (Litˢ c) (x :: xs) k (CanRec f) | Inl p with intrinsic-helper k xs (f xs Stop)
+    intrinsic (Litˢ c) (x :: xs) k | Inl p with intrinsic-helper k xs
     ... | None = None
     ... | Some pf = Some (((c :: [] , xs) , ap (λ x → x :: xs) (! p) , Refl , pf))
-    intrinsic (r₁ ·ˢ r₂) s k perm with intrinsic r₁ s (r₂ :: k) perm
+    intrinsic (r₁ ·ˢ r₂) s k with intrinsic r₁ s (r₂ :: k)
     ... | None = None
-    intrinsic (r₁ ·ˢ r₂) .(p ++ as ++ bs) k perm | Some ((p , .(as ++ bs)) , Refl , inL , (as , bs) , Refl , inL' , inLK) =
+    intrinsic (r₁ ·ˢ r₂) .(p ++ as ++ bs) k | Some ((p , .(as ++ bs)) , Refl , inL , (as , bs) , Refl , inL' , inLK) =
           Some ((p ++ as , bs) , ! (append-assoc p as bs) , ((p , as) , Refl , inL , inL') , inLK)
-    intrinsic (r₁ ⊕ˢ r₂) s k perm with intrinsic r₁ s k perm
-    intrinsic (r₁ ⊕ˢ r₂) s k perm | Some ((p , s' ) , eq , inL , oth) = Some ((p , s') , (eq , ((Inl inL) , oth)))
-    intrinsic (r₁ ⊕ˢ r₂) s k perm | None with intrinsic r₂ s k perm
-    intrinsic (r₁ ⊕ˢ r₂) s k perm | None | Some ((p , s') , eq , inL , oth) = Some ((p , s') , (eq , ((Inr inL) , oth)))
-    intrinsic (r₁ ⊕ˢ r₂) s k perm | None | None = None
-    intrinsic (r ⁺ˢ) s k perm with intrinsic r s k perm
+    intrinsic (r₁ ⊕ˢ r₂) s k with intrinsic r₁ s k
+    intrinsic (r₁ ⊕ˢ r₂) s k | Some ((p , s' ) , eq , inL , oth) = Some ((p , s') , (eq , ((Inl inL) , oth)))
+    intrinsic (r₁ ⊕ˢ r₂) s k | None with intrinsic r₂ s k
+    intrinsic (r₁ ⊕ˢ r₂) s k | None | Some ((p , s') , eq , inL , oth) = Some ((p , s') , (eq , ((Inr inL) , oth)))
+    intrinsic (r₁ ⊕ˢ r₂) s k | None | None = None
+    intrinsic (r ⁺ˢ) s k with intrinsic r s k
     ... | Some ((p , s') , eq , inL , rest) = Some (((p , s') , eq , S+ {p}{r} inL , rest))
-    ... | None with intrinsic r s ((r ⁺ˢ) :: k) perm
+    ... | None with intrinsic r s ((r ⁺ˢ) :: k)
     ...           | None = None
-    intrinsic (r ⁺ˢ) .(p ++ as ++ bs) k perm | None | Some ((p , .(as ++ bs)) , Refl , inL , (as , bs) , Refl , inL' , inLK) =
+    intrinsic (r ⁺ˢ) .(p ++ as ++ bs) k | None | Some ((p , .(as ++ bs)) , Refl , inL , (as , bs) , Refl , inL' , inLK) =
           Some (((p ++ as , bs) , ! (append-assoc p as bs) , C+ {p ++ as}{p}{as}{r} Refl inL inL' , inLK))
-    intrinsic (Gˢ r) s k perm = intrinsic r s k perm
+    intrinsic (Gˢ r) s k = intrinsic r s k
 
   intrinsic-completeness : (r : StdRegExp)
                          → (s : List Char)
                          → (k : List StdRegExp)
-                         → (perm : RecursionPermission s)
                          → Σ (λ { (p , s') → (p ++ s' == s) × (p ∈Lˢ r) × s' ∈Lᵏ k})
-                         → isSome (intrinsic r s k perm)
-  intrinsic-completeness ∅ˢ _ _ _ (_ , _ , () , _)
-  intrinsic-completeness (Litˢ x) .(x :: xs) k perm ((.(x :: []) , xs) , Refl , Refl , rest) with Char.equal x x
+                         → isSome (intrinsic r s k )
+  intrinsic-completeness ∅ˢ _ _ (_ , _ , () , _)
+  intrinsic-completeness (Litˢ x) .(x :: xs) k ((.(x :: []) , xs) , Refl , Refl , rest) with Char.equal x x
   ... | Inr q = abort (q Refl)
   ... | Inl p = {!!}
-  intrinsic-completeness (r₁ ·ˢ r₂) s k perm ((p , s') , eq , inL , rest) with intrinsic r₁ s (r₂ :: k) perm
-  intrinsic-completeness (r₁ ·ˢ r₂) .(p ++ s') k perm ((p , s') , Refl , ((as , bs) , a , b , c) , rest) | None = {!!}
+  intrinsic-completeness (r₁ ·ˢ r₂) s k ((p , s') , eq , inL , rest) with intrinsic r₁ s (r₂ :: k)
+  intrinsic-completeness (r₁ ·ˢ r₂) .(p ++ s') k ((p , s') , Refl , ((as , bs) , a , b , c) , rest) | None = {!!}
   ... | Some pf = {!!}
-  intrinsic-completeness (r₁ ⊕ˢ r₂) s k perm pf = {!!}
-  intrinsic-completeness (r ⁺ˢ) s k perm pf = {!!}
-  intrinsic-completeness (Gˢ r) s k perm pf = intrinsic-completeness r s k perm pf
-
+  intrinsic-completeness (r₁ ⊕ˢ r₂) s k pf = {!!}
+  intrinsic-completeness (r ⁺ˢ) s k pf = {!!}
+  intrinsic-completeness (Gˢ r) s k pf = intrinsic-completeness r s k pf
 
   extract : {r : RegExp} → {xs : List Char} → xs ∈L r → List (List Char)
   extract {∅} ()
@@ -79,7 +76,7 @@ module IntrinsicMatcher where
                 → Maybe ((String.toList s) ∈L r)
   inL-intrinsic r s with String.toList s | δ' r
   ... | [] | Inl x = Some x
-  ... | l | d with intrinsic (standardize r) l [] (well-founded l)
+  ... | l | d with intrinsic (standardize r) l []
   ...            | None = None
   inL-intrinsic r s | .(xs ++ []) | d | Some ((xs , .[]) , Refl , inL , Refl) =
           Some (eq-replace (! (ap2 {_}{_}{_}{_}{_}{_}{_}{_}{r}{r} _∈L_ (append-rh-[] xs) Refl)) (∈L-soundness xs r (Inr inL)))
