@@ -451,14 +451,6 @@ module RegExp where
 
   open Maybe
 
-  eq-pred : {A : Set} → (a : A) → (f : A →  Bool) → Either (f a == True) (f a == False)
-  eq-pred {_} a f with f a
-  ... | True = Inl Refl
-  ... | False = Inr Refl
-
-  eitherToBool : ∀ {A B} → Either A B → Bool
-  eitherToBool (Inl _) = False
-  eitherToBool (Inr _) = True
 
   -- Doing the matching and soundness proof at the same time.
   intrinsic : (r : StdRegExp)
@@ -466,16 +458,19 @@ module RegExp where
             → (k : List StdRegExp)
             → (perm : RecursionPermission s)
             → Maybe (Σ {_}{_}{List Char × Σ (λ s' → Suffix s' s)} (λ { (p , s' , sf) → (p ++ s' == s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
+
+  intrinsic-helper : (k : List StdRegExp) → (s : List Char) → (perm : RecursionPermission s) → Maybe (s ∈Lᵏ k)
+  intrinsic-helper [] [] perm = Some Refl
+  intrinsic-helper [] (x :: s) perm = None
+  intrinsic-helper (r :: rs) s perm = intrinsic r s rs perm
+
   intrinsic ∅ˢ s k perm = None
   intrinsic (Litˢ c) [] k perm = None
   intrinsic (Litˢ c) (x :: xs) k perm with Char.equal x c
   ... | Inr q = None
-  ... | Inl p with k
-  intrinsic (Litˢ c) (x :: []) k perm | Inl p | [] = Some (((x :: [] , [] , Stop)) , Refl , ap (λ y → y :: []) p , Refl)
-  intrinsic (Litˢ c) (_ :: _ :: _) _ _ | Inl _ | [] = None
-  intrinsic (Litˢ c) (x :: xs) k (CanRec f) | Inl p | r :: rs  with intrinsic r xs rs (f xs Stop)
+  intrinsic (Litˢ c) (x :: xs) k (CanRec f) | Inl p with intrinsic-helper k xs (f xs Stop)
   ... | None = None
-  ... | Some pf = Some (((x :: [] , xs , Stop)) , Refl , ap (λ y → y :: []) p , pf)
+  ... | Some pf = Some (((c :: [] , xs , Stop) , ap (λ x → x :: xs) (! p) , Refl , pf))
   intrinsic (r₁ ·ˢ r₂) s k perm with intrinsic r₁ s (r₂ :: k) perm
   ... | None = None
   intrinsic (r₁ ·ˢ r₂) .(p ++ as ++ bs) k perm | Some ((p , .(as ++ bs) , sf) , Refl , inL , (as , bs , sf') , Refl , inL' , inLK) =
@@ -506,8 +501,10 @@ module RegExp where
   intrinsic-completeness ∅ˢ _ _ _ (_ , _ , () , _)
   intrinsic-completeness (Litˢ x) .(x :: xs) k perm ((.(x :: []) , xs , sf) , Refl , Refl , rest) with Char.equal x x
   ... | Inr q = abort (q Refl)
-  intrinsic-completeness (Litˢ x) .(x :: [] ++ []) [] perm ((.(x :: []) , .[] , sf) , Refl , Refl , Refl) | Inl Refl = <>
-  intrinsic-completeness (Litˢ x) .(x :: [] ++ p ++ s') (r :: rs) perm ((.(x :: []) , .(p ++ s') , sf) , Refl , Refl , (p , s' , sf') , Refl , inL , inLK) | Inl Refl = {!!}
+  intrinsic-completeness (Litˢ x) .(x :: [] ++ []) [] perm ((.(x :: []) , .[] , sf) , Refl , Refl , Refl) | Inl Refl = {!!}
+  intrinsic-completeness (Litˢ x) .(x :: [] ++ p ++ s') (r :: rs) (CanRec f) ((.(x :: []) , .(p ++ s') , sf) , Refl , Refl , (p , s' , sf') , Refl , inL , inLK) | Inl Refl with intrinsic r (p ++ s') rs (f (p ++ s') Stop)
+  ... | Some pf = <>
+  intrinsic-completeness (Litˢ x) .(x :: [] ++ p ++ s') (r :: rs) (CanRec f) ((.(x :: []) , .(p ++ s') , sf) , Refl , Refl , (p , s' , sf') , Refl , inL , inLK) | Inl Refl | None = {!!}
   intrinsic-completeness (r₁ ·ˢ r₂) s k perm ((p , s' , sf) , eq , inL , rest) with intrinsic r₁ s (r₂ :: k) perm
   intrinsic-completeness (r₁ ·ˢ r₂) .(p ++ s') k perm ((p , s' , sf) , Refl , ((as , bs) , a , b , c) , rest) | None = {!!}
   ... | Some pf = {!!}
