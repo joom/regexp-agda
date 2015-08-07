@@ -212,6 +212,11 @@ module lib.Preliminaries where
     null [] = True
     null _ = False
 
+    foldl : {A B : Set} → (B → A → B) → B → List A → B
+    foldl f z [] = z
+    foldl f z (x :: xs) = foldl f (f z x) xs
+
+
     module Uninformative where
       -- simply typed version
       peelOff : {A : Set} (eq : A → A → Bool) → List A → List A → Maybe (List A)
