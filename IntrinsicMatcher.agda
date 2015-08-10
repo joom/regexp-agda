@@ -29,8 +29,8 @@ module IntrinsicMatcher where
     ... | Some pf = Some (((c :: [] , xs) , ap (λ x → x :: xs) (! p) , Refl , pf))
     intrinsic (r₁ ·ˢ r₂) s k with intrinsic r₁ s (r₂ :: k)
     ... | None = None
-    intrinsic (r₁ ·ˢ r₂) .(p ++ as ++ bs) k | Some ((p , .(as ++ bs)) , Refl , inL , (as , bs) , Refl , inL' , inLK) =
-          Some ((p ++ as , bs) , ! (append-assoc p as bs) , ((p , as) , Refl , inL , inL') , inLK)
+    ... | Some ((xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest)) =
+      Some ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , ((xs , as) , Refl , inL , inL') , rest )
     intrinsic (r₁ ⊕ˢ r₂) s k with intrinsic r₁ s k
     intrinsic (r₁ ⊕ˢ r₂) s k | Some ((p , s' ) , eq , inL , oth) = Some ((p , s') , (eq , ((Inl inL) , oth)))
     intrinsic (r₁ ⊕ˢ r₂) s k | None with intrinsic r₂ s k
@@ -40,8 +40,8 @@ module IntrinsicMatcher where
     ... | Some ((p , s') , eq , inL , rest) = Some (((p , s') , eq , S+ {p}{r} inL , rest))
     ... | None with intrinsic r s ((r ⁺ˢ) :: k)
     ...           | None = None
-    intrinsic (r ⁺ˢ) .(p ++ as ++ bs) k | None | Some ((p , .(as ++ bs)) , Refl , inL , (as , bs) , Refl , inL' , inLK) =
-          Some (((p ++ as , bs) , ! (append-assoc p as bs) , C+ {p ++ as}{p}{as}{r} Refl inL inL' , inLK))
+    ...           | Some ((xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest)) =
+          Some ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , C+ {xs ++ as}{xs}{as} Refl inL inL' , rest)
     intrinsic (Gˢ r) s k = intrinsic r s k
 
   mutual
@@ -60,29 +60,29 @@ module IntrinsicMatcher where
     ... | Inl p with intrinsic-helper k xs | intrinsic-helper-some k xs rest
     ...            | Some _ | <> = <>
     ...            | None   | ()
-    intrinsic-completeness (r₁ ·ˢ r₂) .((xs ++ ys) ++ s') k ((.(xs ++ ys) , s') , Refl , ((xs , ys) , Refl , inL' , rest') , rest)
-      with intrinsic r₁ ((xs ++ ys) ++ s') (r₂ :: k) | intrinsic-completeness r₁ (((xs ++ ys) ++ s')) ((r₂ :: k)) (((xs , ys ++ s') , append-assoc xs ys s' , inL' , ((ys , s') , Refl , rest' , rest)))
-    ... | None | ()
-    ... | Some pf | <> = {!!}
+    intrinsic-completeness (r₁ ·ˢ r₂) s' k ((xs , ys) , eq , ((as , bs) , eq' , inL' , rest') , rest)
+      with intrinsic r₁ s' (r₂ :: k) | intrinsic-completeness r₁ s' (r₂ :: k) ((as , bs ++ ys) , replace-left as bs xs ys s' eq' eq , inL' , (bs , ys) , Refl , rest' , rest)
+    ... | None    | ()
+    ... | Some pf | <> = <>
     intrinsic-completeness (r₁ ⊕ˢ r₂) s k ((xs , ys) , eq , Inl p , rest)
       with intrinsic r₁ s k | intrinsic-completeness r₁ s k (((xs , ys) , eq , p , rest))
-    ... | None | ()
+    ... | None   | ()
     ... | Some _ | _ = <>
     intrinsic-completeness (r₁ ⊕ˢ r₂) s k ((xs , ys) , eq , Inr q , rest) with intrinsic r₁ s k
     ... | Some pf = <>
     ... | None with intrinsic r₂ s k | intrinsic-completeness r₂ s k (((xs , ys) , eq , q , rest))
-    ...           | None | ()
+    ...           | None    | ()
     ...           | Some pf | w = <>
     intrinsic-completeness (r ⁺ˢ) s k ((xs , ys) , eq , S+ x , rest)
       with intrinsic r s k | intrinsic-completeness r s k ((xs , ys) , eq , x , rest)
-    ... | None | ()
+    ... | None    | ()
     ... | Some pf | w = <>
     intrinsic-completeness (r ⁺ˢ) s k ((xs , ys) , eq , C+ x y inL , rest) with intrinsic r s k
     ... | Some pf = <>
     intrinsic-completeness (r ⁺ˢ) .((s₁ ++ s₂) ++ ys) k ((._ , ys) , Refl , C+ {._}{s₁}{s₂} Refl y inL , rest) | None
       with intrinsic r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) :: k) | intrinsic-completeness r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) :: k) (_ , append-assoc s₁ s₂ ys , y , (_ , ys) , Refl , inL , rest)
-    ...           | None | ()
-    ...           | Some pf | <> = {!!}
+    ... | None    | ()
+    ... | Some pf | <> = <>
     intrinsic-completeness (Gˢ r) s k pf = intrinsic-completeness r s k pf
 
   extract : {r : RegExp} → {xs : List Char} → xs ∈L r → List (List Char)

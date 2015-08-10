@@ -126,6 +126,12 @@ module Lemmas where
   null-lemma {[]} eq = Refl
   null-lemma {_ :: _} ()
 
+  replace-left : (as bs xs ys s' : List Char) → as ++ bs == xs → xs ++ ys == s' → as ++ bs ++ ys == s'
+  replace-left as bs .(as ++ bs) ys .((as ++ bs) ++ ys) Refl Refl = append-assoc as bs ys
+
+  replace-right : (xs ys as bs s : List Char) → as ++ bs == ys → xs ++ ys == s → (xs ++ as) ++ bs == s
+  replace-right xs .(as ++ bs) as bs .(xs ++ as ++ bs) Refl Refl = ! (append-assoc xs as bs)
+
   -- Standardization proofs
   -- Overall, we are to prove that ∀ (r : RegExp) L(r) = L(standardize(r)) ∪ δ (if δ r then ε else ∅)
 
