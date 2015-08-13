@@ -3,6 +3,7 @@ open import Lemmas
 
 module IntrinsicMatcher where
 
+  open import Category.Monad
   open import Data.Char
   open import Data.Empty
   open import Data.List
@@ -30,26 +31,14 @@ module IntrinsicMatcher where
               → Maybe (Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
     intrinsic ∅ˢ s k = nothing
     intrinsic (Litˢ c) [] k = nothing
-    intrinsic (Litˢ c) (x ∷ xs) k with x Data.Char.≟ c
-    ... | no _ = nothing
-    intrinsic (Litˢ c) (x ∷ xs) k | yes p with intrinsic-helper k xs
-    ... | nothing = nothing
-    ... | just pf = just (((c ∷ [] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))
-    intrinsic (r₁ ·ˢ r₂) s k with intrinsic r₁ s (r₂ ∷ k)
-    ... | nothing = nothing
-    ... | just ((xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest)) =
-      just ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , ((xs , as) , refl , inL , inL') , rest )
+    intrinsic (Litˢ c) (x ∷ xs) k = (decToMaybe (x Data.Char.≟ c)) >>= (λ p → Data.Maybe.map (λ pf → (((c ∷ [] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))) (intrinsic-helper k xs)) where open RawMonad Data.Maybe.monad
+    intrinsic (r₁ ·ˢ r₂) s k = Data.Maybe.map (λ { ((xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest)) → ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , ((xs , as) , refl , inL , inL') , rest ) }) (intrinsic r₁ s (r₂ ∷ k))
     intrinsic (r₁ ⊕ˢ r₂) s k with intrinsic r₁ s k
-    intrinsic (r₁ ⊕ˢ r₂) s k | just ((p , s' ) , eq , inL , oth) = just ((p , s') , (eq , ((inj₁ inL) , oth)))
-    intrinsic (r₁ ⊕ˢ r₂) s k | nothing with intrinsic r₂ s k
-    intrinsic (r₁ ⊕ˢ r₂) s k | nothing | just ((p , s') , eq , inL , oth) = just ((p , s') , (eq , ((inj₂ inL) , oth)))
-    intrinsic (r₁ ⊕ˢ r₂) s k | nothing | nothing = nothing
+    intrinsic (r₁ ⊕ˢ r₂) s k | just ((p , s' ) , eq , inL , rest) = just ((p , s') , eq , inj₁ inL , rest)
+    intrinsic (r₁ ⊕ˢ r₂) s k | nothing = Data.Maybe.map (λ { ((p , s') , eq , inL , rest) →  ((p , s') , eq , inj₂ inL , rest)}) (intrinsic r₂ s k)
     intrinsic (r ⁺ˢ) s k with intrinsic r s k
     ... | just ((p , s') , eq , inL , rest) = just (((p , s') , eq , S+ {p}{r} inL , rest))
-    ... | nothing with intrinsic r s ((r ⁺ˢ) ∷ k)
-    ...           | nothing = nothing
-    ...           | just ((xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest)) =
-          just ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , C+ {xs ++ as}{xs}{as} refl inL inL' , rest)
+    ... | nothing = Data.Maybe.map (λ { ((xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest)) → ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , C+ {xs ++ as}{xs}{as} refl inL inL' , rest) }) (intrinsic r s ((r ⁺ˢ) ∷ k))
     intrinsic (Gˢ r) s k = intrinsic r s k
 
   mutual
@@ -66,31 +55,31 @@ module IntrinsicMatcher where
     intrinsic-completeness (Litˢ x) .(x ∷ xs) k ((.(x ∷ []) , xs) , refl , refl , rest) with x Data.Char.≟ x
     ... | no q = ⊥-elim (q refl)
     ... | yes p with intrinsic-helper k xs | intrinsic-helper-some k xs rest
-    ...            | just _ | tt = tt
-    ...            | nothing   | ()
+    ...            | just _  | tt = tt
+    ...            | nothing | ()
     intrinsic-completeness (r₁ ·ˢ r₂) s' k ((xs , ys) , eq , ((as , bs) , eq' , inL' , rest') , rest)
       with intrinsic r₁ s' (r₂ ∷ k) | intrinsic-completeness r₁ s' (r₂ ∷ k) ((as , bs ++ ys) , replace-left as bs xs ys s' eq' eq , inL' , (bs , ys) , refl , rest' , rest)
-    ... | nothing    | ()
-    ... | just pf | tt = tt
+    ... | nothing | ()
+    ... | just _  | tt = tt
     intrinsic-completeness (r₁ ⊕ˢ r₂) s k ((xs , ys) , eq , inj₁ p , rest)
       with intrinsic r₁ s k | intrinsic-completeness r₁ s k (((xs , ys) , eq , p , rest))
-    ... | nothing   | ()
-    ... | just _ | _ = tt
+    ... | nothing | ()
+    ... | just _  | _ = tt
     intrinsic-completeness (r₁ ⊕ˢ r₂) s k ((xs , ys) , eq , inj₂ q , rest) with intrinsic r₁ s k
     ... | just pf = tt
     ... | nothing with intrinsic r₂ s k | intrinsic-completeness r₂ s k (((xs , ys) , eq , q , rest))
-    ...           | nothing    | ()
-    ...           | just pf | w = tt
+    ...           | nothing | ()
+    ...           | just _  | _ = tt
     intrinsic-completeness (r ⁺ˢ) s k ((xs , ys) , eq , S+ x , rest)
       with intrinsic r s k | intrinsic-completeness r s k ((xs , ys) , eq , x , rest)
-    ... | nothing    | ()
-    ... | just pf | w = tt
+    ... | nothing | ()
+    ... | just _  | _ = tt
     intrinsic-completeness (r ⁺ˢ) s k ((xs , ys) , eq , C+ x y inL , rest) with intrinsic r s k
-    ... | just pf = tt
+    ... | just _ = tt
     intrinsic-completeness (r ⁺ˢ) .((s₁ ++ s₂) ++ ys) k ((._ , ys) , refl , C+ {._}{s₁}{s₂} refl y inL , rest) | nothing
       with intrinsic r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k) | intrinsic-completeness r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k) (_ , append-assoc s₁ s₂ ys , y , (_ , ys) , refl , inL , rest)
-    ... | nothing    | ()
-    ... | just pf | tt = tt
+    ... | nothing | ()
+    ... | just _  | _ = tt
     intrinsic-completeness (Gˢ r) s k pf = intrinsic-completeness r s k pf
 
   extract : {r : RegExp} → {xs : List Char} → xs ∈L r → List (List Char)
@@ -111,12 +100,11 @@ module IntrinsicMatcher where
   ... | [] | inj₁ x = just x
   ... | l | d with intrinsic (standardize r) l []
   ...            | nothing = nothing
-  inL-intrinsic r s | .(xs ++ []) | d | just ((xs , .[]) , refl , inL , refl) = just ( eq-replace (sym (cong₂ _∈L_ {_}{_}{r}{r} (append-rh-[] xs) refl)) (∈L-soundness xs r (inj₂ inL)))
+  inL-intrinsic r s | .(xs ++ []) | d | just ((xs , .[]) , refl , inL , refl) =
+    just ( eq-replace (sym (cong₂ _∈L_ {_}{_}{r}{r} (append-rh-[] xs) refl)) (∈L-soundness xs r (inj₂ inL)))
 
   exec : RegExp → String.String → Maybe (List String.String)
-  exec r s with inL-intrinsic r s
-  ... | nothing = nothing
-  ... | just inL = just (Data.List.map String.fromList (extract {r}{String.toList s} inL))
+  exec r s = Data.Maybe.map (λ inL → Data.List.map String.fromList (extract {r}{String.toList s} inL)) (inL-intrinsic r s)
 
   -- Example
 
@@ -131,3 +119,6 @@ module IntrinsicMatcher where
 
   ex2 : Maybe (List String.String)
   ex2 = exec e-mail "jdoe@wesleyan.edu"
+
+  ex3 : Maybe (List String.String)
+  ex3 = exec (G (Lit 'a' *) · G (Lit 'a' *)) "aaaa"
