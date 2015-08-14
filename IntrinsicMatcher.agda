@@ -39,7 +39,6 @@ module IntrinsicMatcher where
     intrinsic (r ⁺ˢ) s k with intrinsic r s k
     ... | just ((p , s') , eq , inL , rest) = just (((p , s') , eq , S+ {p}{r} inL , rest))
     ... | nothing = Data.Maybe.map (λ { ((xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest)) → ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , C+ {xs ++ as}{xs}{as} refl inL inL' , rest) }) (intrinsic r s ((r ⁺ˢ) ∷ k))
-    intrinsic (Gˢ r) s k = intrinsic r s k
 
   mutual
     intrinsic-helper-some : (k : List StdRegExp) → (s : List Char) → (s ∈Lᵏ k) → isJust (intrinsic-helper k s)
@@ -80,7 +79,6 @@ module IntrinsicMatcher where
       with intrinsic r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k) | intrinsic-completeness r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k) (_ , append-assoc s₁ s₂ ys , y , (_ , ys) , refl , inL , rest)
     ... | nothing | ()
     ... | just _  | _ = tt
-    intrinsic-completeness (Gˢ r) s k pf = intrinsic-completeness r s k pf
 
   extract : {r : RegExp} → {xs : List Char} → xs ∈L r → List (List Char)
   extract {∅} ()

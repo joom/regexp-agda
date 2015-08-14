@@ -95,7 +95,6 @@ module Lemmas where
   non-empty {r ⁺ˢ} (S+ x) = non-empty {r} x
   non-empty {r ⁺ˢ} (C+ {.[]}{s₁}{s₂} p q inL) with empty-append {s₁} {s₂} p
   non-empty {r ⁺ˢ} (C+ p q inL) | refl , refl = non-empty {r} q
-  non-empty {Gˢ r} inL = non-empty {r} inL
 
   cons-empty : {x : Char} → {xs : List Char} → x ∷ xs ≡ [] → ⊥
   cons-empty ()

@@ -23,7 +23,6 @@ module BooleanMatcher where
   match (r₁ ·ˢ r₂) s k (CanRec f) = match r₁ s (λ { (s' , sf) → match r₂ s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)
   match (r₁ ⊕ˢ r₂) s k perm = if match r₁ s k perm then true else match r₂ s k perm
   match (r ⁺ˢ) s k (CanRec f) = if match r s k (CanRec f) then true else match r s (λ { (s' , sf) → match (r ⁺ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)
-  match (Gˢ r) s k perm = match r s k perm
 
   -- Proofs
 
@@ -55,7 +54,6 @@ module BooleanMatcher where
   match-soundness (r ⁺ˢ) s k (CanRec f) m | inj₂ x | (xs , (ys , sf)) , eq , xs∈rS , d with match-soundness (r ⁺ˢ) ys (λ { (s' , sf') → k (s' , suffix-trans sf' sf) } ) (f ys sf) d
   match-soundness (r ⁺ˢ) s k (CanRec f) m | inj₂ x | (xs , (ys , sf)) , eq , xs∈rS , d | (ys' , ys'' , sf') , eq1 , ys'∈rP , d1 with sym (append-assoc xs ys' ys'')
   match-soundness (r ⁺ˢ) .(xs ++ ys' ++ ys'') k (CanRec f) m | inj₂ x | (xs , .(ys' ++ ys'') , sf) , refl , xs∈rS , d | (ys' , ys'' , sf') , refl , ys'∈rP , d1 | app = (xs ++ ys' , (ys'' , suffix-trans sf' sf)) , (app , (C+ refl xs∈rS ys'∈rP , d1))
-  match-soundness (Gˢ r) s k perm m = match-soundness r s k perm m
 
   {- Show that if there is a split of s, namely s₁ s₂, such that s₁ ∈L r and k s₂ is true, then match r s k perm is true. -}
   match-completeness : (r : StdRegExp)
@@ -83,7 +81,6 @@ module BooleanMatcher where
     with assoc-append-suffix {s₂ ++ ys}{(s₁ ++ s₂) ++ ys}{s} b (assoc-append-suffix (append-assoc s₁ s₂ ys) (append-suffix2 {s₁}{s₂ ++ ys}{r} q))
   ... | t with match-completeness (r ⁺ˢ) (s₂ ++ ys) (λ { (s' , sf') → k (s' , suffix-trans sf' t) }) (f (s₂ ++ ys) t) ((s₂ , ys , append-suffix2⁺ {s₂}{ys}{r} c) , refl , c , trans (cong (λ x → k (ys , x)) (suffix-unique _ _)) d)
   match-completeness (r ⁺ˢ) ._ k (CanRec f) ((._ , ys , sf) , refl , C+ {.(s₁ ++ s₂)}{s₁}{s₂} refl q c , d) | false | t | x = match-completeness r ((s₁ ++ s₂) ++ ys) _ (CanRec f) ((s₁ , s₂ ++ ys , t) , append-assoc s₁ s₂ ys , q , x)
-  match-completeness (Gˢ r) s k perm inL = match-completeness r s k perm inL
 
   _accepts_ : RegExp → String.String → Bool
   r accepts s = match-plus (δ r , standardize r) l (λ { (s , sf) → null s }) (well-founded l)

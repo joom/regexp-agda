@@ -26,7 +26,6 @@ module ExtrinsicMatcher where
   match (r₁ ·ˢ r₂) s k = match r₁ s (r₂ ∷ k)
   match (r₁ ⊕ˢ r₂) s k = if match r₁ s k then true else match r₂ s k
   match (r ⁺ˢ) s k = if match r s k then true else match r s ((r ⁺ˢ) ∷ k)
-  match (Gˢ r) s k = match r s k
 
   -- Proofs
   {- Show that if match r s k perm is true, then there is a split of s, namely s₁ s₂, such that s₁ ∈L r and k s₂ is true. -}
@@ -51,7 +50,6 @@ module ExtrinsicMatcher where
   match-soundness (r ⁺ˢ) s k m | inj₁ x | (xs , ys) , eq , inL , rest = (xs , ys) , (eq , (S+ {xs} {r} inL , rest))
   match-soundness (r ⁺ˢ) s k m | inj₂ y with match-soundness r s ((r ⁺ˢ) ∷ k) y
   match-soundness (r ⁺ˢ) s k m | inj₂ y | (xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest) = (xs ++ as , bs) , (replace-right xs ys as bs s eq' eq , (C+ {xs ++ as} {xs} {as} refl inL inL' , rest))
-  match-soundness (Gˢ r) s k m = match-soundness r s k m
 
 
   -- {- Show that if there is a split of s, namely s₁ s₂, such that s₁ ∈L r and k s₂ is true, then match r s k perm is true. -}
@@ -74,7 +72,6 @@ module ExtrinsicMatcher where
   --  with match-completeness (r ⁺ˢ) (s₂ ++ ys) ? ((s₂ , ys) , refl , c , trans (cong (λ x → k (ys , x)) (suffix-unique _ _)) d)
   -- match-completeness (r ⁺ˢ) ._ k (CanRec f) ((._ , ys , sf) , refl , C+ {.(s₁ ++ s₂)}{s₁}{s₂} refl q c , d) | false | t | x = match-completeness r ((s₁ ++ s₂) ++ ys) _ (CanRec f) ((s₁ , s₂ ++ ys , t) , append-assoc s₁ s₂ ys , q , x)
   match-completeness (r ⁺ˢ) s k inL = {!!}
-  match-completeness (Gˢ r) s k inL = match-completeness r s k inL
 
   _accepts_ : RegExp → String.String → Bool
   r accepts s = match-plus (δ r , standardize r) l []

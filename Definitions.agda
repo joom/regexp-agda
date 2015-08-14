@@ -29,7 +29,6 @@ module Definitions where
     _·ˢ_ : StdRegExp → StdRegExp → StdRegExp
     _⊕ˢ_ : StdRegExp → StdRegExp → StdRegExp
     _⁺ˢ : StdRegExp → StdRegExp -- accepts one or more of the given StdRegExp
-    Gˢ : StdRegExp → StdRegExp
 
   infix 1 _* _⁺ˢ
   infixr 2 _·_ _·ˢ_
@@ -69,7 +68,6 @@ module Definitions where
   s ∈Lˢ (r₁ ⊕ˢ r₂) = (s ∈Lˢ r₁) ⊎ (s ∈Lˢ r₂)
   s ∈Lˢ (r₁ ·ˢ r₂) = Σ (List Char × List Char) (λ { (p , q)  → (p ++ q ≡ s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
   s ∈Lˢ (r ⁺ˢ) = s ∈L⁺ r
-  s ∈Lˢ (Gˢ r) = s ∈Lˢ r
 
   data _∈L⁺_ where
     S+ : ∀ {s r} → s ∈Lˢ r → s ∈L⁺ r
@@ -132,9 +130,8 @@ module Definitions where
   ... | x₁ | x₂ | true | false = x₂ ⊕ˢ (x₁ ·ˢ x₂)
   ... | x₁ | x₂ | true | true = x₁ ⊕ˢ x₂ ⊕ˢ (x₁ ·ˢ x₂)
   standardize (r₁ ⊕ r₂) = standardize r₁ ⊕ˢ standardize r₂
-  standardize (r *) = x ⁺ˢ
-    where x = standardize r
-  standardize (G r) = Gˢ (standardize r)
+  standardize (r *) = (standardize r) ⁺ˢ
+  standardize (G r) = standardize r
 
   isJust : {A : Set} → Maybe A → Set
   isJust (just _) = ⊤
