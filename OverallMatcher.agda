@@ -218,7 +218,9 @@ module OverallMatcher {_acceptsˢ_ : StdRegExp → List Char → Bool}
                     → r accepts s ≡ true
                     → (String.toList s) ∈L r
   correct-soundness r s eq with String.toList s | δ' r
-  correct-soundness r s eq | xs | d = {!!}
+  correct-soundness r s eq | [] | inj₁ p = p
+  correct-soundness r s eq | x ∷ xs | inj₁ p = ∈L-soundness (x ∷ xs) r (inj₂ (acceptsˢ-soundness _ _ eq))
+  correct-soundness r s eq | xs | inj₂ y = ∈L-soundness xs r (inj₂ (acceptsˢ-soundness _ _ eq))
 
   correct-completeness : (r : RegExp)
                        → (s : String.String)
