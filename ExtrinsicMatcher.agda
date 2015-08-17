@@ -65,11 +65,7 @@ module ExtrinsicMatcher where
   match-completeness (r ⁺ˢ) s k ((xs , ys) , b , S+ x , d) = either-if (inj₁ (match-completeness r s k ((xs , ys) , b , x , d)))
   match-completeness (r ⁺ˢ) s k ((._ , ys) , b , C+ {.(s₁ ++ s₂)}{s₁}{s₂} refl q c , d) with match r s k
   match-completeness (r ⁺ˢ) s k ((._ , ys) , b , C+ refl q c , d) | true = refl
-  match-completeness (r ⁺ˢ) s k ((._ , ys) , b , C+ {.(s₁ ++ s₂)}{s₁}{s₂} refl q c , d) | false = {!!} --with match-completeness (r ⁺ˢ) (s₂ ++ ys) k ((s₂ , ys) , (refl , (c , d)))
-  -- ... | e = {!!}
-  --  with match-completeness (r ⁺ˢ) (s₂ ++ ys) ? ((s₂ , ys) , refl , c , trans (cong (λ x → k (ys , x)) (suffix-unique _ _)) d)
-  -- match-completeness (r ⁺ˢ) ._ k (CanRec f) ((._ , ys , sf) , refl , C+ {.(s₁ ++ s₂)}{s₁}{s₂} refl q c , d) | false | t | x = match-completeness r ((s₁ ++ s₂) ++ ys) _ (CanRec f) ((s₁ , s₂ ++ ys , t) , append-assoc s₁ s₂ ys , q , x)
-  -- match-completeness (r ⁺ˢ) s k inL = {!!}
+  match-completeness (r ⁺ˢ) s k ((._ , ys) , b , C+ {.(s₁ ++ s₂)}{s₁}{s₂} refl q c , d) | false = match-completeness r s ((r ⁺ˢ) ∷ k) ((s₁ , s₂ ++ ys) , trans (append-assoc s₁ s₂ ys) b , q , (s₂ , ys) , refl , c , d)
 
   _accepts_ : RegExp → String.String → Bool
   r accepts s = match-plus (δ r , standardize r) l []
