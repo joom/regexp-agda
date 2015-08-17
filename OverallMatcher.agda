@@ -184,8 +184,8 @@ module OverallMatcher {_acceptsˢ_ : StdRegExp → List Char → Bool}
   -- Overall matcher
   _accepts_ : RegExp → String.String → Bool
   r accepts s with δ r | standardize r | String.toList s
-  ... | true  | r' | xs = r' acceptsˢ xs
-  ... | false | r' | xs = (null xs) ∨ (r' acceptsˢ xs)
+  ... | true  | r' | xs = (null xs) ∨ (r' acceptsˢ xs)
+  ... | false | r' | xs = r' acceptsˢ xs
 
   extract : {r : RegExp} → {xs : List Char} → xs ∈L r → List (List Char)
   extract {∅} ()
@@ -220,20 +220,18 @@ module OverallMatcher {_acceptsˢ_ : StdRegExp → List Char → Bool}
   correct-soundness r s eq with String.toList s | δ' r
   correct-soundness r s eq | xs | d = {!!}
 
-
   correct-completeness : (r : RegExp)
                        → (s : String.String)
                        → (String.toList s) ∈L r
                        → r accepts s ≡ true
   correct-completeness r s inL with String.toList s | δ' r
   correct-completeness r s inL | xs | inj₁ x with ∈L-completeness xs r inL
-  ... | inj₂ q = acceptsˢ-completeness (standardize r) xs q
-  correct-completeness r s inL | .[] | inj₁ x | inj₁ (p , refl) = {!!}
+  correct-completeness r s inL | .[] | inj₁ _ | inj₁ (_ , refl) = refl
+  correct-completeness r s inL | [] | inj₁ _ | inj₂ _ = refl
+  correct-completeness r s inL | x ∷ xs | inj₁ _ | inj₂ y = acceptsˢ-completeness _ _ y
   correct-completeness r s inL | xs | inj₂ y with ∈L-completeness xs r inL
-  correct-completeness r s inL | .[] | inj₂ y | inj₁ (d , refl) = ⊥-elim (y inL)
-  correct-completeness r s inL | xs | inj₂ _ | inj₂ y with non-empty {standardize r}
-  correct-completeness r s inL | [] | inj₂ _ | inj₂ y | f = refl
-  correct-completeness r s inL | x ∷ xs | inj₂ _ | inj₂ y | f = acceptsˢ-completeness (standardize r) (x ∷ xs) y
+  correct-completeness r s inL | .[] | inj₂ y | inj₁ (_ , refl) = ⊥-elim (y inL)
+  correct-completeness r s inL | xs | inj₂ _ | inj₂ y = acceptsˢ-completeness _ _ y
 
   -- Example
 
