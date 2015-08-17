@@ -4,6 +4,7 @@ open import Lemmas
 module IntrinsicMatcher where
 
   open import Category.Monad
+  open import Data.Bool
   open import Data.Char
   open import Data.Empty
   open import Data.List
@@ -75,6 +76,18 @@ module IntrinsicMatcher where
       with intrinsic r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k) | intrinsic-completeness r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k) (_ , append-assoc s₁ s₂ ys , y , (_ , ys) , refl , inL , rest)
     ... | nothing | ()
     ... | just _  | _ = tt
+
+  -- Standard "accepts"
+
+  _acceptsˢ_ : StdRegExp → List Char → Bool
+  r acceptsˢ s = is-just (intrinsic r s [])
+
+  acceptsˢ-correct : (r : StdRegExp) → (s : List Char) → r acceptsˢ s ≡ true → s ∈Lˢ r
+  acceptsˢ-correct r s m with intrinsic r s []
+  acceptsˢ-correct r .(xs ++ []) m | just ((xs , .[]) , refl , inL , refl) = eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL
+  acceptsˢ-correct r s () | nothing
+
+  -- Non standard stuff
 
   extract : {r : RegExp} → {xs : List Char} → xs ∈L r → List (List Char)
   extract {∅} ()

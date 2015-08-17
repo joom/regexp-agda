@@ -55,8 +55,8 @@ module ExtrinsicMatcher where
   match-completeness (Litˢ _) [] _ ((.(_ ∷ []) , _) , () , refl , _)
   match-completeness (Litˢ x) .(x ∷ xs) k ((.(x ∷ []) , xs) , refl , refl , rest) with x Data.Char.≟ x
   ... | no p = ⊥-elim (p refl)
-  match-completeness (Litˢ x) .((x ∷ []) ++ []) [] ((.(x ∷ []) , .[]) , refl , refl , refl) | yes p = refl
-  match-completeness (Litˢ x) .((x ∷ []) ++ xs) (k ∷ ks) ((.(x ∷ []) , xs) , refl , refl , rest) | yes p = {!match-completeness k xs ks rest!}
+  match-completeness (Litˢ x) .((x ∷ []) ++ []) [] ((.(x ∷ []) , .[]) , refl , refl , refl) | yes refl = refl
+  match-completeness (Litˢ x) .((x ∷ []) ++ xs) (r ∷ k) ((.(x ∷ []) , xs) , refl , refl , rest) | yes refl = {!!}
   match-completeness (r₁ ·ˢ r₂) s k ((xs , ys) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) with tot | b | append-assoc ms ns ys
   match-completeness (r₁ ·ˢ r₂) .((ms ++ ns) ++ ys) k ((.(ms ++ ns) , ys) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) | refl | refl | p3 with match-completeness r₂ (ns ++ ys) k ((ns , ys) , refl , ns∈r₂ , d)
   ... | x = match-completeness r₁ ((ms ++ ns) ++ ys) _ ((ms , ns ++ ys) , (p3 , (ms∈r₁ , (ns , ys) , (refl , (ns∈r₂ , d)))))
@@ -107,3 +107,14 @@ module ExtrinsicMatcher where
   correct-completeness r s inL | xs | inj₂ q | inj₂ p with non-empty {standardize r}
   correct-completeness r s inL | [] | inj₂ q | inj₂ p | f = ⊥-elim (q inL)
   correct-completeness r s inL | x ∷ xs | inj₂ q | inj₂ p | f = match-completeness (standardize r) _ _ ((x ∷ xs , []) , cong (λ l → x ∷ l) (append-rh-[] xs) , p , refl)
+
+  -- Standard "accepts"
+  _acceptsˢ_ : StdRegExp → List Char → Bool
+  r acceptsˢ s = match r s []
+
+  acceptsˢ-correct : (r : StdRegExp) → (s : List Char) → r acceptsˢ s ≡ true → s ∈Lˢ r
+  acceptsˢ-correct r s m with bool-eq (match r s [])
+  ... | inj₁ p with match-soundness r s [] p
+  acceptsˢ-correct r .(xs ++ []) m | inj₁ p | (xs , .[]) , refl , inL , refl = eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL
+  acceptsˢ-correct r s m | inj₂ q with trans (sym m) q
+  ... | ()

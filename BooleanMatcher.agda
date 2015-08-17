@@ -123,3 +123,15 @@ module BooleanMatcher where
   correct-completeness r s inL | xs | inj₂ q | inj₂ p with non-empty {standardize r}
   correct-completeness r s inL | [] | inj₂ q | inj₂ p | f = ⊥-elim (q inL)
   correct-completeness r s inL | x ∷ xs | inj₂ q | inj₂ p | f = match-completeness (standardize r) _ _ _ ((x ∷ xs , [] , suffix-[]-cons) , cong (λ l → x ∷ l) (append-rh-[] xs) , p , refl)
+
+  -- Standard "accepts"
+  _acceptsˢ_ : StdRegExp → List Char → Bool
+  r acceptsˢ s = match r s (λ { (s , sf) → null s }) (well-founded s)
+
+  acceptsˢ-correct : (r : StdRegExp) → (s : List Char) → r acceptsˢ s ≡ true → s ∈Lˢ r
+  acceptsˢ-correct r s m with bool-eq (match r s (λ { (s , sf) → null s }) (well-founded s))
+  ... | inj₁ p with match-soundness r s (λ { (s , sf) → null s }) (well-founded s) p
+  acceptsˢ-correct r .(xs ++ []) m | inj₁ p | (xs , [] , sf) , refl , inL , refl = eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL
+  acceptsˢ-correct r s m | inj₁ p | (xs , x ∷ ys , sf) , eq , inL , ()
+  acceptsˢ-correct r s m | inj₂ q with trans (sym m) q
+  ... | ()

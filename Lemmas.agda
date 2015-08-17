@@ -84,6 +84,10 @@ module Lemmas where
   or-eq {false} {true} refl = inj₂ refl
   or-eq {false} {false} ()
 
+  bool-eq : (a : Bool) → (a ≡ true) ⊎ (a ≡ false)
+  bool-eq true = inj₁ refl
+  bool-eq false = inj₂ refl
+
   non-empty : ∀ {r} → ([] ∈Lˢ r → ⊥)
   non-empty {∅ˢ} inL = inL
   non-empty {Litˢ c} ()
