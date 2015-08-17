@@ -19,10 +19,10 @@ module BooleanMatcher where
   match : StdRegExp → (s : List Char) → (Σ _ (λ s' → Suffix s' s) → Bool) → RecursionPermission s → Bool
   match ∅ˢ s k _ = false
   match (Litˢ _) [] _ _ = false
-  match (Litˢ c) (x ∷ xs) k _ = if (x == c) then (k (xs , Stop)) else false
+  match (Litˢ c) (x ∷ xs) k _ = (x == c) ∧ (k (xs , Stop))
   match (r₁ ·ˢ r₂) s k (CanRec f) = match r₁ s (λ { (s' , sf) → match r₂ s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)
-  match (r₁ ⊕ˢ r₂) s k perm = if match r₁ s k perm then true else match r₂ s k perm
-  match (r ⁺ˢ) s k (CanRec f) = if match r s k (CanRec f) then true else match r s (λ { (s' , sf) → match (r ⁺ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)
+  match (r₁ ⊕ˢ r₂) s k perm = (match r₁ s k perm) ∨ (match r₂ s k perm)
+  match (r ⁺ˢ) s k (CanRec f) = (match r s k (CanRec f)) ∨ (match r s (λ { (s' , sf) → match (r ⁺ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f))
 
   -- Proofs
 
@@ -42,12 +42,13 @@ module BooleanMatcher where
   match-soundness (r₁ ·ˢ r₂) s k (CanRec f) m | (xs , ys , r) , a , b , c
     with match-soundness r₂ ys (λ { (s' , sf) → k (s' , (suffix-trans sf r)) }) (f ys r) c
   match-soundness (r₁ ·ˢ r₂) .(xs ++ as ++ bs) k (CanRec f) m | (xs , .(as ++ bs) , r) , refl , b , c | (as , bs , r1) , refl , b1 , c1 = ((xs ++ as) , (bs , suffix-trans r1 r)) , ((sym (append-assoc xs as bs)) , (((xs , as) , (refl , (b , b1))) , c1))
-  match-soundness (r₁ ⊕ˢ r₂) s k perm m with lazy-or-eq {match r₁ s k perm} {match r₂ s k perm} m
+  match-soundness (r₁ ⊕ˢ r₂) s k perm m with or-eq {match r₁ s k perm} {match r₂ s k perm} m
   match-soundness (r₁ ⊕ˢ r₂) s k perm m | inj₁ x with match-soundness r₁ s k perm x
   match-soundness (r₁ ⊕ˢ r₂) s k perm m | inj₁ x | (p , q , r) , a , b , c = (p , (q , r)) , (a , (inj₁ b , c))
   match-soundness (r₁ ⊕ˢ r₂) s k perm m | inj₂ x with match-soundness r₂ s k perm x
   match-soundness (r₁ ⊕ˢ r₂) s k perm m | inj₂ x | (p , q , r) , a , b , c = (p , (q , r)) , (a , (inj₂ b , c))
-  match-soundness (r ⁺ˢ) s k (CanRec f) m with lazy-or-eq {match r s k (CanRec f)} { match r s (λ { (s' , sf) → match (r ⁺ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)} m
+  --match-soundness (r ⁺ˢ) s k (CanRec f) m = {!!}
+  match-soundness (r ⁺ˢ) s k (CanRec f) m with or-eq {match r s k (CanRec f)} { match r s (λ { (s' , sf) → match (r ⁺ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)} m
   match-soundness (r ⁺ˢ) s k (CanRec f) m | inj₁ x with match-soundness r s k (CanRec f) x
   match-soundness (r ⁺ˢ) s k (CanRec f) m | inj₁ x | (xs , ys , sf) , a , fst , snd = (xs , (ys , sf)) , (a , (S+ fst , snd))
   match-soundness (r ⁺ˢ) s k (CanRec f) m | inj₂ x with match-soundness r s (λ { (s' , sf) → match (r ⁺ˢ) s' _ (f s' sf) }) (CanRec f) x

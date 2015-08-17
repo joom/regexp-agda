@@ -71,19 +71,18 @@ module Lemmas where
   eq-replace : {a b : Set} → a ≡ b → a → b
   eq-replace refl x = x
 
-  {- Moves logical or to our lazy or implementation. -}
-  either-if : {a b : Bool} → (a ≡ true) ⊎ (b ≡ true) → (if a then true else b) ≡ true
-  either-if {true} (inj₁ refl) = refl
-  either-if {true} (inj₂ refl) = refl
-  either-if {false} (inj₁ ())
-  either-if {false} (inj₂ refl) = refl
+  {- Moves logical or to or implementation. -}
+  either-if : {a b : Bool} → (a ≡ true) ⊎ (b ≡ true) → (a ∨ b) ≡ true
+  either-if {true} x = refl
+  either-if {false} {true} x = refl
+  either-if {false} {false} (inj₁ ())
+  either-if {false} {false} (inj₂ ())
 
-  {- Moves our lazy or implementation to logical or. -}
-  lazy-or-eq : {a b : Bool} → (if a then true else b) ≡ true → (a ≡ true) ⊎ (b ≡ true)
-  lazy-or-eq {true} {true} refl = inj₁ refl
-  lazy-or-eq {true} {false} refl = inj₁ refl
-  lazy-or-eq {false} {true} refl = inj₂ refl
-  lazy-or-eq {false} {false} ()
+  {- Moves or implementation to logical or. -}
+  or-eq : {a b : Bool} → (a ∨ b) ≡ true → (a ≡ true) ⊎ (b ≡ true)
+  or-eq {true} refl = inj₁ refl
+  or-eq {false} {true} refl = inj₂ refl
+  or-eq {false} {false} ()
 
   non-empty : ∀ {r} → ([] ∈Lˢ r → ⊥)
   non-empty {∅ˢ} inL = inL
