@@ -82,50 +82,13 @@ module IntrinsicMatcher where
   _acceptsˢ_ : StdRegExp → List Char → Bool
   r acceptsˢ s = is-just (intrinsic r s [])
 
-  acceptsˢ-correct : (r : StdRegExp) → (s : List Char) → r acceptsˢ s ≡ true → s ∈Lˢ r
-  acceptsˢ-correct r s m with intrinsic r s []
-  acceptsˢ-correct r .(xs ++ []) m | just ((xs , .[]) , refl , inL , refl) = eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL
-  acceptsˢ-correct r s () | nothing
+  acceptsˢ-soundness : (r : StdRegExp) → (s : List Char) → r acceptsˢ s ≡ true → s ∈Lˢ r
+  acceptsˢ-soundness r s m with intrinsic r s []
+  acceptsˢ-soundness r .(xs ++ []) m | just ((xs , .[]) , refl , inL , refl) = eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL
+  acceptsˢ-soundness r s () | nothing
 
-  -- Non standard stuff
-
-  extract : {r : RegExp} → {xs : List Char} → xs ∈L r → List (List Char)
-  extract {∅} ()
-  extract {ε} refl = []
-  extract {Lit x} refl = []
-  extract {r₁ · r₂}{xs} ((as , bs) , a , b , c) = extract {r₁}{as} b ++ extract {r₂}{bs} c
-  extract {r₁ ⊕ r₂}{xs} (inj₁ x) = extract {r₁}{xs} x
-  extract {r₁ ⊕ r₂}{xs} (inj₂ x) = extract {r₂}{xs} x
-  extract {r *} (Ex refl) = []
-  extract {r *} (Cx {s}{s₁}{s₂} x x₁ inL) = extract {r}{s₁} x₁ ++ extract {r *}{s₂} inL
-  extract {G r}{xs} inL = xs ∷ extract {r}{xs} inL
-
-  inL-intrinsic : (r : RegExp)
-                → (s : String.String)
-                → Maybe ((String.toList s) ∈L r)
-  inL-intrinsic r s with String.toList s | δ' r
-  ... | [] | inj₁ x = just x
-  ... | l | d with intrinsic (standardize r) l []
-  ...            | nothing = nothing
-  inL-intrinsic r s | .(xs ++ []) | d | just ((xs , .[]) , refl , inL , refl) =
-    just ( eq-replace (sym (cong₂ _∈L_ {_}{_}{r}{r} (append-rh-[] xs) refl)) (∈L-soundness xs r (inj₂ inL)))
-
-  exec : RegExp → String.String → Maybe (List String.String)
-  exec r s = Data.Maybe.map (λ inL → Data.List.map String.fromList (extract {r}{String.toList s} inL)) (inL-intrinsic r s)
-
-  -- Example
-
-  alphanumeric : RegExp
-  alphanumeric = foldl _⊕_ ∅ (Data.List.map Lit (String.toList "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"))
-
-  e-mail : RegExp
-  e-mail = G (alphanumeric *) · Lit '@' · G (alphanumeric *) · Lit '.' · G (alphanumeric *)
-
-  ex1 : Maybe (List String.String)
-  ex1 = exec (G ((Lit 'a') *) · G ((Lit 'b') *)) "aaaabbb"
-
-  ex2 : Maybe (List String.String)
-  ex2 = exec e-mail "jdoe@wesleyan.edu"
-
-  ex3 : Maybe (List String.String)
-  ex3 = exec (G (Lit 'a' *) · G (Lit 'a' *)) "aaaa"
+  acceptsˢ-completeness : (r : StdRegExp) → (s : List Char) → s ∈Lˢ r → r acceptsˢ s ≡ true
+  acceptsˢ-completeness r s inL = lemma (intrinsic-completeness r s [] ((s , []) , append-rh-[] s , inL , refl))
+    where lemma : ∀ {l} → {x : Maybe l} → isJust x → is-just x ≡ true
+          lemma {x = just x} m = refl
+          lemma {x = nothing} ()

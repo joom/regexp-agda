@@ -12,6 +12,12 @@ module Lemmas where
   open import Relation.Binary.PropositionalEquality
   open import Relation.Nullary.Decidable
 
+  empty-append : {xs ys : List Char} → xs ++ ys ≡ [] → (xs ≡ []) × (ys ≡ [])
+  empty-append {[]} {[]} refl = refl , refl
+  empty-append {[]} {_ ∷ _} ()
+  empty-append {_ ∷ _} {[]} ()
+  empty-append {_ ∷ _} {_ ∷ _} ()
+
   {- Transitivity of suffixes -}
   suffix-trans : {A : Set} → {xs ys zs : List A} → Suffix xs ys → Suffix ys zs → Suffix xs zs
   suffix-trans s1 Stop = Drop s1
@@ -137,85 +143,3 @@ module Lemmas where
 
   replace-right : (xs ys as bs s : List Char) → as ++ bs ≡ ys → xs ++ ys ≡ s → (xs ++ as) ++ bs ≡ s
   replace-right xs .(as ++ bs) as bs .(xs ++ as ++ bs) refl refl = sym (append-assoc xs as bs)
-
-  -- Standardization proofs
-  -- Overall, we are to prove that ∀ (r : RegExp) L(r) = L(standardize(r)) ∪ δ (if δ r then ε else ∅)
-
-  ∈L-soundness : (s : List Char)
-               → (r : RegExp)
-               → ((δ r ≡ true) × (s ≡ [])) ⊎ (s ∈Lˢ (standardize r))
-               → s ∈L r
-  ∈L-soundness .[] r (inj₁ (d , refl)) with δ' r
-  ... | inj₁ p = p
-  ∈L-soundness .[] r (inj₁ (() , refl)) | inj₂ q
-  ∈L-soundness s ∅ (inj₂ x) = x
-  ∈L-soundness s ε (inj₂ ())
-  ∈L-soundness s (Lit x) (inj₂ q) = q
-  ∈L-soundness s (r₁ · r₂) (inj₂ q) with δ' r₁ | δ' r₂
-  ∈L-soundness [] (r₁ · r₂) (inj₂ (inj₁ x)) | inj₁ a | inj₁ b = ([] , []) , refl , a , b
-  ∈L-soundness (x ∷ s) (r₁ · r₂) (inj₂ (inj₁ x₁)) | inj₁ a | inj₁ b = (x ∷ s , []) , cong (λ l → x ∷ l) (append-rh-[] s) , ∈L-soundness (x ∷ s) r₁ (inj₂ x₁) , b
-  ∈L-soundness [] (r₁ · r₂) (inj₂ (inj₂ (inj₁ x))) | inj₁ a | inj₁ b = ([] , []) , refl , a , b
-  ∈L-soundness (x ∷ s) (r₁ · r₂) (inj₂ (inj₂ (inj₁ x₁))) | inj₁ a | inj₁ b = ([] , x ∷ s) , refl , a , ∈L-soundness (x ∷ s) r₂ (inj₂ x₁)
-  ∈L-soundness s (r₁ · r₂) (inj₂ (inj₂ (inj₂ ((x , y) , n , p , q)))) | inj₁ a | inj₁ b = (x , y) , n , ∈L-soundness x r₁ (inj₂ p) , ∈L-soundness y r₂ (inj₂ q)
-  ∈L-soundness s (r₁ · r₂) (inj₂ (inj₁ x)) | inj₁ a | inj₂ b = ([] , s) , refl , a , ∈L-soundness s r₂ (inj₂ x)
-  ∈L-soundness s (r₁ · r₂) (inj₂ (inj₁ x)) | inj₂ a | inj₁ b = (s , []) , append-rh-[] s , ∈L-soundness s r₁ (inj₂ x) , b
-  ∈L-soundness s (r₁ · r₂) (inj₂ (inj₂ ((x , y) , n , p , q))) | inj₁ a | inj₂ b = (x , y) , n , ∈L-soundness x r₁ (inj₂ p) , ∈L-soundness y r₂ (inj₂ q)
-  ∈L-soundness s (r₁ · r₂) (inj₂ (inj₂ ((x , y) , n , p , q))) | inj₂ a | inj₁ b = (x , y) , n , ∈L-soundness x r₁ (inj₂ p) , ∈L-soundness y r₂ (inj₂ q)
-  ∈L-soundness s (r₁ · r₂) (inj₂ ((x , y) , n , p , q)) | inj₂ a | inj₂ b = (x , y) , n , ∈L-soundness x r₁ (inj₂ p) , ∈L-soundness y r₂ (inj₂ q)
-  ∈L-soundness s (r₁ ⊕ r₂) (inj₂ (inj₁ x)) = inj₁ (∈L-soundness s r₁ (inj₂ x))
-  ∈L-soundness s (r₁ ⊕ r₂) (inj₂ (inj₂ x)) = inj₂ (∈L-soundness s r₂ (inj₂ x))
-  ∈L-soundness s (r *) (inj₂ (S+ x)) = Cx {s}{s}{[]}{r} (append-rh-[] s) (∈L-soundness s r (inj₂ x)) (Ex refl)
-  ∈L-soundness s (r *) (inj₂ (C+ {.s}{s₁}{s₂} a b c)) = Cx a (∈L-soundness s₁ r (inj₂ b)) (∈L-soundness s₂ (r *) (inj₂ c))
-  ∈L-soundness s (G r) (inj₂ x) = ∈L-soundness s r (inj₂ x)
-
-  ∈L-completeness : (s : List Char)
-                  → (r : RegExp)
-                  → s ∈L r
-                  → ((δ r ≡ true) × (s ≡ [])) ⊎ (s ∈Lˢ (standardize r))
-  ∈L-completeness s ∅ inL = inj₂ inL
-  ∈L-completeness s ε inL = inj₁ (refl , inL)
-  ∈L-completeness .(x ∷ []) (Lit x) refl = inj₂ refl
-  ∈L-completeness s (r₁ · r₂) inL with δ' r₁ | δ' r₂
-  ∈L-completeness .(x ++ y) (r₁ · r₂) ((x , y) , refl , b , c) | inj₁ p | inj₁ q with ∈L-completeness x r₁ b | ∈L-completeness y r₂ c
-  ∈L-completeness .([] ++ []) (r₁ · r₂) ((.[] , .[]) , refl , b , c) | inj₁ p | inj₁ q | inj₁ (m , refl) | inj₁ (t , refl) = inj₁ (refl , refl)
-  ∈L-completeness .([] ++ y) (r₁ · r₂) ((.[] , y) , refl , b , c) | inj₁ p | inj₁ q | inj₁ (m , refl) | inj₂ t = inj₂ (inj₂ (inj₁ t))
-  ∈L-completeness .(x ++ []) (r₁ · r₂) ((x , .[]) , refl , b , c) | inj₁ p | inj₁ q | inj₂ m | inj₁ (t , refl) = inj₂ (inj₁ (same-list-language {_}{_}{standardize r₁} (sym (append-rh-[] x)) m))
-  ∈L-completeness .(x ++ y) (r₁ · r₂) ((x , y) , refl , b , c) | inj₁ p | inj₁ q | inj₂ m | inj₂ t = inj₂ (inj₂ (inj₂ ((x , y) , refl , m , t)))
-  ∈L-completeness s (r₁ · r₂) ((x , y) , a , b , c) | inj₁ p | inj₂ q with ∈L-completeness x r₁ b | ∈L-completeness y r₂ c
-  ∈L-completeness .[] (r₁ · r₂) ((.[] , .[]) , refl , b , c) | inj₁ p | inj₂ q | inj₁ (m , refl) | inj₁ (t , refl) = ⊥-elim (q c)
-  ∈L-completeness y (r₁ · r₂) ((.[] , .y) , refl , b , c) | inj₁ p | inj₂ q | inj₁ (m , refl) | inj₂ t = inj₂ (inj₁ t)
-  ∈L-completeness .(x ++ []) (r₁ · r₂) ((x , .[]) , refl , b , c) | inj₁ p | inj₂ q | inj₂ m | inj₁ (t , refl) = ⊥-elim (q c)
-  ∈L-completeness .(x ++ y) (r₁ · r₂) ((x , y) , refl , b , c) | inj₁ p | inj₂ q | inj₂ m | inj₂ t = inj₂ (inj₂ ((x , y) , refl , m , t))
-  ∈L-completeness s (r₁ · r₂) ((x , y) , a , b , c) | inj₂ p | inj₁ q with ∈L-completeness x r₁ b | ∈L-completeness y r₂ c
-  ∈L-completeness s (r₁ · r₂) ((.[] , .[]) , a , b , c) | inj₂ p | inj₁ q | inj₁ (m , refl) | inj₁ (t , refl) = ⊥-elim (p b)
-  ∈L-completeness y (r₁ · r₂) ((.[] , .y) , refl , b , c) | inj₂ p | inj₁ q | inj₁ (m , refl) | inj₂ t = ⊥-elim (p b)
-  ∈L-completeness .(x ++ []) (r₁ · r₂) ((x , .[]) , refl , b , c) | inj₂ p | inj₁ q | inj₂ m | inj₁ (t , refl) = inj₂ (inj₁ (same-list-language {_}{_}{standardize r₁}(sym (append-rh-[] x)) m))
-  ∈L-completeness s (r₁ · r₂) ((x , y) , a , b , c) | inj₂ p | inj₁ q | inj₂ m | inj₂ t = inj₂ (inj₂ ((x , y) , a , m , t))
-  ∈L-completeness s (r₁ · r₂) ((x , y) , a , b , c) | inj₂ p | inj₂ q with ∈L-completeness x r₁ b | ∈L-completeness y r₂ c
-  ∈L-completeness .[] (r₁ · r₂) ((.[] , .[]) , refl , b , c) | inj₂ p | inj₂ q | inj₁ (m , refl) | inj₁ (t , refl) = ⊥-elim (p b)
-  ∈L-completeness y (r₁ · r₂) ((.[] , .y) , refl , b , c) | inj₂ p | inj₂ q | inj₁ (m , refl) | inj₂ t = ⊥-elim (p b)
-  ∈L-completeness .(x ++ []) (r₁ · r₂) ((x , .[]) , refl , b , c) | inj₂ p | inj₂ q | inj₂ m | inj₁ (t , refl) = ⊥-elim (q c)
-  ∈L-completeness .(x ++ y) (r₁ · r₂) ((x , y) , refl , b , c) | inj₂ p | inj₂ q | inj₂ m | inj₂ t = inj₂ ((x , y) , refl , m , t)
-  ∈L-completeness s (r₁ ⊕ r₂) (inj₁ x) with ∈L-completeness s r₁ x
-  ∈L-completeness .[] (r₁ ⊕ r₂) (inj₁ x) | inj₁ (d , refl) with δ' r₁
-  ∈L-completeness .[] (r₁ ⊕ r₂) (inj₁ x₁) | inj₁ (d , refl) | inj₁ x = inj₁ (refl , refl)
-  ∈L-completeness .[] (_ ⊕ _) (inj₁ _) | inj₁ (() , refl) | inj₂ _
-  ∈L-completeness s (r₁ ⊕ r₂) (inj₁ x) | inj₂ q = inj₂ (inj₁ q)
-  ∈L-completeness s (r₁ ⊕ r₂) (inj₂ x) with ∈L-completeness s r₂ x
-  ∈L-completeness .[] (r₁ ⊕ r₂) (inj₂ x) | inj₁ (d , refl) with δ' r₂
-  ∈L-completeness .[] (r₁ ⊕ r₂) (inj₂ x) | inj₁ (refl , refl) | inj₁ a with δ' r₁
-  ∈L-completeness .[] (r₁ ⊕ r₂) (inj₂ x₁) | inj₁ (refl , refl) | inj₁ a | inj₁ x = inj₁ (refl , refl)
-  ∈L-completeness .[] (r₁ ⊕ r₂) (inj₂ x₁) | inj₁ (refl , refl) | inj₁ a | inj₂ x = inj₁ (refl , refl)
-  ∈L-completeness .[] (_ ⊕ _) (inj₂ _) | inj₁ (() , refl) | inj₂ _
-  ∈L-completeness s (r₁ ⊕ r₂) (inj₂ x) | inj₂ q = inj₂ (inj₂ q)
-  ∈L-completeness .[] (r *) (Ex refl) = inj₁ (refl , refl)
-  ∈L-completeness s (r *) (Cx {.s}{s₁}{s₂} x x₁ inL) with ∈L-completeness s₁ r x₁ | ∈L-completeness s₂ (r *) inL
-  ∈L-completeness s (r *) (Cx x x₁ inL) | inj₁ (m , refl) | inj₁ (t , refl) = inj₁ (refl , (sym x))
-  ∈L-completeness s₂ (r *) (Cx refl x₁ inL) | inj₁ (m , refl) | inj₂ t = inj₂ t
-  ∈L-completeness ._ (r *) (Cx {._}{s₁}{.[]} refl x₁ inL) | inj₂ m | inj₁ (refl , refl) = inj₂ (S+ (same-list-language {_}{_}{standardize r} (sym (append-rh-[] s₁)) m))
-  ∈L-completeness s (r *) (Cx x x₁ inL) | inj₂ m | inj₂ t = inj₂ (C+ x m t)
-  ∈L-completeness s (G r) inL with ∈L-completeness s r inL
-  ∈L-completeness s (G r) inL | inj₁ (a , b) with δ' (G r)
-  ... | inj₁ x = inj₁ (refl , b)
-  ... | inj₂ x = inj₁ (a , b)
-  ∈L-completeness s (G r) inL | inj₂ x = inj₂ x

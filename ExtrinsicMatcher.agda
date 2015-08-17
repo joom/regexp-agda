@@ -67,54 +67,16 @@ module ExtrinsicMatcher where
   match-completeness (r ⁺ˢ) s k ((._ , ys) , b , C+ refl q c , d) | true = refl
   match-completeness (r ⁺ˢ) s k ((._ , ys) , b , C+ {.(s₁ ++ s₂)}{s₁}{s₂} refl q c , d) | false = match-completeness r s ((r ⁺ˢ) ∷ k) ((s₁ , s₂ ++ ys) , trans (append-assoc s₁ s₂ ys) b , q , (s₂ , ys) , refl , c , d)
 
-  _accepts_ : RegExp → String.String → Bool
-  r accepts s = match-plus (δ r , standardize r) l []
-    where l = String.toList s
-          match-plus : Bool × StdRegExp → (s : List Char) → (k : List StdRegExp) → Bool
-          match-plus (false , r) s k = match r s k
-          match-plus (true , r) s k = if null s then true else match r s k
-
-  -- -- Overall correctness
-
-  correct-soundness : (r : RegExp)
-                    → (s : String.String)
-                    → r accepts s ≡ true
-                    → (String.toList s) ∈L r
-  correct-soundness r s eq with String.toList s | δ' r
-  ... | xs | inj₂ q with match-soundness (standardize r) xs _ eq
-  ... | ((as , bs) , a , b , c) with ∈L-soundness as r (inj₂ b)
-  correct-soundness r s eq | xs | inj₂ q | (_ , _ ∷ _ ) , _ , _ , () | as∈Lr
-  correct-soundness r s eq | xs | inj₂ q | (as , [] ) , a , b , c | as∈Lr with trans (sym (append-rh-[] as)) a
-  correct-soundness r s eq | as | inj₂ q | (.as , [] ) , a , b , c | as∈Lr | refl = as∈Lr
-  correct-soundness r s eq | [] | inj₁ p = p
-  correct-soundness r s eq | x ∷ xs | inj₁ p with match-soundness (standardize r) (x ∷ xs) _ eq
-  ... | ((as , bs) , a , b , c) with ∈L-soundness as r (inj₂ b)
-  correct-soundness r s eq | x ∷ xs | inj₁ p | (_ , _ ∷ _ ) , _ , _ , () | _
-  correct-soundness r s eq | x ∷ xs | inj₁ p | (as , [] ) , a , b , refl | inL-sn with trans (sym (append-rh-[] as)) a
-  correct-soundness r s eq | x ∷ xs | inj₁ p | (.(x ∷ xs) , []) , a , b , refl | inL-sn | refl = inL-sn
-
-  correct-completeness : (r : RegExp)
-                       → (s : String.String)
-                       → (String.toList s) ∈L r
-                       → r accepts s ≡ true
-  correct-completeness r s inL with String.toList s | δ' r
-  correct-completeness r s inL | [] | inj₁ p = refl
-  correct-completeness r s inL | x ∷ xs | inj₁ p with ∈L-completeness (x ∷ xs) r inL
-  correct-completeness r s inL | x ∷ xs | inj₁ p | inj₁ (d , ())
-  correct-completeness r s inL | x ∷ xs | inj₁ p | inj₂ q = match-completeness (standardize r) _ _  ((x ∷ xs , []) , cong (λ l → x ∷ l) (append-rh-[] xs) , q , refl)
-  correct-completeness r s inL | xs | inj₂ q with ∈L-completeness xs r inL
-  correct-completeness r s inL | .[] | inj₂ q | inj₁ (d , refl) = ⊥-elim (q inL)
-  correct-completeness r s inL | xs | inj₂ q | inj₂ p with non-empty {standardize r}
-  correct-completeness r s inL | [] | inj₂ q | inj₂ p | f = ⊥-elim (q inL)
-  correct-completeness r s inL | x ∷ xs | inj₂ q | inj₂ p | f = match-completeness (standardize r) _ _ ((x ∷ xs , []) , cong (λ l → x ∷ l) (append-rh-[] xs) , p , refl)
-
   -- Standard "accepts"
   _acceptsˢ_ : StdRegExp → List Char → Bool
   r acceptsˢ s = match r s []
 
-  acceptsˢ-correct : (r : StdRegExp) → (s : List Char) → r acceptsˢ s ≡ true → s ∈Lˢ r
-  acceptsˢ-correct r s m with bool-eq (match r s [])
+  acceptsˢ-soundness : (r : StdRegExp) → (s : List Char) → r acceptsˢ s ≡ true → s ∈Lˢ r
+  acceptsˢ-soundness r s m with bool-eq (match r s [])
   ... | inj₁ p with match-soundness r s [] p
-  acceptsˢ-correct r .(xs ++ []) m | inj₁ p | (xs , .[]) , refl , inL , refl = eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL
-  acceptsˢ-correct r s m | inj₂ q with trans (sym m) q
+  acceptsˢ-soundness r .(xs ++ []) m | inj₁ p | (xs , .[]) , refl , inL , refl = eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL
+  acceptsˢ-soundness r s m | inj₂ q with trans (sym m) q
   ... | ()
+
+  acceptsˢ-completeness : (r : StdRegExp) → (s : List Char) → s ∈Lˢ r → r acceptsˢ s ≡ true
+  acceptsˢ-completeness r s inL = match-completeness r s [] ((s , []) , append-rh-[] s , inL , refl)
