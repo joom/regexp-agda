@@ -15,7 +15,6 @@ module ExtrinsicMatcher where
   open import Relation.Nullary.Decidable
   open import Relation.Binary.PropositionalEquality
 
-
   match : StdRegExp → (s : List Char) → (k : List StdRegExp) → Bool
   match ∅ˢ s k = false
   match (Litˢ x) [] k = false

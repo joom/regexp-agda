@@ -32,13 +32,9 @@ module IntrinsicMatcher where
     intrinsic ∅ˢ s k = nothing
     intrinsic (Litˢ c) [] k = nothing
     intrinsic (Litˢ c) (x ∷ xs) k = (decToMaybe (x Data.Char.≟ c)) >>= (λ p → Data.Maybe.map (λ pf → (((c ∷ [] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))) (intrinsic-helper k xs)) where open RawMonad Data.Maybe.monad
-    intrinsic (r₁ ·ˢ r₂) s k = Data.Maybe.map (λ { ((xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest)) → ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , ((xs , as) , refl , inL , inL') , rest ) }) (intrinsic r₁ s (r₂ ∷ k))
-    intrinsic (r₁ ⊕ˢ r₂) s k with intrinsic r₁ s k
-    intrinsic (r₁ ⊕ˢ r₂) s k | just ((p , s' ) , eq , inL , rest) = just ((p , s') , eq , inj₁ inL , rest)
-    intrinsic (r₁ ⊕ˢ r₂) s k | nothing = Data.Maybe.map (λ { ((p , s') , eq , inL , rest) →  ((p , s') , eq , inj₂ inL , rest)}) (intrinsic r₂ s k)
-    intrinsic (r ⁺ˢ) s k with intrinsic r s k
-    ... | just ((p , s') , eq , inL , rest) = just (((p , s') , eq , S+ {p}{r} inL , rest))
-    ... | nothing = Data.Maybe.map (λ { ((xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest)) → ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , C+ {xs ++ as}{xs}{as} refl inL inL' , rest) }) (intrinsic r s ((r ⁺ˢ) ∷ k))
+    intrinsic (r₁ ·ˢ r₂) s k = Data.Maybe.map (λ { ((xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest)) → ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , ((xs , as) , refl , inL , inL') , rest) }) (intrinsic r₁ s (r₂ ∷ k))
+    intrinsic (r₁ ⊕ˢ r₂) s k = maybe′ (λ {((p , s' ) , eq , inL , rest) → just ((p , s') , eq , inj₁ inL , rest)}) (Data.Maybe.map (λ { ((p , s') , eq , inL , rest) →  ((p , s') , eq , inj₂ inL , rest) }) (intrinsic r₂ s k)) (intrinsic r₁ s k)
+    intrinsic (r ⁺ˢ) s k = maybe′ (λ {((p , s') , eq , inL , rest) → just ((p , s') , eq , S+ {p}{r} inL , rest)  }) (Data.Maybe.map (λ { ((xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest)) → ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , C+ {xs ++ as}{xs}{as} refl inL inL' , rest) }) (intrinsic r s ((r ⁺ˢ) ∷ k))) (intrinsic r s k)
 
   mutual
     intrinsic-helper-some : (k : List StdRegExp) → (s : List Char) → (s ∈Lᵏ k) → isJust (intrinsic-helper k s)
