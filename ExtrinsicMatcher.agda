@@ -27,7 +27,6 @@ module ExtrinsicMatcher where
   match (r ⁺ˢ) s k = (match r s k) ∨ (match r s ((r ⁺ˢ) ∷ k))
 
   -- Proofs
-  {- Show that if match r s k perm is true, then there is a split of s, namely s₁ s₂, such that s₁ ∈L r and k s₂ is true. -}
   match-soundness : (r : StdRegExp) → (s : List Char) → (k : List StdRegExp) → match r s k ≡ true → (Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
   match-soundness ∅ˢ s k ()
   match-soundness (Litˢ x) [] k ()
@@ -49,17 +48,14 @@ module ExtrinsicMatcher where
   match-soundness (r ⁺ˢ) s k m | inj₂ y with match-soundness r s ((r ⁺ˢ) ∷ k) y
   match-soundness (r ⁺ˢ) s k m | inj₂ y | (xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest) = (xs ++ as , bs) , (replace-right xs ys as bs s eq' eq , (C+ {xs ++ as} {xs} {as} refl inL inL' , rest))
 
-  -- {- Show that if there is a split of s, namely s₁ s₂, such that s₁ ∈L r and k s₂ is true, then match r s k perm is true. -}
   match-completeness : (r : StdRegExp) → (s : List Char) → (k : List StdRegExp) → (Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k})) → match r s k ≡ true
   match-completeness ∅ˢ _ _ (_ , _ , c , _) = ⊥-elim c
   match-completeness (Litˢ _) [] _ ((.(_ ∷ []) , _) , () , refl , _)
   match-completeness (Litˢ x) .(x ∷ xs) k ((.(x ∷ []) , xs) , refl , refl , rest) with x Data.Char.≟ x
   ... | no p = ⊥-elim (p refl)
   match-completeness (Litˢ x) .((x ∷ []) ++ []) [] ((.(x ∷ []) , .[]) , refl , refl , refl) | yes refl = refl
-  match-completeness (Litˢ x) .((x ∷ []) ++ xs) (r ∷ k) ((.(x ∷ []) , xs) , refl , refl , rest) | yes refl = {!!}
-  match-completeness (r₁ ·ˢ r₂) s k ((xs , ys) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) with tot | b | append-assoc ms ns ys
-  match-completeness (r₁ ·ˢ r₂) .((ms ++ ns) ++ ys) k ((.(ms ++ ns) , ys) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) | refl | refl | p3 with match-completeness r₂ (ns ++ ys) k ((ns , ys) , refl , ns∈r₂ , d)
-  ... | x = match-completeness r₁ ((ms ++ ns) ++ ys) _ ((ms , ns ++ ys) , (p3 , (ms∈r₁ , (ns , ys) , (refl , (ns∈r₂ , d)))))
+  match-completeness (Litˢ x) .((x ∷ []) ++ xs) (r ∷ k) ((.(x ∷ []) , xs) , refl , refl , rest) | yes refl = match-completeness r xs k rest
+  match-completeness (r₁ ·ˢ r₂) s k ((xs , ys) , b , ((ms , ns) , tot , ms∈r₁ , ns∈r₂) , d) = match-completeness r₁ s (r₂ ∷ k) ((ms , ns ++ ys) , replace-left ms ns xs ys s tot b , ms∈r₁ , (ns , ys) , refl , ns∈r₂ , d)
   match-completeness (r₁ ⊕ˢ r₂) s k ((xs , ys) , eq , inj₁ p , rest) = either-if (inj₁ (match-completeness r₁ s k ((xs , ys) , eq , p , rest) ))
   match-completeness (r₁ ⊕ˢ r₂) s k ((xs , ys) , eq , inj₂ p , rest) = either-if {match r₁ s k} {match r₂ s k} (inj₂ (match-completeness r₂ s k ((xs , ys) , eq , (p , rest))))
   match-completeness (r ⁺ˢ) s k ((xs , ys) , b , S+ x , d) = either-if (inj₁ (match-completeness r s k ((xs , ys) , b , x , d)))

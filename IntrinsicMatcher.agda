@@ -16,13 +16,19 @@ module IntrinsicMatcher where
   open import Relation.Nullary
   open import Relation.Nullary.Decidable
   open import Relation.Binary.PropositionalEquality
+  import Agda.Primitive
 
   -- Using groups
 
+  open RawMonadZero {Agda.Primitive.lzero} Data.Maybe.monadZero renaming (∅ to fail)
+
+  try_within_handle_ : ∀ {l1 l2} {a : Set l1} {b : Set l2} → Maybe a → (a → Maybe b) → Maybe b → Maybe b
+  try x within y handle z = maybe′ y z x
+
   mutual
     intrinsic-helper : (k : List StdRegExp) → (s : List Char) → Maybe (s ∈Lᵏ k)
-    intrinsic-helper [] [] = just refl
-    intrinsic-helper [] (x ∷ s) = nothing
+    intrinsic-helper [] [] = return refl
+    intrinsic-helper [] (x ∷ s) = fail
     intrinsic-helper (r ∷ rs) s = intrinsic r s rs
 
     -- Doing the matching and soundness proof at the same time.
@@ -30,12 +36,17 @@ module IntrinsicMatcher where
               → (s : List Char)
               → (k : List StdRegExp)
               → Maybe (Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
-    intrinsic ∅ˢ s k = nothing
-    intrinsic (Litˢ c) [] k = nothing
-    intrinsic (Litˢ c) (x ∷ xs) k = (decToMaybe (x Data.Char.≟ c)) >>= (λ p → Data.Maybe.map (λ pf → (((c ∷ [] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))) (intrinsic-helper k xs)) where open RawMonad Data.Maybe.monad
-    intrinsic (r₁ ·ˢ r₂) s k = Data.Maybe.map (λ { ((xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest)) → ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , ((xs , as) , refl , inL , inL') , rest) }) (intrinsic r₁ s (r₂ ∷ k))
-    intrinsic (r₁ ⊕ˢ r₂) s k = maybe′ (λ {((p , s' ) , eq , inL , rest) → just ((p , s') , eq , inj₁ inL , rest)}) (Data.Maybe.map (λ { ((p , s') , eq , inL , rest) →  ((p , s') , eq , inj₂ inL , rest) }) (intrinsic r₂ s k)) (intrinsic r₁ s k)
-    intrinsic (r ⁺ˢ) s k = maybe′ (λ {((p , s') , eq , inL , rest) → just ((p , s') , eq , S+ {p}{r} inL , rest)  }) (Data.Maybe.map (λ { ((xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest)) → ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , C+ {xs ++ as}{xs}{as} refl inL inL' , rest) }) (intrinsic r s ((r ⁺ˢ) ∷ k))) (intrinsic r s k)
+    intrinsic ∅ˢ s k = fail
+    intrinsic (Litˢ c) [] k = fail
+    intrinsic (Litˢ c) (x ∷ xs) k = (decToMaybe (x Data.Char.≟ c)) >>=
+                                    (λ p → (intrinsic-helper k xs) >>= (λ pf → return (((c ∷ [] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))))
+    intrinsic (r₁ ·ˢ r₂) s k = (intrinsic r₁ s (r₂ ∷ k)) >>= (λ { ((xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest)) → return ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , ((xs , as) , refl , inL , inL') , rest) })
+    intrinsic (r₁ ⊕ˢ r₂) s k = try (intrinsic r₁ s k)
+        within (λ {((p , s' ) , eq , inL , rest) → return ((p , s') , eq , inj₁ inL , rest)})
+        handle ((intrinsic r₂ s k) >>= (λ { (_ , eq , inL , rest) → return (_ , eq , inj₂ inL , rest) }))
+    intrinsic (r ⁺ˢ) s k = try (intrinsic r s k)
+        within (λ {((p , s') , eq , inL , rest) → return ((p , s') , eq , S+ {p}{r} inL , rest) })
+        handle ((intrinsic r s ((r ⁺ˢ) ∷ k)) >>= (λ { ((xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest)) → return ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , C+ {xs ++ as}{xs}{as} refl inL inL' , rest) }))
 
   mutual
     intrinsic-helper-some : (k : List StdRegExp) → (s : List Char) → (s ∈Lᵏ k) → isJust (intrinsic-helper k s)
