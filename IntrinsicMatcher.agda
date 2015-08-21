@@ -1,5 +1,6 @@
 open import Definitions
 open import Lemmas
+open import OverallMatcher
 
 module IntrinsicMatcher where
 
@@ -17,6 +18,7 @@ module IntrinsicMatcher where
   open import Relation.Nullary.Decidable
   open import Relation.Binary.PropositionalEquality
   import Agda.Primitive
+
 
   -- Using groups
 
@@ -113,3 +115,24 @@ module IntrinsicMatcher where
     where lemma : ∀ {l} → {x : Maybe l} → isJust x → is-just x ≡ true
           lemma {x = just x} m = refl
           lemma {x = nothing} ()
+
+  {- Efficient overall matcher.
+   These functions can be found in the OverallMatcher module
+   but efficiency is sacrificed for generalization, because
+   _acceptsˢ_ and _acceptsˢ-soundness are run twice, however
+   those two are the same thing for the intrinsic matcher.
+   Hence, we should run it only once. The functions below are efficient.
+  -}
+
+  inL-intrinsic : (r : RegExp)
+                → (s : String.String)
+                → Maybe ((String.toList s) ∈L r)
+  inL-intrinsic r s with String.toList s | δ' r
+  ... | [] | inj₁ x = just x
+  ... | l | d with intrinsic (standardize r) l []
+  ...            | nothing = nothing
+  inL-intrinsic r s | .(xs ++ []) | d | just ((xs , .[]) , refl , inL , refl) =
+    just ( eq-replace (sym (cong₂ _∈L_ {_}{_}{r}{r} (append-rh-[] xs) refl)) (∈L-soundness xs r (inj₂ inL)))
+
+  exec : RegExp → String.String → Maybe (List String.String)
+  exec r s = Data.Maybe.map (λ inL → Data.List.map String.fromList (extract {r}{String.toList s} inL)) (inL-intrinsic r s)

@@ -13,10 +13,8 @@ open import Relation.Nullary
 open import Relation.Nullary.Decidable
 open import Relation.Binary.PropositionalEquality
 
-module OverallMatcher {_acceptsˢ_ : StdRegExp → List Char → Bool}
-                      {acceptsˢ-soundness : (r : StdRegExp) → (s : List Char) → r acceptsˢ s ≡ true → s ∈Lˢ r}
-                      {acceptsˢ-completeness : (r : StdRegExp) → (s : List Char) → s ∈Lˢ r → r acceptsˢ s ≡ true} where
 
+module OverallMatcher where
   data RegExp : Set where
     ∅ : RegExp  -- empty set (type \emptyset)
     ε : RegExp   -- empty string (type \epsilon)
@@ -181,12 +179,7 @@ module OverallMatcher {_acceptsˢ_ : StdRegExp → List Char → Bool}
   ... | inj₂ x = inj₁ (a , b)
   ∈L-completeness s (G r) inL | inj₂ x = inj₂ x
 
-  -- Overall matcher
-  _accepts_ : RegExp → String.String → Bool
-  r accepts s with δ r | standardize r | String.toList s
-  ... | true  | r' | xs = (null xs) ∨ (r' acceptsˢ xs)
-  ... | false | r' | xs = r' acceptsˢ xs
-
+  -- Extracts what matches the groups in the proof.
   extract : {r : RegExp} → {xs : List Char} → xs ∈L r → List (List Char)
   extract {∅} ()
   extract {ε} refl = []
@@ -197,6 +190,15 @@ module OverallMatcher {_acceptsˢ_ : StdRegExp → List Char → Bool}
   extract {r *} (Ex refl) = []
   extract {r *} (Cx {s}{s₁}{s₂} x x₁ inL) = extract {r}{s₁} x₁ ++ extract {r *}{s₂} inL
   extract {G r}{xs} inL = xs ∷ extract {r}{xs} inL
+
+module Matcher {_acceptsˢ_ : StdRegExp → List Char → Bool}
+               {acceptsˢ-soundness : (r : StdRegExp) → (s : List Char) → r acceptsˢ s ≡ true → s ∈Lˢ r}
+               {acceptsˢ-completeness : (r : StdRegExp) → (s : List Char) → s ∈Lˢ r → r acceptsˢ s ≡ true} where
+  -- Overall matcher
+  _accepts_ : RegExp → String.String → Bool
+  r accepts s with δ r | standardize r | String.toList s
+  ... | true  | r' | xs = (null xs) ∨ (r' acceptsˢ xs)
+  ... | false | r' | xs = r' acceptsˢ xs
 
   inL-intrinsic : (r : RegExp)
                 → (s : List Char)
