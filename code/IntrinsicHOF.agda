@@ -1,7 +1,7 @@
 open import Definitions
 open import Lemmas
 
-module IntrinsicHOT where
+module IntrinsicHOF where
 
   open import Category.Monad
   open import Data.Char

@@ -1,7 +1,7 @@
 open import Definitions
 open import Lemmas
 
-module ExtrinsicHOT where
+module ExtrinsicHOF where
 
   open import Data.Char
   open import Data.Bool
