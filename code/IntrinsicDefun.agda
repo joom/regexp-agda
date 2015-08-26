@@ -2,7 +2,7 @@ open import Definitions
 open import Lemmas
 open import OverallMatcher
 
-module IntrinsicMatcher where
+module IntrinsicDefun where
 
   open import Category.Monad
   open import Data.Bool

@@ -1,7 +1,7 @@
 open import Definitions
 open import Lemmas
 
-module ExtrinsicMatcher where
+module ExtrinsicDefun where
 
   open import Data.Char
   open import Data.Bool

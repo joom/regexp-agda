@@ -1,7 +1,7 @@
 open import Definitions
 open import Lemmas
 
-module BooleanMatcher where
+module ExtrinsicHOT where
 
   open import Data.Char
   open import Data.Bool
