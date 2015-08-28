@@ -1,5 +1,6 @@
 open import Definitions
 open import Lemmas
+import OverallMatcher
 
 module ExtrinsicDefun where
 
@@ -76,3 +77,5 @@ module ExtrinsicDefun where
 
   acceptsˢ-completeness : (r : StdRegExp) → (s : List Char) → s ∈Lˢ r → r acceptsˢ s ≡ true
   acceptsˢ-completeness r s inL = match-completeness r s [] ((s , []) , append-rh-[] s , inL , refl)
+
+  open OverallMatcher.Matcher {_acceptsˢ_}{acceptsˢ-soundness}{acceptsˢ-completeness}

@@ -22,7 +22,8 @@ module IntrinsicDefun where
 
   -- Using groups
 
-  open RawMonadZero {Agda.Primitive.lzero} Data.Maybe.monadZero renaming (∅ to fail)
+  -- open RawMonadZero {Agda.Primitive.lzero} Data.Maybe.monadZero renaming (∅ to fail)
+  open RawMonadPlus {Agda.Primitive.lzero} Data.Maybe.monadPlus renaming (∅ to fail)
 
   change-∈L : {a b d : List Char → Set} {c : List Char → List Char → Set}
             → (∀ {s} → a s → b s)
@@ -53,12 +54,10 @@ module IntrinsicDefun where
         (isEqual x c) >>= (λ p → (intrinsic-helper k xs) >>= (λ pf → return (((c ∷ [] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))))
     intrinsic (r₁ ·ˢ r₂) s k =
         (intrinsic r₁ s (r₂ ∷ k)) >>= collect-left (λ inL inL' → _ , refl , inL , inL')
-    intrinsic (r₁ ⊕ˢ r₂) s k = try (intrinsic r₁ s k)
-        within change-∈L inj₁
-        handle ((intrinsic r₂ s k) >>= change-∈L inj₂)
-    intrinsic (r ⁺ˢ) s k = try (intrinsic r s k)
-        within change-∈L S+
-        handle ((intrinsic r s ((r ⁺ˢ) ∷ k)) >>= collect-left (λ inL inL' → C+ refl inL inL'))
+    intrinsic (r₁ ⊕ˢ r₂) s k =
+      ((intrinsic r₁ s k) >>= change-∈L inj₁) ∣ ((intrinsic r₂ s k) >>= change-∈L inj₂)
+    intrinsic (r ⁺ˢ) s k =
+      ((intrinsic r s k) >>= change-∈L S+) ∣ ((intrinsic r s ((r ⁺ˢ) ∷ k)) >>= collect-left (λ inL inL' → C+ refl inL inL'))
 
   mutual
     intrinsic-helper-some : (k : List StdRegExp) → (s : List Char) → (s ∈Lᵏ k) → isJust (intrinsic-helper k s)
