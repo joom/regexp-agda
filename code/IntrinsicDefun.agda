@@ -110,10 +110,7 @@ module IntrinsicDefun where
   acceptsˢ-soundness r s () | nothing
 
   acceptsˢ-completeness : (r : StdRegExp) → (s : List Char) → s ∈Lˢ r → r acceptsˢ s ≡ true
-  acceptsˢ-completeness r s inL = lemma (intrinsic-completeness r s [] ((s , []) , append-rh-[] s , inL , refl))
-    where lemma : ∀ {l} → {x : Maybe l} → isJust x → is-just x ≡ true
-          lemma {x = just x} m = refl
-          lemma {x = nothing} ()
+  acceptsˢ-completeness r s inL = is-just-lemma (intrinsic-completeness r s [] ((s , []) , append-rh-[] s , inL , refl))
 
   {- Efficient overall matcher.
    These functions can be found in the OverallMatcher module

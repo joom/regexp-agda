@@ -6,6 +6,7 @@ module Lemmas where
   open import Data.Char
   open import Data.Empty
   open import Data.List
+  open import Data.Maybe
   open import Data.Product
   open import Data.Sum
   open import Relation.Nullary
@@ -143,3 +144,14 @@ module Lemmas where
 
   replace-right : (xs ys as bs s : List Char) → as ++ bs ≡ ys → xs ++ ys ≡ s → (xs ++ as) ++ bs ≡ s
   replace-right xs .(as ++ bs) as bs .(xs ++ as ++ bs) refl refl = sym (append-assoc xs as bs)
+
+  is-just-lemma : ∀ {l} → {x : Maybe l} → isJust x → is-just x ≡ true
+  is-just-lemma {x = just x} m = refl
+  is-just-lemma {x = nothing} ()
+
+  empty-continuation : ∀ {p' s' s'' r} → (p' ++ s'' ≡ s') → (p' ∈Lˢ r) → Maybe (s' ∈Lˢ r)
+  empty-continuation {p'}{s'}{s'' = []}{r} eq inL =  just (eq-replace (cong₂ _∈Lˢ_ {_}{_}{r}{r} (trans (sym (append-rh-[] p')) eq) refl ) inL)
+  empty-continuation {s'' = x ∷ s''} eq inL = nothing
+
+  suffix-continuation : ∀ {p s' s r} → (p ++ s' ≡ s) → (p ∈Lˢ r) → Suffix s' s
+  suffix-continuation {p}{s'}{s}{r} eq inL = eq-replace (cong₂ Suffix refl eq) (append-suffix2 {p}{s'}{r} inL)
