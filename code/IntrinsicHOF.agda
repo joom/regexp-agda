@@ -21,58 +21,51 @@ module IntrinsicHOF where
 
   open RawMonadPlus {Agda.Primitive.lzero} Data.Maybe.monadPlus renaming (∅ to fail)
 
-  match : (c : StdRegExp → StdRegExp)
-        → (cs : List Char → List Char)
+  match : (C : Set)
         → (r : StdRegExp)
         → (s : List Char)
-        → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe ((cs s) ∈Lˢ (c r)))
+        → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
         → RecursionPermission s
-        → Maybe ((cs s) ∈Lˢ (c r))
-  match _ _ ∅ˢ s k perm = nothing
-  match _ _ (Litˢ x) [] k perm = nothing
-  match _ _ (Litˢ x) (y ∷ ys) k perm with y Data.Char.≟ x
+        → Maybe C
+  match C ∅ˢ s k perm = nothing
+  match C (Litˢ x) [] k perm = nothing
+  match C (Litˢ x) (y ∷ ys) k perm with y Data.Char.≟ x
   ... | no _ = nothing
   ... | yes p = k {y ∷ []} {ys} refl (cong (λ q → q ∷ []) p)
-  match c cs (r₁ ·ˢ r₂) s k (CanRec f) =
-    match (λ r → c (r ·ˢ r₂)) cs r₁ s
-          (λ {p}{s'} eq inL → match (λ r → c (r₁ ·ˢ r)) (λ x → cs s) r₂ s'
-                                     (λ {p'}{s''} eq' inL' → k {p ++ p'}{s''} (replace-right p s' p' s'' s eq' eq) ((p , p') , refl , inL , inL'))
-                                     (f _ (suffix-continuation eq inL)) ) (CanRec f)
-  match c cs (r₁ ⊕ˢ r₂) s k perm =
-    match (c ∘ (λ r → r ⊕ˢ r₂)) cs r₁ s (λ {p}{s'} eq inL → k {p}{s'} eq (inj₁ inL)) perm ∣
-    match (c ∘ (λ r → r₁ ⊕ˢ r)) cs r₂ s (λ {p}{s'} eq inL → k {p}{s'} eq (inj₂ inL)) perm
-  match c cs (r ⁺ˢ) s k (CanRec f) =
-    match (c ∘ _⁺ˢ) cs r s (λ {p}{s'} eq inL → k {p}{s'} eq (S+ inL)) (CanRec f) ∣
-    match (c ∘ _⁺ˢ) cs r s
-          (λ {p}{s'} eq inL → match c (λ _ → cs s) (r ⁺ˢ) s'
-                                    (λ {p'}{s''} eq' inL' → k {p ++ p'}{s''} (replace-right p s' p' s'' s eq' eq) (C+ {p ++ p'}{p}{p'} refl inL inL'))
-                                    (f _ (suffix-continuation eq inL))) (CanRec f)
+  match C (r₁ ·ˢ r₂) s k (CanRec f) =
+    match C r₁ s (λ {p}{s'} eq inL → match C r₂ s' (λ {p'}{s''} eq' inL' → k {p ++ p'}{s''} (replace-right p s' p' s'' s eq' eq) ((p , p') , refl , inL , inL')) (f _ (suffix-continuation eq inL))) (CanRec f)
+  match C (r₁ ⊕ˢ r₂) s k perm =
+    match C r₁ s (λ eq inL → k eq (inj₁ inL)) perm ∣
+    match C r₂ s (λ eq inL → k eq (inj₂ inL)) perm
+  match C (r ⁺ˢ) s k (CanRec f) =
+    match C r s (λ eq inL → k eq (S+ inL)) (CanRec f) ∣
+    match C r s (λ {p}{s'} eq inL → match C (r ⁺ˢ) s' (λ {p'}{s''} eq' inL' → k (replace-right p s' p' s'' s eq' eq) (C+ refl inL inL') ) (f _ (suffix-continuation eq inL))) (CanRec f)
 
-  match-completeness : (c : StdRegExp → StdRegExp)
-                     → (cs : List Char → List Char)
+
+  match-completeness : (C : Set)
                      → (r : StdRegExp)
                      → (s : List Char)
-                     → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe ((cs s) ∈Lˢ (c r)))
+                     → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
                      → (perm : RecursionPermission s)
-                     → (cs s) ∈Lˢ (c r)
-                     → isJust (match c cs r s k perm)
-  match-completeness c _ ∅ˢ s k perm inL = {!!}
-  match-completeness c _ (Litˢ x) s k perm inL = {!!}
-  match-completeness c _ (r₁ ·ˢ r₂) s k perm inL = {!!}
-  match-completeness c _ (r₁ ⊕ˢ r₂) s k perm inL = {!!}
-  match-completeness c _ (r ⁺ˢ) s k perm inL = {!!}
+                     → C
+                     → isJust (match C r s k perm)
+  match-completeness C ∅ˢ s k perm pf = ?
+  match-completeness C (Litˢ x) s k perm pf = {!!}
+  match-completeness C (r₁ ·ˢ r₂) s k perm pf = {!!}
+  match-completeness C (r₁ ⊕ˢ r₂) s k perm pf = {!!}
+  match-completeness C (r ⁺ˢ) s k perm pf = {!!}
 
   -- Standard "accepts"
 
   _acceptsˢ_ : StdRegExp → List Char → Bool
-  r acceptsˢ s = is-just (match id id r s empty-continuation (well-founded s))
+  r acceptsˢ s = is-just (match _ r s empty-continuation (well-founded s))
 
   acceptsˢ-soundness : (r : StdRegExp) → (s : List Char) → r acceptsˢ s ≡ true → s ∈Lˢ r
-  acceptsˢ-soundness r s m with match id id r s empty-continuation (well-founded s)
+  acceptsˢ-soundness r s m with match _ r s empty-continuation (well-founded s)
   ... | just pf = pf
   acceptsˢ-soundness r s () | nothing
 
   acceptsˢ-completeness : (r : StdRegExp) → (s : List Char) → s ∈Lˢ r → r acceptsˢ s ≡ true
-  acceptsˢ-completeness r s inL = is-just-lemma (match-completeness id id r s empty-continuation (well-founded s) inL)
+  acceptsˢ-completeness r s inL = is-just-lemma (match-completeness _ r s empty-continuation (well-founded s) inL)
 
   open OverallMatcher.Matcher {_acceptsˢ_}{acceptsˢ-soundness}{acceptsˢ-completeness}
