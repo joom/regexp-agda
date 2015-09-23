@@ -47,13 +47,17 @@ module IntrinsicHOF where
                      → (s : List Char)
                      → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
                      → (perm : RecursionPermission s)
-                     → C
+                     → Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × Σ _ (λ { (a , b) → isJust (k {p}{s'} a b) }) })
                      → isJust (match C r s k perm)
-  match-completeness C ∅ˢ s k perm pf = ?
-  match-completeness C (Litˢ x) s k perm pf = {!!}
-  match-completeness C (r₁ ·ˢ r₂) s k perm pf = {!!}
-  match-completeness C (r₁ ⊕ˢ r₂) s k perm pf = {!!}
-  match-completeness C (r ⁺ˢ) s k perm pf = {!!}
+  match-completeness _ ∅ˢ _ _ _ (_ , _ , () , _)
+  match-completeness C (Litˢ x) .(x ∷ ys) k perm ((.(x ∷ []) , ys) , refl , refl , ((a , b) , m)) with x Data.Char.≟ x
+  ... | no ¬p = ⊥-elim (¬p refl)
+  match-completeness C (Litˢ x) .((x ∷ []) ++ ys) k perm ((.(x ∷ []) , ys) , refl , refl , (refl , refl) , m) | yes p = {!!}
+  match-completeness C (r₁ ·ˢ r₂) s k perm ((xs , ys) , eq , inL , (_ , m)) = {!!}
+  match-completeness C (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , eq , inj₁ x , rest) = {!!}
+  match-completeness C (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , eq , inj₂ y , rest) = {!!}
+  match-completeness C (r ⁺ˢ) s k perm ((xs , ys) , eq , S+ x , ((a , b) , m)) = {!match-completeness C r s ? perm ?!}
+  match-completeness C (r ⁺ˢ) s k perm ((xs , ys) , eq , C+ x x₁ inL , rest) = {!!}
 
   -- Standard "accepts"
 
@@ -65,7 +69,7 @@ module IntrinsicHOF where
   ... | just pf = pf
   acceptsˢ-soundness r s () | nothing
 
-  acceptsˢ-completeness : (r : StdRegExp) → (s : List Char) → s ∈Lˢ r → r acceptsˢ s ≡ true
-  acceptsˢ-completeness r s inL = is-just-lemma (match-completeness _ r s empty-continuation (well-founded s) inL)
+  -- acceptsˢ-completeness : (r : StdRegExp) → (s : List Char) → s ∈Lˢ r → r acceptsˢ s ≡ true
+  -- acceptsˢ-completeness r s inL = is-just-lemma (match-completeness _ r s empty-continuation (well-founded s) inL)
 
-  open OverallMatcher.Matcher {_acceptsˢ_}{acceptsˢ-soundness}{acceptsˢ-completeness}
+  -- open OverallMatcher.Matcher {_acceptsˢ_}{acceptsˢ-soundness}{acceptsˢ-completeness}
