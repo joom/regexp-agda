@@ -58,21 +58,24 @@ module IntrinsicHOF where
   match-completeness C (Litˢ x) .(x ∷ ys) k perm ((.(x ∷ []) , ys) , refl , refl , m) with x Data.Char.≟ x
   ... | no ¬p = ⊥-elim (¬p refl)
   ... | yes refl = m
-  match-completeness C (r₁ ·ˢ r₂) .((as ++ bs) ++ ys) k (CanRec f) ((.(as ++ bs) , ys) , refl , ((as , bs) , refl , inL , rest) , m)
-    with match-completeness C r₂ (bs ++ ys) {!!} {!!} ?
-  ... | pf = match-completeness C r₁ _ {!!} (CanRec f) {!!}
+
+  -- match-completeness C (r₁ ·ˢ r₂) .((as ++ bs) ++ ys) k (CanRec f) ((.(as ++ bs) , ys) , refl , ((as , bs) , refl , inL , rest) , m)
+  --   with match-completeness C r₂ (bs ++ ys) (λ {p'} {s''} eq' inL' → k _ _) (f _ _) (_ , refl , _ , {!!})
+  -- ... | pf = match-completeness C r₁ _ _ (CanRec f) (_ , append-assoc as bs ys , inL , pf)
+
+  match-completeness C (r₁ ·ˢ r₂) s k (CanRec f) ((xs , ys) , eq , ((as , bs) , eq' , inL , rest) , m) = {!!}
   match-completeness C (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , eq , inj₁ inL , m)
     with match-completeness C r₁ s (λ {p}{s'} eq' inL' → k eq' (inj₁ inL') ) perm (_ , eq , inL , m)
   ... | pf = or-just (inj₁ pf)
   match-completeness C (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , eq , inj₂ inL , m)
     with match-completeness C r₂ s (λ {p}{s'} eq' inL' → k eq' (inj₂ inL')) perm ((_ , eq , inL , m))
   ... | pf =  or-just {_}{match C r₁ s (λ {p} {s'} eq' inL' → k eq' (inj₁ inL')) perm} (inj₂ pf)
-  match-completeness C (r ⁺ˢ) s k perm ((xs , ys) , eq , S+ x , m)
-    with match-completeness C r s (λ {p}{s'} eq' inL' → k eq' (S+ inL')) perm (_ , eq , x , m)
-  ... | pf = {!!}
+  match-completeness C (r ⁺ˢ) s k (CanRec f) ((xs , ys) , eq , S+ x , m)
+    with match-completeness C r s (λ {p}{s'} eq' inL' → k eq' (S+ inL')) (CanRec f) (_ , eq , x , m)
+  ... | pf = or-just (inj₁ {!!})
   match-completeness C (r ⁺ˢ) s k perm ((xs , ys) , eq , C+ x x₁ inL , m)
     with match-completeness C r s {!!} perm {!!}
-  ... | pf = {!!}
+  ... | pf = or-just (inj₂ {!!})
 
 
   -- Standard "accepts"
