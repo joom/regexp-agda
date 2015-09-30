@@ -1,3 +1,5 @@
+paper/Report.tex
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
@@ -13,7 +15,9 @@
 # these rules might exclude image files for figures etc.
 # *.ps
 # *.eps
-# *.pdf
+*.pdf
+*.ptb
+*.tex-e
 
 ## Bibliography auxiliary files (bibtex/biblatex/biber):
 *.bbl
