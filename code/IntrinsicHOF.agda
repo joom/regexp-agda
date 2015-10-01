@@ -47,6 +47,10 @@ module IntrinsicHOF where
   or-just {a = nothing} (inj₁ x) = ⊥-elim x
   or-just {a = nothing} (inj₂ y) = y
 
+  {- uniqueness of identity -}
+  uip : ∀ {l : Agda.Primitive.Level} {A : Set l} {x : A} (p : x ≡ x) → (p ≡ refl)
+  uip refl = refl
+
   match-completeness : (C : Set)
                      → (r : StdRegExp)
                      → (s : List Char)
@@ -58,12 +62,9 @@ module IntrinsicHOF where
   match-completeness C (Litˢ x) .(x ∷ ys) k perm ((.(x ∷ []) , ys) , refl , refl , m) with x Data.Char.≟ x
   ... | no ¬p = ⊥-elim (¬p refl)
   ... | yes refl = m
-
-  -- match-completeness C (r₁ ·ˢ r₂) .((as ++ bs) ++ ys) k (CanRec f) ((.(as ++ bs) , ys) , refl , ((as , bs) , refl , inL , rest) , m)
-  --   with match-completeness C r₂ (bs ++ ys) (λ {p'} {s''} eq' inL' → k _ _) (f _ _) (_ , refl , _ , {!!})
-  -- ... | pf = match-completeness C r₁ _ _ (CanRec f) (_ , append-assoc as bs ys , inL , pf)
-
-  match-completeness C (r₁ ·ˢ r₂) s k (CanRec f) ((xs , ys) , eq , ((as , bs) , eq' , inL , rest) , m) = {!!}
+  match-completeness C (r₁ ·ˢ r₂) .((as ++ bs) ++ ys) k (CanRec f) ((.(as ++ bs) , ys) , refl , ((as , bs) , refl , inL , inL2) , m)
+    with match-completeness C r₂ (bs ++ ys) (λ {p'}{s''} eq''' inL' → k {as ++ p'}{s''} (replace-right as (bs ++ ys) p' s'' ((as ++ bs) ++ ys) eq''' (replace-left as bs (as ++ bs) ys ((as ++ bs) ++ ys) refl refl)) ((as , p') , refl , inL , inL')) (f _ (suffix-continuation (replace-left as bs (as ++ bs) ys ((as ++ bs) ++ ys) refl refl) inL)) ((bs , ys) , refl , inL2 , subst (λ H → isJust (k H ((as , bs) , refl , inL , inL2))) (sym (uip _)) m)
+  ... | pf = match-completeness C r₁ ((as ++ bs) ++ ys) (λ {p}{s'} eq inL → match C r₂ s' (λ {p'}{s''} eq' inL' → k {p ++ p'}{s''} (replace-right p s' p' s'' ((as ++ bs) ++ ys) eq' eq) ((p , p') , refl , inL , inL')) (f _ (suffix-continuation eq inL))) (CanRec f) ((as , bs ++ ys) , replace-left as bs (as ++ bs) ys ((as ++ bs) ++ ys) refl refl , inL , pf)
   match-completeness C (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , eq , inj₁ inL , m)
     with match-completeness C r₁ s (λ {p}{s'} eq' inL' → k eq' (inj₁ inL') ) perm (_ , eq , inL , m)
   ... | pf = or-just (inj₁ pf)
