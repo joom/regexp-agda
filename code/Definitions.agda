@@ -55,8 +55,5 @@ module Definitions where
   s ∈Lᵏ [] = s ≡ []
   s ∈Lᵏ (r ∷ rs) = Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ∈Lᵏ rs) })
 
-  try_within_handle_ : ∀ {l1 l2} {a : Set l1} {b : Set l2} → Maybe a → (a → Maybe b) → Maybe b → Maybe b
-  try x within y handle z = maybe′ y z x
-
   isEqual : (x y : Char) → Maybe (x ≡ y)
   isEqual x y = decToMaybe (x Data.Char.≟ y)

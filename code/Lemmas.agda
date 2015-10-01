@@ -2,16 +2,19 @@ open import Definitions
 
 module Lemmas where
 
+  open import Category.Monad
   open import Data.Bool
   open import Data.Char
   open import Data.Empty
   open import Data.List
   open import Data.Maybe
   open import Data.Product
+  open import Data.Unit
   open import Data.Sum
   open import Relation.Nullary
   open import Relation.Binary.PropositionalEquality
   open import Relation.Nullary.Decidable
+  import Agda.Primitive
 
   empty-append : {xs ys : List Char} → xs ++ ys ≡ [] → (xs ≡ []) × (ys ≡ [])
   empty-append {[]} {[]} refl = refl , refl
@@ -155,3 +158,13 @@ module Lemmas where
 
   suffix-continuation : ∀ {p s' s r} → (p ++ s' ≡ s) → (p ∈Lˢ r) → Suffix s' s
   suffix-continuation {p}{s'}{s}{r} eq inL = eq-replace (cong₂ Suffix refl eq) (append-suffix2 {p}{s'}{r} inL)
+
+  open RawMonadPlus {Agda.Primitive.lzero} Data.Maybe.monadPlus renaming (∅ to fail)
+  or-just : ∀ {A} {a b : Maybe A} → (isJust a) ⊎ (isJust b) → isJust (a ∣ b)
+  or-just {a = just x} m = tt
+  or-just {a = nothing} (inj₁ x) = ⊥-elim x
+  or-just {a = nothing} (inj₂ y) = y
+
+  {- uniqueness of identity -}
+  uip : ∀ {l : Agda.Primitive.Level} {A : Set l} {x : A} (p : x ≡ x) → (p ≡ refl)
+  uip refl = refl

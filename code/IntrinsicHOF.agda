@@ -42,15 +42,6 @@ module IntrinsicHOF where
     match C r s (λ eq inL → k eq (S+ inL)) (CanRec f) ∣
     match C r s (λ {p}{s'} eq inL → match C (r ⁺ˢ) s' (λ {p'}{s''} eq' inL' → k (replace-right p s' p' s'' s eq' eq) (C+ refl inL inL') ) (f _ (suffix-continuation eq inL))) (CanRec f)
 
-  or-just : ∀ {A} {a b : Maybe A} → (isJust a) ⊎ (isJust b) → isJust (a ∣ b)
-  or-just {a = just x} m = tt
-  or-just {a = nothing} (inj₁ x) = ⊥-elim x
-  or-just {a = nothing} (inj₂ y) = y
-
-  {- uniqueness of identity -}
-  uip : ∀ {l : Agda.Primitive.Level} {A : Set l} {x : A} (p : x ≡ x) → (p ≡ refl)
-  uip refl = refl
-
   match-completeness : (C : Set)
                      → (r : StdRegExp)
                      → (s : List Char)
@@ -63,21 +54,22 @@ module IntrinsicHOF where
   ... | no ¬p = ⊥-elim (¬p refl)
   ... | yes refl = m
   match-completeness C (r₁ ·ˢ r₂) .((as ++ bs) ++ ys) k (CanRec f) ((.(as ++ bs) , ys) , refl , ((as , bs) , refl , inL , inL2) , m)
-    with match-completeness C r₂ (bs ++ ys) (λ {p'}{s''} eq''' inL' → k {as ++ p'}{s''} (replace-right as (bs ++ ys) p' s'' ((as ++ bs) ++ ys) eq''' (replace-left as bs (as ++ bs) ys ((as ++ bs) ++ ys) refl refl)) ((as , p') , refl , inL , inL')) (f _ (suffix-continuation (replace-left as bs (as ++ bs) ys ((as ++ bs) ++ ys) refl refl) inL)) ((bs , ys) , refl , inL2 , subst (λ H → isJust (k H ((as , bs) , refl , inL , inL2))) (sym (uip _)) m)
-  ... | pf = match-completeness C r₁ ((as ++ bs) ++ ys) (λ {p}{s'} eq inL → match C r₂ s' (λ {p'}{s''} eq' inL' → k {p ++ p'}{s''} (replace-right p s' p' s'' ((as ++ bs) ++ ys) eq' eq) ((p , p') , refl , inL , inL')) (f _ (suffix-continuation eq inL))) (CanRec f) ((as , bs ++ ys) , replace-left as bs (as ++ bs) ys ((as ++ bs) ++ ys) refl refl , inL , pf)
+    with match-completeness C r₂ (bs ++ ys) _ (f _ (suffix-continuation (replace-left as bs _ ys _ refl refl) inL))
+                            (_ , refl , inL2 , subst (λ H → isJust (k H (_ , refl , inL , inL2))) (sym (uip _)) m)
+  ... | pf = match-completeness C r₁ _ _ (CanRec f) (_ , replace-left as bs _ ys _ refl refl , inL , pf)
   match-completeness C (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , eq , inj₁ inL , m)
     with match-completeness C r₁ s (λ {p}{s'} eq' inL' → k eq' (inj₁ inL') ) perm (_ , eq , inL , m)
   ... | pf = or-just (inj₁ pf)
   match-completeness C (r₁ ⊕ˢ r₂) s k perm ((xs , ys) , eq , inj₂ inL , m)
     with match-completeness C r₂ s (λ {p}{s'} eq' inL' → k eq' (inj₂ inL')) perm ((_ , eq , inL , m))
   ... | pf =  or-just {_}{match C r₁ s (λ {p} {s'} eq' inL' → k eq' (inj₁ inL')) perm} (inj₂ pf)
-  match-completeness C (r ⁺ˢ) s k (CanRec f) ((xs , ys) , eq , S+ x , m)
-    with match-completeness C r s (λ {p}{s'} eq' inL' → k eq' (S+ inL')) (CanRec f) (_ , eq , x , m)
-  ... | pf = or-just (inj₁ {!!})
-  match-completeness C (r ⁺ˢ) s k perm ((xs , ys) , eq , C+ x x₁ inL , m)
-    with match-completeness C r s {!!} perm {!!}
-  ... | pf = or-just (inj₂ {!!})
-
+  match-completeness C (r ⁺ˢ) s k (CanRec f) ((xs , ys) , eq , S+ x , m) =
+    or-just (inj₁ (match-completeness C r s (λ {p}{s'} eq' inL' → k eq' (S+ inL')) (CanRec f) (_ , eq , x , m)))
+  match-completeness C (r ⁺ˢ) ._ k (CanRec f) ((._ , ys) , refl , C+ {._}{s₁}{s₂} refl inL inL2 , m)
+    with match-completeness C (r ⁺ˢ) (s₂ ++ ys) _ (f _ (suffix-continuation (append-assoc s₁ s₂ ys) inL))
+                            (_ , refl , inL2 , subst (λ H → isJust (k H (C+ refl inL inL2))) (sym (uip _)) m)
+  ... | pf = or-just {_}{match C r _ (λ eq inL → k eq (S+ inL)) (CanRec f)}
+                     (inj₂ (match-completeness C r ((s₁ ++ s₂) ++ ys) _ _ (_ , append-assoc s₁ s₂ ys , inL , pf)))
 
   -- Standard "accepts"
 
@@ -89,7 +81,7 @@ module IntrinsicHOF where
   ... | just pf = pf
   acceptsˢ-soundness r s () | nothing
 
-  -- acceptsˢ-completeness : (r : StdRegExp) → (s : List Char) → s ∈Lˢ r → r acceptsˢ s ≡ true
-  -- acceptsˢ-completeness r s inL = is-just-lemma (match-completeness _ r s empty-continuation (well-founded s) inL)
+  acceptsˢ-completeness : (r : StdRegExp) → (s : List Char) → s ∈Lˢ r → r acceptsˢ s ≡ true
+  acceptsˢ-completeness r s inL = is-just-lemma (match-completeness _ r s empty-continuation (well-founded s) ((s , []) , append-rh-[] s , inL , tt))
 
-  -- open OverallMatcher.Matcher {_acceptsˢ_}{acceptsˢ-soundness}{acceptsˢ-completeness}
+  open OverallMatcher.Matcher {_acceptsˢ_}{acceptsˢ-soundness}{acceptsˢ-completeness}
