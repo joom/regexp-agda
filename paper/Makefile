@@ -2,5 +2,6 @@ default: generate
 
 generate:
 	lhs2TeX -o Report.tex Report.lagda --agda
-	sed -i -e 's/ˢ/\\(^s\\)/g' Report.tex  # replace unrecognized unicode char
+# replace unrecognized unicode chars
+	sed -i -e 's/ˢ/\\(^s\\)/g; s/ᵏ/\\(^k\\)/g' Report.tex
 	pdflatex Report.tex
