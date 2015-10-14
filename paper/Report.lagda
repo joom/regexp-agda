@@ -1,40 +1,65 @@
-% \documentclass{scrartcl}
-\documentclass[10pt]{article}
+\documentclass{jfp1}
 
 \def\textmu{}
 
 %include agda.fmt
 \usepackage{textgreek} % not reproducible without textgreek
 
-\usepackage{fullpage}
-\usepackage{amsmath}
-\usepackage{amsthm}
-\usepackage{amssymb}
-\usepackage{enumerate}
-\usepackage{wasysym}
+\usepackage{color}
 
+\title{Regular Expression Matching with Dependent Types}
+\author{Joomy Korkut, Maksim Trifunovski, Dan Licata}
+
+% Editorial commands
+\newcommand{\Red}[1]{{\color{red} #1}}
+\newcommand{\ToDo}[1]{{\color{blue} ToDo: #1}}
+\newcommand{\nb}[1]{$\lhd$ \Red{#1} $\rhd$}
+\newcommand{\tocite}[0]{{\color{red} [cite]}\xspace}
+
+\newcommand{\XXX}{\Red{XXX}}
+
+
+% Math and code commands
 \newcommand{\set}[1]{\{#1\}}
 \newcommand{\standardize}{|standardize|}
 \newcommand{\SRE}{|StdRegExp|}
 \newcommand{\RE}{|RegExp|}
 
-\linespread{1.2}
-
-\title{Regular Expression Matching with Dependent Types}
-\author{Joomy Korkut, Maksim Trifunovski, Dan Licata}
-\date{August 2015}
+% Unicode chars not supported by lhs2TeX
+\DeclareUnicodeCharacter{738}{$^s$}
+\DeclareUnicodeCharacter{7503}{$^k$}
 
 \begin{document}
 
 \maketitle
 
-% StdRegExp description
-% Intrinsic defun
-% Intrinsic HOF
-% Conversion from RegExp to StdRegExp
-    % Show why it is enough to match on StdRegExp
+\begin{abstract}
+(This paper describes ...)
+\end{abstract}
 
-\medskip
+\tableofcontents
+
+\section{Introduction}
+
+Before we move on the definitions of the matchers, we should remember the
+definitions of the monadic functions we use in our code:
+
+\begin{code}
+return : ∀ {A} → A → Maybe A
+return = just
+
+fail : ∀ {A} → Maybe A
+fail = nothing
+
+_>>=_ : ∀ {A B} → Maybe A → (A → Maybe B) → Maybe B
+(just x) >>= f = f x
+nothing >>= f = nothing
+
+_∣_ : ∀ {A} → Maybe A → Maybe A → Maybe A
+(just x) ∣ _ = just x
+nothing | y = y
+\end{code}
+
 
 \section{StdRegExp description}
 
@@ -68,7 +93,8 @@ data _∈L⁺_ : List Char → StdRegExp → Set
   _ ∈Lˢ ∅ˢ = ⊥
   s ∈Lˢ (Litˢ c) = s ≡ c ∷ []
   s ∈Lˢ (r₁ ⊕ˢ r₂) = (s ∈Lˢ r₁) ⊎ (s ∈Lˢ r₂)
-  s ∈Lˢ (r₁ ·ˢ r₂) = Σ (List Char × List Char) (λ { (p , q)  → (p ++ q ≡ s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
+  s ∈Lˢ (r₁ ·ˢ r₂) =
+    Σ (List Char × List Char) (λ { (p , q)  → (p ++ q ≡ s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
   s ∈Lˢ (r ⁺ˢ) = s ∈L⁺ r
 
 data _∈L⁺_ where
@@ -84,7 +110,8 @@ The main function for the defunctionalized intrinsic matcher is defined as follo
 match : (r : StdRegExp)
       → (s : List Char)
       → (k : List StdRegExp)
-      → Maybe (Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
+      → Maybe (Σ (List Char × List Char)
+              (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
 match ∅ˢ s k = fail
 match (Litˢ c) [] k = fail
 match (Litˢ c) (x ∷ xs) k =
@@ -159,6 +186,7 @@ match-completeness : (C : Set)
 \end{code}
 
 \section{Conversion from RegExp to StdRegExp}
+
 In order to guarantee the termination of the matching function, the input regular expression is converted to a standard form regular expression. We define a function $\standardize : \RE \to \SRE$ such that
 
 $$L( \standardize (r)) = L(r) \setminus L(\varepsilon)$$
@@ -196,5 +224,11 @@ correct-completeness : (r : RegExp)
                      → (String.toList s) ∈L r
                      → r accepts s ≡ true
 \end{code}
+
+\section{Conclusion}
+
+
+\bibliographystyle{jfp}
+\bibliography{paper}
 
 \end{document}
