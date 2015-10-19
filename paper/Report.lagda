@@ -1,3 +1,4 @@
+\RequirePackage{amsmath}
 \documentclass{jfp1}
 
 \def\textmu{}
@@ -6,9 +7,6 @@
 \usepackage{textgreek} % not reproducible without textgreek
 
 \usepackage{color}
-
-\title{Regular Expression Matching with Dependent Types}
-\author{Joomy Korkut, Maksim Trifunovski, Dan Licata}
 
 % Editorial commands
 \newcommand{\Red}[1]{{\color{red} #1}}
@@ -20,14 +18,20 @@
 
 
 % Math and code commands
-\newcommand{\set}[1]{\{#1\}}
+\newcommand{\set}[1]{\left\{#1\right\}}
 \newcommand{\standardize}{|standardize|}
 \newcommand{\SRE}{|StdRegExp|}
 \newcommand{\RE}{|RegExp|}
 
 % Unicode chars not supported by lhs2TeX
-\DeclareUnicodeCharacter{738}{$^s$}
-\DeclareUnicodeCharacter{7503}{$^k$}
+\DeclareUnicodeCharacter{738}{$^\text{s}$}
+\DeclareUnicodeCharacter{7503}{$^\text{k}$}
+
+\title{Regular Expression Matching with Dependent Types}
+\author[Joomy Korkut, Maksim Trifunovski, Daniel R. Licata]
+       {JOOMY KORKUT, MAKSIM TRIFUNOVSKI, DANIEL R. LICATA\\
+        Wesleyan University}
+
 
 \begin{document}
 
@@ -41,8 +45,21 @@
 
 \section{Introduction}
 
+% A derivation isn't just being in set, it contains things
+% Show how different derivations (x : s \inL r) can contain different stuff
+
+% Skip regex, but explain standard, explain Kleene plus
+
+
+
+\section{Background}
+
+\subsection{Regular Expressions and Languages}
+
+\subsection{Monadic Functions}
+
 Before we move on the definitions of the matchers, we should remember the
-definitions of the monadic functions we use in our code:
+definitions of the monadic functions we use in our code, for the |Maybe| type:
 
 \begin{code}
 return : ∀ {A} → A → Maybe A
@@ -74,15 +91,16 @@ data StdRegExp : Set where
   _⁺ˢ : StdRegExp → StdRegExp
 \end{code}
 
-Each of the constructors correspond to these languages:
+% Each of the constructors correspond to these languages:
+% \begin{align*}
+%   L(|∅ˢ|) &= \emptyset \\
+%   L(|Litˢ 'a'|) &= \set{|s : List Char| \mid s=|['a']|} \\
+%   L(|r₁ ·ˢ r₂|) &= \set{|s : List Char| \mid \exists (|s₁|, |s₂|) \ |s₁ ++ s₂ ≡ s|, \;  |s₁| \in L(|r₁|) ,\; |s₂| \in L(|r₂|) } \\
+%   L(|r₁ ⊕ˢ r₂|) &= L(|r₁|) \cup  L(|r₂|) \\
+%   L(|r ·ˢ|) &= \set{|s : List Char| \mid s \in L(|r|) \lor \exists (s₁ s₂ = s) \ s₁ \in L(|r|) ,\; s₂ \in L(|r ·ˢ|) } \\
+% \end{align*}
 
-\begin{itemize}
-  \item $L(|∅ˢ|) = \emptyset$.
-  \item $L(|Litˢ 'a'|) = \set{s \in |List Char| : s=|"a"|}$.
-  \item $L(|r₁ ·ˢ r₂|) = \set{s \in |List Char| : \exists (s_1 s_2 = s) \ s_1 \in L(r_1) \land s_2 \in L(r_2) }$.
-  \item $L(|r₁ ⊕ˢ r₂|) = \set{s \in |List Char| : s \in L(r_1) \lor s \in L(r_2)}$.
-  \item $L(|r ·ˢ|) = \set{s \in |List Char| : s \in L(r) \lor \exists (s_1 s_2 = s) \ s_1 \in L(r) \land s_2 \in L(|r ·ˢ|) }$.
-\end{itemize}
+% Write with inference rules for Kleene plus
 
 We encode these languages in Agda in the following way:
 
