@@ -38,7 +38,7 @@
 \maketitle
 
 \begin{abstract}
-(This paper describes ...)
+We started off by trying to prove the termination of a regular expression matcher in Agda. In the Kleene star case of a regular expression however, this turned out to be a daunting task. Therefore we decided to use Standard RegExps and prove their termination and then later showed the conversion between StdRegExps and regular RegExps and vice versa. In the process we created two different types of matchers which are explained in more detail in this paper. One uses higher-order functions to pass the continuation, while the other one is a defunctionalized version which uses lists of StdRegExps instead. In conclusion, we have proven the correctness of both.
 \end{abstract}
 
 \tableofcontents
@@ -205,6 +205,12 @@ match-completeness : (C : Set)
 
 \section{Conversion from RegExp to StdRegExp}
 
+\subsection{Derivations of the same type are not necessarily equivalent}
+If we are given a list of characters $x$ and two derivations of the same type, both telling us that |x ∈Lˢ r|, we cannot assume the derivations are equivalent. \\
+An example of this is the following: \\
+Let |x = ['a','a','a']| and |r = (a⁺ ·ˢ a⁺)|, then $x$ can be matched into $r$ in a variety of ways including: the first character of $x$ matches with the first part of $r$ (the first |a⁺|) and then the second and third characters match with the second part of $r$. Another scenario is matching the empty string with the first part of $r$ and matching the whole string with the second part. Hence derivations of the same type are not necessarily equivalent.
+
+\subsection{Conversion}
 In order to guarantee the termination of the matching function, the input regular expression is converted to a standard form regular expression. We define a function $\standardize : \RE \to \SRE$ such that
 
 $$L( \standardize (r)) = L(r) \setminus L(\varepsilon)$$
