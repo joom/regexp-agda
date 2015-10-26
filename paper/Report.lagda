@@ -5,6 +5,7 @@
 
 %include agda.fmt
 \usepackage{textgreek} % not reproducible without textgreek
+\usepackage{bussproofs}
 
 \usepackage{color}
 
@@ -38,7 +39,17 @@
 \maketitle
 
 \begin{abstract}
-We started off by trying to prove the termination of a regular expression matcher in Agda. In the Kleene star case of a regular expression however, this turned out to be a daunting task. Therefore we decided to use Standard RegExps and prove their termination and then later showed the conversion between StdRegExps and regular RegExps and vice versa. In the process we created two different types of matchers which are explained in more detail in this paper. One uses higher-order functions to pass the continuation, while the other one is a defunctionalized version which uses lists of StdRegExps instead. In conclusion, we have proven the correctness of both.
+The matching algorithm described by Harper requires the input regular expressions
+to be in standard form to guarantee the termination of the algorithm. In this paper,
+we use Agda, a total programming language, to prove termination.
+Harper's algorithm just checks if the regex matches the string but in practice,
+one often needs to know how the regex matches the string to extract parts of the string.
+For that purpose, we wrote an intrinsic version of the algorithm that also
+returns which part of the string matched which part of the regex.
+We created two different types of matchers which are explained in more detail in this paper.
+One uses higher-order functions to pass the continuation, while the other one
+is a defunctionalized version which uses lists of StdRegExps instead.
+In conclusion, we have proven the correctness of both.
 \end{abstract}
 
 \tableofcontents
@@ -49,8 +60,6 @@ We started off by trying to prove the termination of a regular expression matche
 % Show how different derivations (x : s \inL r) can contain different stuff
 
 % Skip regex, but explain standard, explain Kleene plus
-
-
 
 \section{Background}
 
@@ -77,7 +86,6 @@ _∣_ : ∀ {A} → Maybe A → Maybe A → Maybe A
 nothing | y = y
 \end{code}
 
-
 \section{StdRegExp description}
 
 Let's define $\SRE$ as follows:
@@ -91,16 +99,23 @@ data StdRegExp : Set where
   _⁺ˢ : StdRegExp → StdRegExp
 \end{code}
 
-% Each of the constructors correspond to these languages:
-% \begin{align*}
-%   L(|∅ˢ|) &= \emptyset \\
-%   L(|Litˢ 'a'|) &= \set{|s : List Char| \mid s=|['a']|} \\
-%   L(|r₁ ·ˢ r₂|) &= \set{|s : List Char| \mid \exists (|s₁|, |s₂|) \ |s₁ ++ s₂ ≡ s|, \;  |s₁| \in L(|r₁|) ,\; |s₂| \in L(|r₂|) } \\
-%   L(|r₁ ⊕ˢ r₂|) &= L(|r₁|) \cup  L(|r₂|) \\
-%   L(|r ·ˢ|) &= \set{|s : List Char| \mid s \in L(|r|) \lor \exists (s₁ s₂ = s) \ s₁ \in L(|r|) ,\; s₂ \in L(|r ·ˢ|) } \\
-% \end{align*}
+|∅ˢ| is the empty set, |Litˢ| is the character literal, |_·ˢ_| is concatenation,
+|_⊕ˢ_| is alternation. Concatenation and alternation are closed in standard
+regular expressions. Lastly, |_⁺ˢ| is the Kleene plus case.
 
-% Write with inference rules for Kleene plus
+We can define the rules for a string to be in the language of Kleene plus as such:
+\begin{prooftree}
+  \AxiomC{$s \in L(|r|)$}
+  \UnaryInfC{$s \in L(|r ⁺ˢ|)$}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{$s_1 s_2 = s$}
+  \AxiomC{$s_1 \in L(|r|)$}
+  \AxiomC{$s_2 \in L(|r ⁺ˢ|)$}
+
+  \TrinaryInfC{$s \in L(|r ⁺ˢ|)$}
+\end{prooftree}
 
 We encode these languages in Agda in the following way:
 
@@ -120,6 +135,26 @@ data _∈L⁺_ where
   C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
 \end{code}
 
+Note that, if we are given a list of characters $x$ and two derivations of
+the same type, both telling us that |x ∈Lˢ r|, we cannot assume the
+derivations are equivalent. \\
+An example of this is the following:\\ Let |x = 'a' ∷ 'a' ∷ 'a' ∷ []| and
+|r = ((Litˢ 'a' ⁺ˢ) ·ˢ (Litˢ 'a' ⁺ˢ))|, then a derivation of type |x ∈Lˢ r| can
+have two different values: One of them can match one character in the first |a⁺|
+of the concatenation and match two characters in the second |a⁺|. The other value
+can match two characters in the first |a⁺| and match one character in the second
+|a⁺|. Hence derivations of the same type are not necessarily equivalent.
+The same argument can be made for derivations of non-standard regular expressions.
+
+% two different values in the same type written in Agda
+
+% \begin{code}
+% ex₁ : ('a' ∷ 'a' ∷ 'a' ∷ []) ∈Lˢ ((Litˢ 'a' ⁺ˢ) ·ˢ (Litˢ 'a' ⁺ˢ))
+% ex₂ : ('a' ∷ 'a' ∷ 'a' ∷ []) ∈Lˢ ((Litˢ 'a' ⁺ˢ) ·ˢ (Litˢ 'a' ⁺ˢ))
+% ex₁ = ('a' ∷ [] , 'a' ∷ 'a' ∷ []) , refl , S+ refl , C+ refl refl (S+ refl)
+% ex₂ = ('a' ∷ 'a' ∷ [] , 'a' ∷ []) , refl , C+ refl refl (S+ refl) , S+ refl
+% \end{code}
+
 \section{Defunctionalized intrinsic matcher}
 
 The main function for the defunctionalized intrinsic matcher is defined as following:
@@ -135,7 +170,7 @@ match (Litˢ c) [] k = fail
 match (Litˢ c) (x ∷ xs) k =
     (isEqual x c) >>=
       (λ p → (match-helper k xs) >>=
-        (λ pf → return (((c ∷ [] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))))
+        (λ pf → return ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))))
 match (r₁ ·ˢ r₂) s k =
     (match r₁ s (r₂ ∷ k)) >>= collect-left (λ inL inL' → _ , refl , inL , inL')
 match (r₁ ⊕ˢ r₂) s k =
@@ -172,7 +207,7 @@ match C ∅ˢ s k perm = nothing
 match C (Litˢ x) [] k perm = nothing
 match C (Litˢ x) (y ∷ ys) k perm with y Data.Char.≟ x
 ... | no _ = nothing
-... | yes p = k {y ∷ []} {ys} refl (cong (λ q → q ∷ []) p)
+... | yes p = k {[ y ]} {ys} refl (cong (λ q → [ q ]) p)
 match C (r₁ ·ˢ r₂) s k (CanRec f) =
   match C r₁ s
         (λ {p}{s'} eq inL →
@@ -205,17 +240,17 @@ match-completeness : (C : Set)
 
 \section{Conversion from RegExp to StdRegExp}
 
-\subsection{Derivations of the same type are not necessarily equivalent}
-If we are given a list of characters $x$ and two derivations of the same type, both telling us that |x ∈Lˢ r|, we cannot assume the derivations are equivalent. \\
-An example of this is the following: \\
-Let |x = ['a','a','a']| and |r = (a⁺ ·ˢ a⁺)|, then $x$ can be matched into $r$ in a variety of ways including: the first character of $x$ matches with the first part of $r$ (the first |a⁺|) and then the second and third characters match with the second part of $r$. Another scenario is matching the empty string with the first part of $r$ and matching the whole string with the second part. Hence derivations of the same type are not necessarily equivalent.
 
 \subsection{Conversion}
-In order to guarantee the termination of the matching function, the input regular expression is converted to a standard form regular expression. We define a function $\standardize : \RE \to \SRE$ such that
+In order to guarantee the termination of the matching function, the input
+regular expression is converted to a standard form regular expression.
+We define a function $\standardize : \RE \to \SRE$ such that
 
 $$L( \standardize (r)) = L(r) \setminus L(\varepsilon)$$
 
-We do not have a definition for the language itself, but we can define the requirements of a string being in the language of a regular expression. Hence, we should prove
+We do not have a definition for the language itself, but we can define the
+requirements of a string being in the language of a regular expression.
+Hence, we should prove
 $$(\forall s) \; \big[ s \in L(r) \Longleftrightarrow \left[ (\delta(r) = true \land s = []) \lor s \in L( \standardize (r))\right] \big]$$
 
 We are going to prove the previously stated theorem in Agda.
