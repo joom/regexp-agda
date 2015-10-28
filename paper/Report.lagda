@@ -165,17 +165,45 @@ match : (r : StdRegExp)
       → (k : List StdRegExp)
       → Maybe (Σ (List Char × List Char)
               (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
+\end{code}
+This is the type of our defunctionalized intrinsic matcher. It takes a regular expression |r|, a list of characters |s| and a list of StdRegExps |k|, and creates a splitting of the original list |s| into lists |p| and |s'| and returns an equality |(p ++ s' ≡ s)|, a derivation that |p| is in the language of |r| and a derivation that |s' ∈Lᵏ k|, which is defined to mean that if |k| is empty, then |s'| has to be empty as well, otherwise |k=r'::rs| and there is a splitting of |s'|, |s' ≡ p' ++ s''|, such that |p' ∈Lˢ r'| and |s'' ∈Lᵏ rs|.
+\begin{code}
 match ∅ˢ s k = fail
+\end{code}
+Obviously we cannot match any string to the empty set so we return a fail.
+\begin{code}
 match (Litˢ c) [] k = fail
+\end{code}
+Since we are trying to match an empty list with a regular expression that requires a character, we return a fail.
+\begin{code}
 match (Litˢ c) (x ∷ xs) k =
     (isEqual x c) >>=
       (λ p → (match-helper k xs) >>=
         (λ pf → return ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))))
+\end{code}
+In this case we have a defined a function |match-helper| which is mutually recursive with our matcher and defined as follows:
+
+\begin{code}
+match-helper : (k : List StdRegExp) → (s : List Char) → Maybe (s ∈Lᵏ k)
+    match-helper [] [] = return refl
+    match-helper [] (x ∷ s) = fail
+    match-helper (r ∷ rs) s = match r s rs
+\end{code}
+
+Now if the first character in our list matches the Literal of the regular expression, then we call |match-helper| on the continuation and the rest of the list. Then from |match-helper| we will get a proof of the form |s ∈Lᵏ k| if the rest of the list indeed matches the rest of the StdRegExps in |k|.
+
+\begin{code}
 match (r₁ ·ˢ r₂) s k =
     (match r₁ s (r₂ ∷ k)) >>= collect-left (λ inL inL' → _ , refl , inL , inL')
+\end{code}
+
+\begin{code}
 match (r₁ ⊕ˢ r₂) s k =
   ((match r₁ s k) >>= change-∈L inj₁) ∣
   ((match r₂ s k) >>= change-∈L inj₂)
+\end{code}
+
+\begin{code}
 match (r ⁺ˢ) s k =
   ((match r s k) >>= change-∈L S+) ∣
   ((match r s ((r ⁺ˢ) ∷ k)) >>= collect-left (λ inL inL' → C+ refl inL inL'))
@@ -240,8 +268,6 @@ match-completeness : (C : Set)
 
 \section{Conversion from RegExp to StdRegExp}
 
-
-\subsection{Conversion}
 In order to guarantee the termination of the matching function, the input
 regular expression is converted to a standard form regular expression.
 We define a function $\standardize : \RE \to \SRE$ such that
