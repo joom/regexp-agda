@@ -60,6 +60,7 @@ In conclusion, we have proven the correctness of both.
 % Show how different derivations (x : s \inL r) can contain different stuff
 
 % Skip regex, but explain standard, explain Kleene plus
+% Explain RecursionPermission and Suffix ?
 
 \section{Background}
 
@@ -194,7 +195,7 @@ match-completeness : (r : StdRegExp)
 
 \section{Higher-order intrinsic matcher}
 
-The main function for the higher-order intrinsic matcher is defined as following:
+The main function for the higher-order intrinsic matcher is defined case by case as following:
 
 \begin{code}
 match : (C : Set)
@@ -203,20 +204,64 @@ match : (C : Set)
       → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
       → RecursionPermission s
       → Maybe C
-match C ∅ˢ s k perm = nothing
-match C (Litˢ x) [] k perm = nothing
+\end{code}
+
+The |match| function is now taking an extra argument |C| that helps us define the continuation function and the return type.
+The purpose for having |C| as an argument is to be able to refer to the top level of the recursive calls in every sub recursive call.
+
+Notice that the continuation |k| is a function, unlike the defunctionalized version,
+but similar to Harper's matcher. It is a function that possibly gives a derivation
+(hence the |Maybe| type) for the entire string given that there is a split of it
+such that the first part is in the language of |r|.
+
+We also need an extra argument of type |RecursionPermission s| to explicitly
+show Agda that the string |s| gets shorter in each recursive call. Remember that
+to get a new |RecursionPermission s'| depending on an existing |RecursionPermission s|,
+it has to be that |s'| is a strict suffix of |s|.
+
+\begin{code}
+match C ∅ˢ s k perm = fail
+\end{code}
+
+Just like the defunctionalized version, the empty language does not accept any string.
+
+\begin{code}
+match C (Litˢ x) [] k perm = fail
 match C (Litˢ x) (y ∷ ys) k perm with y Data.Char.≟ x
-... | no _ = nothing
+... | no _ = fail
 ... | yes p = k {[ y ]} {ys} refl (cong (λ q → [ q ]) p)
+\end{code}
+
+The character literal language should only accept the string if the
+first character is the same as the one required by |r| and the continuation
+returns a derivation for the rest of the string.
+
+\begin{code}
 match C (r₁ ·ˢ r₂) s k (CanRec f) =
   match C r₁ s
         (λ {p}{s'} eq inL →
           match C r₂ s' (λ {p'}{s''} eq' inL' →
                           k {p ++ p'}{s''} (replace-right p s' p' s'' s eq' eq) ((p , p') , refl , inL , inL'))
                         (f _ (suffix-continuation eq inL))) (CanRec f)
+\end{code}
+
+In the defunctionalized version, we could add |r₂| to the list of continuations
+to be matched later. However, the higher-order matcher needs to construct a new
+continuation function. Once |r₁| was matched with the beginning of the string,
+the continuation would match the rest of the string with |r₂|.
+
+Notice that to be able to call |match| with |r₂|, you need to prove that the
+rest of the string is a strict suffix of the entire string so that you can get
+a |RecursionPermission| for the rest. The function |suffix-continuation| does exactly that.
+
+
+\begin{code}
 match C (r₁ ⊕ˢ r₂) s k perm =
   match C r₁ s (λ eq inL → k eq (inj₁ inL)) perm ∣
   match C r₂ s (λ eq inL → k eq (inj₂ inL)) perm
+\end{code}
+
+\begin{code}
 match C (r ⁺ˢ) s k (CanRec f) =
   match C r s (λ eq inL → k eq (S+ inL)) (CanRec f) ∣
   match C r s (λ {p}{s'} eq inL →
