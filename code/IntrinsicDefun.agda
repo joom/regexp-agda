@@ -16,7 +16,7 @@ module IntrinsicDefun where
   open import Data.Unit
   open import Relation.Nullary
   open import Relation.Nullary.Decidable
-  open import Relation.Binary.PropositionalEquality
+  open import Relation.Binary.PropositionalEquality hiding ([_])
   import Agda.Primitive
 
 
@@ -51,7 +51,7 @@ module IntrinsicDefun where
     match ∅ˢ s k = fail
     match (Litˢ c) [] k = fail
     match (Litˢ c) (x ∷ xs) k =
-        (isEqual x c) >>= (λ p → (match-helper k xs) >>= (λ pf → return (((c ∷ [] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))))
+        (isEqual x c) >>= (λ p → (match-helper k xs) >>= (λ pf → return ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))))
     match (r₁ ·ˢ r₂) s k =
         (match r₁ s (r₂ ∷ k)) >>= collect-left (λ inL inL' → _ , refl , inL , inL')
     match (r₁ ⊕ˢ r₂) s k =

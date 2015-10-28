@@ -13,7 +13,6 @@ open import Relation.Nullary
 open import Relation.Nullary.Decidable
 open import Relation.Binary.PropositionalEquality
 
-
 module OverallMatcher where
   data RegExp : Set where
     ∅ : RegExp  -- empty set (type \emptyset)

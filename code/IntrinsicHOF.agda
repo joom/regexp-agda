@@ -17,7 +17,7 @@ module IntrinsicHOF where
   open import Function
   open import Relation.Nullary
   open import Relation.Nullary.Decidable
-  open import Relation.Binary.PropositionalEquality
+  open import Relation.Binary.PropositionalEquality hiding ([_])
   import Agda.Primitive
 
   open RawMonadPlus {Agda.Primitive.lzero} Data.Maybe.monadPlus renaming (∅ to fail)
@@ -28,11 +28,11 @@ module IntrinsicHOF where
         → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
         → RecursionPermission s
         → Maybe C
-  match C ∅ˢ s k perm = nothing
-  match C (Litˢ x) [] k perm = nothing
+  match C ∅ˢ s k perm = fail
+  match C (Litˢ x) [] k perm = fail
   match C (Litˢ x) (y ∷ ys) k perm with y Data.Char.≟ x
-  ... | no _ = nothing
-  ... | yes p = k {y ∷ []} {ys} refl (cong (λ q → q ∷ []) p)
+  ... | no _ = fail
+  ... | yes p = k {[ y ]} {ys} refl (cong (λ q → [ q ]) p)
   match C (r₁ ·ˢ r₂) s k (CanRec f) =
     match C r₁ s (λ {p}{s'} eq inL → match C r₂ s' (λ {p'}{s''} eq' inL' → k {p ++ p'}{s''} (replace-right p s' p' s'' s eq' eq) ((p , p') , refl , inL , inL')) (f _ (suffix-continuation eq inL))) (CanRec f)
   match C (r₁ ⊕ˢ r₂) s k perm =
