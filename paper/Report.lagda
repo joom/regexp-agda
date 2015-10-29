@@ -158,7 +158,7 @@ The same argument can be made for derivations of non-standard regular expression
 
 \section{Defunctionalized intrinsic matcher}
 
-The main function for the defunctionalized intrinsic matcher is defined as following:
+The main function for the defunctionalized intrinsic matcher is defined case by case as following:
 
 \begin{code}
 match : (r : StdRegExp)
@@ -167,31 +167,46 @@ match : (r : StdRegExp)
       → Maybe (Σ (List Char × List Char)
               (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
 \end{code}
-This is the type of our defunctionalized intrinsic matcher. It takes a regular expression |r|, a list of characters |s| and a list of StdRegExps |k|, and creates a splitting of the original list |s| into lists |p| and |s'| and returns an equality |(p ++ s' ≡ s)|, a derivation that |p| is in the language of |r| and a derivation that |s' ∈Lᵏ k|, which is defined to mean that if |k| is empty, then |s'| has to be empty as well, otherwise |k=r'::rs| and there is a splitting of |s'|, |s' ≡ p' ++ s''|, such that |p' ∈Lˢ r'| and |s'' ∈Lᵏ rs|.
+
+This is the type of our defunctionalized intrinsic matcher.
+It takes a regular expression |r|, a list of characters |s| and
+a list of StdRegExps |k|, and creates a splitting of the original list
+|s| into lists |p| and |s'| and returns an equality |(p ++ s' ≡ s)|,
+a derivation that |p| is in the language of |r| and a derivation
+that |s' ∈Lᵏ k|, which is defined to mean that if |k| is empty,
+then |s'| has to be empty as well, otherwise |k=r'::rs| and there is
+a splitting of |s'|, |s' ≡ p' ++ s''|, such that |p' ∈Lˢ r'| and |s'' ∈Lᵏ rs|.
+
 \begin{code}
 match ∅ˢ s k = fail
 \end{code}
-Obviously we cannot match any string to the empty set so we return a fail.
+
+The empty language does not accept any string.
+
 \begin{code}
 match (Litˢ c) [] k = fail
-\end{code}
-Since we are trying to match an empty list with a regular expression that requires a character, we return a fail.
-\begin{code}
 match (Litˢ c) (x ∷ xs) k =
     (isEqual x c) >>=
       (λ p → (match-helper k xs) >>=
         (λ pf → return ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))))
 \end{code}
-In this case we have a defined a function |match-helper| which is mutually recursive with our matcher and defined as follows:
+
+If we are trying to match an empty list with a regular expression that requires a character, the matcher fails.
+If not, we try to match the first character of the string to |c| and then
+match the continuation using the function |match-helper| which is
+mutually recursive with our matcher and is defined as follows:
 
 \begin{code}
 match-helper : (k : List StdRegExp) → (s : List Char) → Maybe (s ∈Lᵏ k)
-    match-helper [] [] = return refl
-    match-helper [] (x ∷ s) = fail
-    match-helper (r ∷ rs) s = match r s rs
+match-helper [] [] = return refl
+match-helper [] (x ∷ s) = fail
+match-helper (r ∷ rs) s = match r s rs
 \end{code}
 
-Now if the first character in our list matches the Literal of the regular expression, then we call |match-helper| on the continuation and the rest of the list. Then from |match-helper| we will get a proof of the form |s ∈Lᵏ k| if the rest of the list indeed matches the rest of the StdRegExps in |k|.
+Now if the first character in our list matches the character literal |c|,
+then we call |match-helper| on the continuation and the rest of the list.
+Then from |match-helper| we will get a derivation of the type |s ∈Lᵏ k|
+if the rest of the list indeed matches the rest of the |StdRegExp|s in |k|.
 
 \begin{code}
 match (r₁ ·ˢ r₂) s k =
@@ -209,6 +224,8 @@ match (r ⁺ˢ) s k =
   ((match r s k) >>= change-∈L S+) ∣
   ((match r s ((r ⁺ˢ) ∷ k)) >>= collect-left (λ inL inL' → C+ refl inL inL'))
 \end{code}
+
+\subsection{Verification}
 
 To verify that our matcher works correctly for a match that we have a proof for,
 we should write a completeness proof:
@@ -273,8 +290,9 @@ match C (r₁ ·ˢ r₂) s k (CanRec f) =
                         (f _ (suffix-continuation eq inL))) (CanRec f)
 \end{code}
 
-In the defunctionalized version, we could add |r₂| to the list of continuations
-to be matched later. However, the higher-order matcher needs to construct a new
+In the concatenation case of the defunctionalized version,
+we could add |r₂| to the list of continuations to be matched later.
+However, the higher-order matcher needs to construct a new
 continuation function. Once |r₁| was matched with the beginning of the string,
 the continuation would match the rest of the string with |r₂|.
 
@@ -282,12 +300,15 @@ Notice that to be able to call |match| with |r₂|, you need to prove that the
 rest of the string is a strict suffix of the entire string so that you can get
 a |RecursionPermission| for the rest. The function |suffix-continuation| does exactly that.
 
-
 \begin{code}
 match C (r₁ ⊕ˢ r₂) s k perm =
   match C r₁ s (λ eq inL → k eq (inj₁ inL)) perm ∣
   match C r₂ s (λ eq inL → k eq (inj₂ inL)) perm
 \end{code}
+
+The alternation case is similar to the defunctionalized version except the continuations.
+The matcher first tries to match |r₁| with |s| and
+tries to match |r₂| only if the first one does not match.
 
 \begin{code}
 match C (r ⁺ˢ) s k (CanRec f) =
@@ -297,6 +318,13 @@ match C (r ⁺ˢ) s k (CanRec f) =
                                     k (replace-right p s' p' s'' s eq' eq) (C+ refl inL inL') )
                       (f _ (suffix-continuation eq inL))) (CanRec f)
 \end{code}
+
+The structure of the Kleene plus case is similar to the defunctionalized version except the continuations.
+The matcher first tries to match |r| with |s| and tries to match the concatenation
+of |r| and |r ⁺ˢ| only if the first try fails. Observe that the second try is
+similar to the |·ˢ| case.
+
+\subsection{Verification}
 
 To verify that our matcher works correctly for a match that we have a proof for,
 we should write a completeness proof:
