@@ -147,6 +147,8 @@ can match two characters in the first |a⁺| and match one character in the seco
 |a⁺|. Hence derivations of the same type are not necessarily equivalent.
 The same argument can be made for derivations of non-standard regular expressions.
 
+% write them as derivation trees with inference rules
+
 % two different values in the same type written in Agda
 
 % \begin{code}

@@ -236,6 +236,9 @@ module Matcher {_acceptsˢ_ : StdRegExp → List Char → Bool}
   correct-completeness r s inL | .[] | inj₂ y | inj₁ (_ , refl) = ⊥-elim (y inL)
   correct-completeness r s inL | xs | inj₂ _ | inj₂ y = acceptsˢ-completeness _ _ y
 
+  decidability : (r : RegExp) → (s : String.String) → ((String.toList s) ∈L r) ⊎ (¬ ((String.toList s) ∈L r))
+  decidability = {!!}
+
   -- Example
 
   alphanumeric : RegExp
