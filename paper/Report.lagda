@@ -149,6 +149,36 @@ The same argument can be made for derivations of non-standard regular expression
 
 % write them as derivation trees with inference rules
 
+\begin{prooftree}
+  \AxiomC{$``a" ``aa" = ``aaa"$}
+
+    \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
+  \UnaryInfC{$``a" \in L(|Litˢ 'a' ⁺ˢ|)$}
+
+    \AxiomC{$``a" ``a" = ``aaa"$}
+    \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
+      \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
+    \UnaryInfC{$``a" \in L(|Litˢ 'a' ⁺ˢ|)$}
+  \TrinaryInfC{$``aa" \in L(|Litˢ 'a' ⁺ˢ|)$}
+
+  \TrinaryInfC{$``aaa" \in L(|(Litˢ 'a' ⁺ˢ) ·ˢ (Litˢ 'a' ⁺ˢ)|)$}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{$``aa" ``a" = ``aaa"$}
+
+    \AxiomC{$``a" ``a" = ``aaa"$}
+    \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
+      \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
+    \UnaryInfC{$``a" \in L(|Litˢ 'a' ⁺ˢ|)$}
+  \TrinaryInfC{$``aa" \in L(|Litˢ 'a' ⁺ˢ|)$}
+
+    \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
+  \UnaryInfC{$``a" \in L(|Litˢ 'a' ⁺ˢ|)$}
+
+  \TrinaryInfC{$``aaa" \in L(|(Litˢ 'a' ⁺ˢ) ·ˢ (Litˢ 'a' ⁺ˢ)|)$}
+\end{prooftree}
+
 % two different values in the same type written in Agda
 
 % \begin{code}
