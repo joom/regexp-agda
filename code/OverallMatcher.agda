@@ -1,6 +1,7 @@
 open import Definitions
 open import Lemmas
 
+open import Function
 open import Data.Char
 open import Data.Bool
 open import Data.Empty
@@ -98,6 +99,9 @@ module OverallMatcher where
 
   -- Standardization proofs
   -- Overall, we are to prove that ∀ (r : RegExp) L(r) = L(standardize(r)) ∪ δ (if δ r then ε else ∅)
+
+  -- ∈L-soundness-rev : (s : List Char) → (r : RegExp)
+  --                  → (¬ (s ≡ []))
 
   ∈L-soundness : (s : List Char)
                → (r : RegExp)
@@ -236,10 +240,16 @@ module Matcher {_acceptsˢ_ : StdRegExp → List Char → Bool}
   correct-completeness r s inL | .[] | inj₂ y | inj₁ (_ , refl) = ⊥-elim (y inL)
   correct-completeness r s inL | xs | inj₂ _ | inj₂ y = acceptsˢ-completeness _ _ y
 
-  decidability : (r : RegExp) → (s : String.String) → ((String.toList s) ∈L r) ⊎ (¬ ((String.toList s) ∈L r))
-  decidability = {!!}
+  contrapositive : {P Q : Set} → (P → Q) → ¬ Q → ¬ P
+  contrapositive f p = p ∘ f
 
-  -- Example
+  decidability : (r : RegExp) → (s : List Char) → (s ∈L r) ⊎ (¬ (s ∈L r))
+  decidability r s with δ' r
+  decidability r [] | inj₁ x = inj₁ x
+  decidability r [] | inj₂ y = inj₂ y
+  decidability r (x ∷ xs) | d with bool-eq ((standardize r) acceptsˢ (x ∷ xs))
+  ... | inj₂ q = inj₂ (contrapositive {_}{((standardize r) acceptsˢ xs ≡ true) ⊎ ((x ∷ xs ) ≡ []) } (λ inL → {!∈L-completeness (x ∷ xs) r inL!}) {!q!})
+  ... | inj₁ p = inj₁ (∈L-soundness (x ∷ xs) r (inj₂ (acceptsˢ-soundness (standardize r) (x ∷ xs) p) ))  -- Example
 
   alphanumeric : RegExp
   alphanumeric = foldl _⊕_ ∅ (Data.List.map Lit (String.toList "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"))
