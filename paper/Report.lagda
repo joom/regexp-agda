@@ -57,7 +57,6 @@ In conclusion, we have proven the correctness of both.
 \section{Introduction}
 
 % A derivation isn't just being in set, it contains things
-% Show how different derivations (x : s \inL r) can contain different stuff
 
 % Skip regex, but explain standard, explain Kleene plus
 % Explain RecursionPermission and Suffix ?
@@ -137,18 +136,13 @@ data _∈L⁺_ where
 \end{code}
 
 Note that, if we are given a list of characters $x$ and two derivations of
-the same type, both telling us that |x ∈Lˢ r|, we cannot assume the
-derivations are equivalent. \\
-An example of this is the following:\\ Let |x = 'a' ∷ 'a' ∷ 'a' ∷ []| and
-|r = ((Litˢ 'a' ⁺ˢ) ·ˢ (Litˢ 'a' ⁺ˢ))|, then a derivation of type |x ∈Lˢ r| can
-have two different values: One of them can match one character in the first |a⁺|
-of the concatenation and match two characters in the second |a⁺|. The other value
-can match two characters in the first |a⁺| and match one character in the second
-|a⁺|. Hence derivations of the same type are not necessarily equivalent.
-The same argument can be made for derivations of non-standard regular expressions.
+of the type |x ∈Lˢ r|, the derivations are not necessarily the same.
+An example of this is the following:
 
 % write them as derivation trees with inference rules
 
+\scalebox{.75}{
+\parbox{1cm}{
 \begin{prooftree}
   \AxiomC{$``a" ``aa" = ``aaa"$}
 
@@ -178,6 +172,11 @@ The same argument can be made for derivations of non-standard regular expression
 
   \TrinaryInfC{$``aaa" \in L(|(Litˢ 'a' ⁺ˢ) ·ˢ (Litˢ 'a' ⁺ˢ)|)$}
 \end{prooftree}
+} }
+
+As you can see in the two proof trees above, the same string can have different
+derivations for the same regular expression.
+The same argument can be made for derivations of non-standard regular expressions.
 
 % two different values in the same type written in Agda
 
