@@ -2,6 +2,7 @@ open import Definitions
 
 module Lemmas where
 
+  open import Function
   open import Category.Monad
   open import Data.Bool
   open import Data.Char
@@ -97,6 +98,12 @@ module Lemmas where
   bool-eq : (a : Bool) → (a ≡ true) ⊎ (a ≡ false)
   bool-eq true = inj₁ refl
   bool-eq false = inj₂ refl
+
+  bool-not : ∀ {p} → p ≡ false → ¬ (p ≡ true)
+  bool-not refl ()
+
+  contrapositive : {P Q : Set} → (P → Q) → ¬ Q → ¬ P
+  contrapositive f p = p ∘ f
 
   non-empty : ∀ {r} → ([] ∈Lˢ r → ⊥)
   non-empty {∅ˢ} inL = inL

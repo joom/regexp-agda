@@ -1,7 +1,6 @@
 open import Definitions
 open import Lemmas
 
-open import Function
 open import Data.Char
 open import Data.Bool
 open import Data.Empty
@@ -240,16 +239,18 @@ module Matcher {_acceptsˢ_ : StdRegExp → List Char → Bool}
   correct-completeness r s inL | .[] | inj₂ y | inj₁ (_ , refl) = ⊥-elim (y inL)
   correct-completeness r s inL | xs | inj₂ _ | inj₂ y = acceptsˢ-completeness _ _ y
 
-  contrapositive : {P Q : Set} → (P → Q) → ¬ Q → ¬ P
-  contrapositive f p = p ∘ f
-
   decidability : (r : RegExp) → (s : List Char) → (s ∈L r) ⊎ (¬ (s ∈L r))
   decidability r s with δ' r
   decidability r [] | inj₁ x = inj₁ x
   decidability r [] | inj₂ y = inj₂ y
   decidability r (x ∷ xs) | d with bool-eq ((standardize r) acceptsˢ (x ∷ xs))
-  ... | inj₂ q = inj₂ (contrapositive {_}{((standardize r) acceptsˢ xs ≡ true) ⊎ ((x ∷ xs ) ≡ []) } (λ inL → {!∈L-completeness (x ∷ xs) r inL!}) {!q!})
-  ... | inj₁ p = inj₁ (∈L-soundness (x ∷ xs) r (inj₂ (acceptsˢ-soundness (standardize r) (x ∷ xs) p) ))  -- Example
+  ... | inj₁ p = inj₁ (∈L-soundness (x ∷ xs) r (inj₂ (acceptsˢ-soundness (standardize r) (x ∷ xs) p) ))
+  ... | inj₂ q = inj₂ (contrapositive {(x ∷ xs) ∈L r}{(standardize r) acceptsˢ (x ∷ xs) ≡ true} lemma (bool-not q))
+    where
+      lemma : (x ∷ xs) ∈L r → ((standardize r) acceptsˢ (x ∷ xs) ≡ true)
+      lemma inL with ∈L-completeness (x ∷ xs) r inL
+      lemma inL | inj₁ (a , ())
+      lemma inL | inj₂ y = acceptsˢ-completeness (standardize r) (x ∷ xs) y
 
   alphanumeric : RegExp
   alphanumeric = foldl _⊕_ ∅ (Data.List.map Lit (String.toList "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"))

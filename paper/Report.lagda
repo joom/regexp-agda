@@ -414,6 +414,12 @@ correct-completeness : (r : RegExp)
                      → r accepts s ≡ true
 \end{code}
 
+We also want to prove decidability:
+
+\begin{code}
+decidability : (r : RegExp) → (s : List Char) → (s ∈L r) ⊎ (¬ (s ∈L r))
+\end{code}
+
 \section{Conclusion}
 
 
