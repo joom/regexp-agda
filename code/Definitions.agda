@@ -25,18 +25,17 @@ module Definitions where
   infixr 2 _·ˢ_
   infixr 3 _⊕ˢ_
 
-  _∈Lˢ_ : List Char → StdRegExp → Set
-  data _∈L⁺_ : List Char → StdRegExp → Set
+  mutual
+    _∈Lˢ_ : List Char → StdRegExp → Set
+    _ ∈Lˢ ∅ˢ = ⊥
+    s ∈Lˢ (Litˢ c) = s ≡ c ∷ []
+    s ∈Lˢ (r₁ ⊕ˢ r₂) = (s ∈Lˢ r₁) ⊎ (s ∈Lˢ r₂)
+    s ∈Lˢ (r₁ ·ˢ r₂) = Σ (List Char × List Char) (λ { (p , q)  → (p ++ q ≡ s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
+    s ∈Lˢ (r ⁺ˢ) = s ∈L⁺ r
 
-  _ ∈Lˢ ∅ˢ = ⊥
-  s ∈Lˢ (Litˢ c) = s ≡ c ∷ []
-  s ∈Lˢ (r₁ ⊕ˢ r₂) = (s ∈Lˢ r₁) ⊎ (s ∈Lˢ r₂)
-  s ∈Lˢ (r₁ ·ˢ r₂) = Σ (List Char × List Char) (λ { (p , q)  → (p ++ q ≡ s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
-  s ∈Lˢ (r ⁺ˢ) = s ∈L⁺ r
-
-  data _∈L⁺_ where
-    S+ : ∀ {s r} → s ∈Lˢ r → s ∈L⁺ r
-    C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
+    data _∈L⁺_ : List Char → StdRegExp → Set where
+        S+ : ∀ {s r} → s ∈Lˢ r → s ∈L⁺ r
+        C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
 
   {- Suffix xs ys means that xs is a suffix of ys -}
   data Suffix {A : Set} : List A → List A → Set where

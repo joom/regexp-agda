@@ -120,19 +120,17 @@ We can define the rules for a string to be in the language of Kleene plus as suc
 We encode these languages in Agda in the following way:
 
 \begin{code}
-_∈Lˢ_ : List Char → StdRegExp → Set
-data _∈L⁺_ : List Char → StdRegExp → Set
-
+mutual
+  _∈Lˢ_ : List Char → StdRegExp → Set
   _ ∈Lˢ ∅ˢ = ⊥
   s ∈Lˢ (Litˢ c) = s ≡ c ∷ []
   s ∈Lˢ (r₁ ⊕ˢ r₂) = (s ∈Lˢ r₁) ⊎ (s ∈Lˢ r₂)
-  s ∈Lˢ (r₁ ·ˢ r₂) =
-    Σ (List Char × List Char) (λ { (p , q)  → (p ++ q ≡ s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
+  s ∈Lˢ (r₁ ·ˢ r₂) = Σ (List Char × List Char) (λ { (p , q)  → (p ++ q ≡ s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
   s ∈Lˢ (r ⁺ˢ) = s ∈L⁺ r
 
-data _∈L⁺_ where
-  S+ : ∀ {s r} → s ∈Lˢ r → s ∈L⁺ r
-  C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
+  data _∈L⁺_ : List Char → StdRegExp → Set where
+      S+ : ∀ {s r} → s ∈Lˢ r → s ∈L⁺ r
+      C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
 \end{code}
 
 Note that, if we are given a list of characters $x$ and two derivations of
@@ -189,7 +187,25 @@ The same argument can be made for derivations of non-standard regular expression
 
 \section{Defunctionalized intrinsic matcher}
 
-The main function for the defunctionalized intrinsic matcher is defined case by case as following:
+% some introduction about list based continuation
+
+Before we start the |match| function, we should define a type for a string
+to be in the language of a list of regular expressions:
+
+\begin{code}
+_∈Lᵏ_ : List Char → List StdRegExp → Set
+s ∈Lᵏ [] = s ≡ []
+s ∈Lᵏ (r ∷ rs) =
+  Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ∈Lᵏ rs) })
+\end{code}
+
+There are two possibilities for a string to be in the language of a list of
+regular expressions. If the list is empty, the string also has to be empty.
+If the list has a head, then a prefix of the string should match the head of
+the list and the rest of the list should match with the rest of the string.
+
+Now that we know how to handle the continuation list, we can define the main
+function for the defunctionalized intrinsic matcher case by case as following:
 
 \begin{code}
 match : (r : StdRegExp)
@@ -205,7 +221,7 @@ a list of StdRegExps |k|, and creates a splitting of the original list
 |s| into lists |p| and |s'| and returns an equality |(p ++ s' ≡ s)|,
 a derivation that |p| is in the language of |r| and a derivation
 that |s' ∈Lᵏ k|, which is defined to mean that if |k| is empty,
-then |s'| has to be empty as well, otherwise |k=r'::rs| and there is
+then |s'| has to be empty as well, otherwise |k = r'::rs| and there is
 a splitting of |s'|, |s' ≡ p' ++ s''|, such that |p' ∈Lˢ r'| and |s'' ∈Lᵏ rs|.
 
 \begin{code}
@@ -270,6 +286,22 @@ match-completeness : (r : StdRegExp)
 \end{code}
 
 \section{Higher-order intrinsic matcher}
+
+% introduction about function based continuation
+
+A problem that arises with the function based continuations is regarding the
+totality checker. It is not evident to Agda that our |match| function terminates,
+because there is no obviously diminishing list of continuations like the
+defunctionalized matcher. This is why we have to show Agda that our recursive
+function really terminates, by providing an extra argument that is obviously
+diminishing. We define it as following:
+
+\begin{code}
+data RecursionPermission {A : Set} : List A → Set where
+  CanRec : {ys : List A}
+         → ((xs : List A) → Suffix xs ys → RecursionPermission xs)
+         → RecursionPermission ys
+\end{code}
 
 The main function for the higher-order intrinsic matcher is defined case by case as following:
 

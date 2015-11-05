@@ -245,7 +245,7 @@ module Matcher {_acceptsˢ_ : StdRegExp → List Char → Bool}
   decidability r [] | inj₂ y = inj₂ y
   decidability r (x ∷ xs) | d with bool-eq ((standardize r) acceptsˢ (x ∷ xs))
   ... | inj₁ p = inj₁ (∈L-soundness (x ∷ xs) r (inj₂ (acceptsˢ-soundness (standardize r) (x ∷ xs) p) ))
-  ... | inj₂ q = inj₂ (contrapositive {(x ∷ xs) ∈L r}{(standardize r) acceptsˢ (x ∷ xs) ≡ true} lemma (bool-not q))
+  ... | inj₂ q = inj₂ (contrapositive lemma (bool-not q))
     where
       lemma : (x ∷ xs) ∈L r → ((standardize r) acceptsˢ (x ∷ xs) ≡ true)
       lemma inL with ∈L-completeness (x ∷ xs) r inL
