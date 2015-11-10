@@ -99,12 +99,6 @@ module Lemmas where
   bool-eq true = inj₁ refl
   bool-eq false = inj₂ refl
 
-  bool-not : ∀ {p} → p ≡ false → ¬ (p ≡ true)
-  bool-not refl ()
-
-  contrapositive : {P Q : Set} → (P → Q) → ¬ Q → ¬ P
-  contrapositive f p = p ∘ f
-
   non-empty : ∀ {r} → ([] ∈Lˢ r → ⊥)
   non-empty {∅ˢ} inL = inL
   non-empty {Litˢ c} ()

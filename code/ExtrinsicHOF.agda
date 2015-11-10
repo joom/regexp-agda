@@ -92,7 +92,8 @@ module ExtrinsicHOF where
   acceptsˢ-soundness : (r : StdRegExp) → (s : List Char) → r acceptsˢ s ≡ true → s ∈Lˢ r
   acceptsˢ-soundness r s m with bool-eq (match r s (λ { (s , sf) → null s }) (well-founded s))
   ... | inj₁ p with match-soundness r s (λ { (s , sf) → null s }) (well-founded s) p
-  acceptsˢ-soundness r .(xs ++ []) m | inj₁ p | (xs , [] , sf) , refl , inL , refl = eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL
+  acceptsˢ-soundness r .(xs ++ []) m | inj₁ p | (xs , [] , sf) , refl , inL , refl =
+    eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL
   acceptsˢ-soundness r s m | inj₁ p | (xs , x ∷ ys , sf) , eq , inL , ()
   acceptsˢ-soundness r s m | inj₂ q with trans (sym m) q
   ... | ()

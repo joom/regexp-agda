@@ -142,12 +142,12 @@ An example of this is the following:
 \scalebox{.75}{
 \parbox{1cm}{
 \begin{prooftree}
-  \AxiomC{$``a" ``aa" = ``aaa"$}
+  \AxiomC{$``a" ++ ``aa" = ``aaa"$}
 
     \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
   \UnaryInfC{$``a" \in L(|Litˢ 'a' ⁺ˢ|)$}
 
-    \AxiomC{$``a" ``a" = ``aaa"$}
+    \AxiomC{$``a" ++ ``a" = ``aaa"$}
     \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
       \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
     \UnaryInfC{$``a" \in L(|Litˢ 'a' ⁺ˢ|)$}
@@ -157,9 +157,9 @@ An example of this is the following:
 \end{prooftree}
 
 \begin{prooftree}
-  \AxiomC{$``aa" ``a" = ``aaa"$}
+  \AxiomC{$``aa" ++ ``a" = ``aaa"$}
 
-    \AxiomC{$``a" ``a" = ``aaa"$}
+    \AxiomC{$``a" ++ ``a" = ``aaa"$}
     \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
       \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
     \UnaryInfC{$``a" \in L(|Litˢ 'a' ⁺ˢ|)$}
@@ -449,7 +449,7 @@ correct-completeness : (r : RegExp)
 We also want to prove decidability:
 
 \begin{code}
-decidability : (r : RegExp) → (s : List Char) → (s ∈L r) ⊎ (¬ (s ∈L r))
+decidability : (r : RegExp) → (s : String.String) → ((String.toList s) ∈L r) ⊎ (¬ ((String.toList s) ∈L r))
 \end{code}
 
 \section{Conclusion}

@@ -239,18 +239,14 @@ module Matcher {_acceptsˢ_ : StdRegExp → List Char → Bool}
   correct-completeness r s inL | .[] | inj₂ y | inj₁ (_ , refl) = ⊥-elim (y inL)
   correct-completeness r s inL | xs | inj₂ _ | inj₂ y = acceptsˢ-completeness _ _ y
 
-  decidability : (r : RegExp) → (s : List Char) → (s ∈L r) ⊎ (¬ (s ∈L r))
-  decidability r s with δ' r
-  decidability r [] | inj₁ x = inj₁ x
-  decidability r [] | inj₂ y = inj₂ y
-  decidability r (x ∷ xs) | d with bool-eq ((standardize r) acceptsˢ (x ∷ xs))
-  ... | inj₁ p = inj₁ (∈L-soundness (x ∷ xs) r (inj₂ (acceptsˢ-soundness (standardize r) (x ∷ xs) p) ))
-  ... | inj₂ q = inj₂ (contrapositive lemma (bool-not q))
+  -- open Deprecated-inspect
+  decidability : (r : RegExp) → (s : String.String) → ((String.toList s) ∈L r) ⊎ (¬ ((String.toList s) ∈L r))
+  decidability r s with bool-eq (r accepts s)
+  ... | inj₁ p = inj₁ (correct-soundness r s p)
+  ... | inj₂ q = inj₂ (λ x → lemma (trans (sym (correct-completeness r s x)) q))
     where
-      lemma : (x ∷ xs) ∈L r → ((standardize r) acceptsˢ (x ∷ xs) ≡ true)
-      lemma inL with ∈L-completeness (x ∷ xs) r inL
-      lemma inL | inj₁ (a , ())
-      lemma inL | inj₂ y = acceptsˢ-completeness (standardize r) (x ∷ xs) y
+      lemma : ¬ true ≡ false
+      lemma ()
 
   alphanumeric : RegExp
   alphanumeric = foldl _⊕_ ∅ (Data.List.map Lit (String.toList "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"))
