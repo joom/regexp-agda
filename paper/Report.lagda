@@ -139,40 +139,37 @@ An example of this is the following:
 
 % write them as derivation trees with inference rules
 
-\scalebox{.75}{
-\parbox{1cm}{
 \begin{prooftree}
-  \AxiomC{$``a" ++ ``aa" = ``aaa"$}
-
     \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
+\LeftLabel{Derivation A}
   \UnaryInfC{$``a" \in L(|Litˢ 'a' ⁺ˢ|)$}
+\end{prooftree}
 
-    \AxiomC{$``a" ++ ``a" = ``aaa"$}
+\begin{prooftree}
+    \AxiomC{$``a" \plus ``a" = ``aaa"$}
     \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
-      \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
-    \UnaryInfC{$``a" \in L(|Litˢ 'a' ⁺ˢ|)$}
+    \AxiomC{Derivation A}
+\LeftLabel{Derivation B}
   \TrinaryInfC{$``aa" \in L(|Litˢ 'a' ⁺ˢ|)$}
+\end{prooftree}
 
+\begin{prooftree}
+  \AxiomC{$``a" \plus ``aa" = ``aaa"$}
+  \AxiomC{Derivation A}
+  \AxiomC{Derivation B}
+\LeftLabel{Derivation C}
   \TrinaryInfC{$``aaa" \in L(|(Litˢ 'a' ⁺ˢ) ·ˢ (Litˢ 'a' ⁺ˢ)|)$}
 \end{prooftree}
 
 \begin{prooftree}
-  \AxiomC{$``aa" ++ ``a" = ``aaa"$}
-
-    \AxiomC{$``a" ++ ``a" = ``aaa"$}
-    \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
-      \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
-    \UnaryInfC{$``a" \in L(|Litˢ 'a' ⁺ˢ|)$}
-  \TrinaryInfC{$``aa" \in L(|Litˢ 'a' ⁺ˢ|)$}
-
-    \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
-  \UnaryInfC{$``a" \in L(|Litˢ 'a' ⁺ˢ|)$}
-
+  \AxiomC{$``aa" \plus ``a" = ``aaa"$}
+  \AxiomC{Derivation B}
+  \AxiomC{Derivation A}
+\LeftLabel{Derivation D}
   \TrinaryInfC{$``aaa" \in L(|(Litˢ 'a' ⁺ˢ) ·ˢ (Litˢ 'a' ⁺ˢ)|)$}
 \end{prooftree}
-} }
 
-As you can see in the two proof trees above, the same string can have different
+As you can see in derivations C and D, the same string can have different
 derivations for the same regular expression.
 The same argument can be made for derivations of non-standard regular expressions.
 
@@ -449,7 +446,9 @@ correct-completeness : (r : RegExp)
 We also want to prove decidability:
 
 \begin{code}
-decidability : (r : RegExp) → (s : String.String) → ((String.toList s) ∈L r) ⊎ (¬ ((String.toList s) ∈L r))
+decidability : (r : RegExp)
+             → (s : String.String)
+             → ((String.toList s) ∈L r) ⊎ (¬ ((String.toList s) ∈L r))
 \end{code}
 
 \section{Conclusion}
