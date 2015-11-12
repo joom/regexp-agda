@@ -56,10 +56,51 @@ In conclusion, we have proven the correctness of both.
 
 \section{Introduction}
 
-% A derivation isn't just being in set, it contains things
+Robert Harper's paper ``Proof-Directed Debugging" presents a simple
+implementation of a regular expression matching algorithm that has a flaw
+which is revealed during its correctness proof; it turns out that the algorithm
+does not terminate for all regular expressions. Harper fixes this flaw by
+changing the specification and allowing only the standard form regular
+expressions as an argument to the matching function. The paper also proves that
+the new specification suffices to cover all regular expressions and hence solve
+the original problem.
 
-% Skip regex, but explain standard, explain Kleene plus
-% Explain RecursionPermission and Suffix ?
+The algorithm described by Harper is simple, however its termination
+depends on preconditions about its arguments, not its type. Therefore, in a
+total language like Agda, proving the termination of the algorithm becomes
+a problem. We have to define a new type to encode the precondition of regular
+expressions we want as an argument and then handle the type conversions
+to show that our program manages to solve the original problem. We use Agda
+as a proof checker to prove this.
+
+The matcher function described by Harper is of the type
+|RegExp → String → (String → Bool) → Bool|, however when we prove the
+soundness of our matcher function, we will have to create a proof that
+the given string is in the language of the given regular expression.
+There is a value we can get out of our soundness proof;
+we can have grouping in our regular expressions and extract which part of
+the string matched which part of our regular expression.
+
+Yet this would not be an efficient implementation of grouping in
+regular expressions, because we would have to run the matcher twice in this
+case: one to check if the regular expression matches the string, and once again
+to get the soundness proof.
+
+However, if we decide to verify our matcher intrinsically, rather than extrinsically,
+we can get away with running the matcher only once. Our matcher in this case
+would return the proof of the string being in the language of the regular
+expression, in an option type (|Maybe| in Haskell and Agda). This would
+mean defining the matcher function and the soundness proof at the same time.
+
+If our matcher function is going to return a derivation that proves that
+a string is the language of a regular expression, then we cannot simple
+have a continuation function |String → Bool| anymore; we have to enhance
+the continuation so that it returns a part of the derivation that we
+can use to construct the entire derivation.
+This turns out to be a complex task, so we tried defunctionalizing the matcher
+and using list based continuations instead of higher-order functions.
+For comparison, we will present both the defunctionalized and higher-order
+versions of the matcher in this paper.
 
 \section{Background}
 
@@ -311,8 +352,10 @@ match : (C : Set)
       → Maybe C
 \end{code}
 
-The |match| function is now taking an extra argument |C| that helps us define the continuation function and the return type.
-The purpose for having |C| as an argument is to be able to refer to the top level of the recursive calls in every sub recursive call.
+The |match| function is now taking an extra argument |C| that helps us define
+the continuation function and the return type.  The purpose for having |C| as
+an argument is to be able to refer to the top level of the recursive calls
+in every sub recursive call.
 
 Notice that the continuation |k| is a function, unlike the defunctionalized version,
 but similar to Harper's matcher. It is a function that possibly gives a derivation
@@ -434,11 +477,11 @@ The Agda representation of this theorem would correspond to the following types:
 
 \begin{code}
 correct-soundness : (r : RegExp)
-                  → (s : String.String)
+                  → (s : String)
                   → r accepts s ≡ true
                   → (String.toList s) ∈L r
 correct-completeness : (r : RegExp)
-                     → (s : String.String)
+                     → (s : String)
                      → (String.toList s) ∈L r
                      → r accepts s ≡ true
 \end{code}
@@ -447,7 +490,7 @@ We also want to prove decidability:
 
 \begin{code}
 decidability : (r : RegExp)
-             → (s : String.String)
+             → (s : String)
              → ((String.toList s) ∈L r) ⊎ (¬ ((String.toList s) ∈L r))
 \end{code}
 

@@ -27,15 +27,16 @@ module IntrinsicDefun where
 
   change-∈L : {a b d : List Char → Set} {c : List Char → List Char → Set}
             → (∀ {s} → a s → b s)
-            → (Σ (List Char × List Char) (λ {(p , s') → (c p s') × (a p) × (d s')}))
-            → Maybe (Σ (List Char × List Char) (λ {(p , s') → (c p s') × (b p) × (d s')}))
-  change-∈L f = λ {(x , eq , inL , rest) → return (x , eq , f inL , rest)}
+            → (Σ _ (λ {(p , s') → (c p s') × (a p) × (d s')}))
+            → Maybe (Σ _ (λ {(p , s') → (c p s') × (b p) × (d s')}))
+  change-∈L f (x , eq , inL , rest) = return (x , eq , f inL , rest)
 
   collect-left : ∀ {r₁ r₂ s k} {C : List Char → List Char → Set}
                → (f : ∀ {xs as bs} → xs ∈Lˢ r₁ → as ∈Lˢ r₂ → C (xs ++ as) bs)
-               → Σ _ (λ { (xs , ys) → (xs ++ ys ≡ s) × xs ∈Lˢ r₁ × Σ (List Char × List Char) (λ {(as , bs) → (as ++ bs ≡ ys) × as ∈Lˢ r₂ × bs ∈Lᵏ k})})
+               → Σ _ (λ { (xs , ys) → (xs ++ ys ≡ s) × xs ∈Lˢ r₁ × Σ _ (λ {(as , bs) → (as ++ bs ≡ ys) × as ∈Lˢ r₂ × bs ∈Lᵏ k})})
                → Maybe (Σ _ (λ { (p , s') → (p ++ s' ≡ s) × C p s' × s' ∈Lᵏ k}))
-  collect-left {_}{_}{s} f = λ {((xs , ys) , eq , inL , (as , bs) , eq' , inL' , rest) → return ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , f inL inL' , rest )}
+  collect-left {_}{_}{s} f ((xs , ys) , eq , inL , (as , bs) , eq' , inL' , rest) =
+    return ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , f inL inL' , rest )
 
   mutual
     match-helper : (k : List StdRegExp) → (s : List Char) → Maybe (s ∈Lᵏ k)
