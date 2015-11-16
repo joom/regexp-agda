@@ -48,7 +48,6 @@ module ExtrinsicHOF where
   match-soundness (r₁ ⊕ˢ r₂) s k perm m | inj₁ x | (p , q , r) , a , b , c = (p , (q , r)) , (a , (inj₁ b , c))
   match-soundness (r₁ ⊕ˢ r₂) s k perm m | inj₂ x with match-soundness r₂ s k perm x
   match-soundness (r₁ ⊕ˢ r₂) s k perm m | inj₂ x | (p , q , r) , a , b , c = (p , (q , r)) , (a , (inj₂ b , c))
-  --match-soundness (r ⁺ˢ) s k (CanRec f) m = {!!}
   match-soundness (r ⁺ˢ) s k (CanRec f) m with or-eq {match r s k (CanRec f)} { match r s (λ { (s' , sf) → match (r ⁺ˢ) s' (λ { (s'' , sf') → k (s'' , suffix-trans sf' sf) }) (f s' sf) }) (CanRec f)} m
   match-soundness (r ⁺ˢ) s k (CanRec f) m | inj₁ x with match-soundness r s k (CanRec f) x
   match-soundness (r ⁺ˢ) s k (CanRec f) m | inj₁ x | (xs , ys , sf) , a , fst , snd = (xs , (ys , sf)) , (a , (S+ fst , snd))

@@ -39,17 +39,18 @@
 \maketitle
 
 \begin{abstract}
-The matching algorithm described by Harper requires the input regular expressions
-to be in standard form to guarantee the termination of the algorithm. In this paper,
-we use Agda, a total programming language, to prove termination.
-Harper's algorithm just checks if the regex matches the string but in practice,
-one often needs to know how the regex matches the string to extract parts of the string.
-For that purpose, we wrote an intrinsic version of the algorithm that also
-returns which part of the string matched which part of the regex.
-We created two different types of matchers which are explained in more detail in this paper.
-One uses higher-order functions to pass the continuation, while the other one
-is a defunctionalized version which uses lists of StdRegExps instead.
-In conclusion, we have proven the correctness of both.
+The matching algorithm described by Harper requires the input regular
+expressions to be in standard form to guarantee the termination of the
+algorithm. In this paper, we use Agda, a total programming language, to prove
+termination.  Harper's algorithm just checks if the regex matches the string
+but in practice, one often needs to know how the regex matches the string to
+extract parts of the string.  For that purpose, we wrote an intrinsic version
+of the algorithm that also returns which part of the string matched which part
+of the regex.  We created two different types of matchers which are explained
+in more detail in this paper.  One uses higher-order functions to pass the
+continuation, while the other one is a defunctionalized version which uses
+lists of standard form regular expressions instead.  In conclusion, we have
+proven the correctness of both.
 \end{abstract}
 
 \tableofcontents
@@ -57,58 +58,77 @@ In conclusion, we have proven the correctness of both.
 \section{Introduction}
 
 Robert Harper's paper ``Proof-Directed Debugging" presents a simple
-implementation of a regular expression matching algorithm that has a flaw
-which is revealed during its correctness proof; it turns out that the algorithm
-does not terminate for all regular expressions. Harper fixes this flaw by
-changing the specification and allowing only the standard form regular
-expressions as an argument to the matching function. The paper also proves that
-the new specification suffices to cover all regular expressions and hence solve
-the original problem.
+implementation of a regular expression matching algorithm that has a flaw which
+is revealed during its correctness proof; it turns out that the algorithm does
+not terminate for all regular expressions. Harper fixes this flaw by changing
+the specification and allowing only the standard form regular expressions as an
+argument to the matching function. The paper also proves that the new
+specification suffices to cover all regular expressions and hence solve the
+original problem.
 
-The algorithm described by Harper is simple, however its termination
-depends on preconditions about its arguments, not its type. Therefore, in a
-total language like Agda, proving the termination of the algorithm becomes
-a problem. We have to define a new type to encode the precondition of regular
-expressions we want as an argument and then handle the type conversions
-to show that our program manages to solve the original problem. We use Agda
-as a proof checker to prove this.
+The algorithm described by Harper is simple, however its termination depends on
+preconditions about its arguments, not its type. Therefore, in a total language
+like Agda, proving the termination of the algorithm becomes a problem. We have
+to define a new type to encode the precondition of regular expressions we want
+as an argument and then handle the type conversions to show that our program
+manages to solve the original problem. We use Agda as a proof checker to prove
+this.
 
-The matcher function described by Harper is of the type
-|RegExp → String → (String → Bool) → Bool|, however when we prove the
-soundness of our matcher function, we will have to create a proof that
-the given string is in the language of the given regular expression.
-There is a value we can get out of our soundness proof;
-we can have grouping in our regular expressions and extract which part of
-the string matched which part of our regular expression.
+The matcher functions described by Harper has the type signature:
 
-Yet this would not be an efficient implementation of grouping in
-regular expressions, because we would have to run the matcher twice in this
-case: one to check if the regular expression matches the string, and once again
-to get the soundness proof.
+\begin{code}
+_accepts_ : RegExp → String → Bool
+match: RegExp → List Char → (List Char → Bool) → Bool
+\end{code}
 
-However, if we decide to verify our matcher intrinsically, rather than extrinsically,
-we can get away with running the matcher only once. Our matcher in this case
-would return the proof of the string being in the language of the regular
-expression, in an option type (|Maybe| in Haskell and Agda). This would
+Obviously, |_accepts_| takes a regular expression and a string, and returns
+|true| if the regular expression accepts the string or it returns |false|
+otherwise.  The other function |match| takes a regular expression, a list of
+characters and a continuation as arguments. It returns |true| if a prefix of
+the list of characters matches the given regular expression and the
+continuation called with the the rest of the string returns |true|. It returns
+|false| otherwise. In our implementation of these functions in Agda, we will
+keep the type signature of |_accepts_| as it is, but we will have to modify the
+type of |match| to be able to show Agda that it definitely terminates.
+
+When we prove the soundness of our matcher function, we will have to create a
+proof that the given string is in the language of the given regular expression.
+There is a value we can get out of our soundness proof; we can have grouping in
+our regular expressions and extract which part of the string matched which part
+of our regular expression.
+
+Yet this would not be an efficient implementation of grouping in regular
+expressions, because we would have to run the matcher twice in this case: one
+to check if the regular expression matches the string, and once again to get
+the soundness proof.
+
+However, if we decide to verify our matcher intrinsically, rather than
+extrinsically, we can get away with running the matcher only once. Our matcher
+in this case would return the proof of the string being in the language of the
+regular expression, in an option type (|Maybe| in Haskell and Agda). This would
 mean defining the matcher function and the soundness proof at the same time.
 
-If our matcher function is going to return a derivation that proves that
-a string is the language of a regular expression, then we cannot simple
-have a continuation function |String → Bool| anymore; we have to enhance
-the continuation so that it returns a part of the derivation that we
-can use to construct the entire derivation.
-This turns out to be a complex task, so we tried defunctionalizing the matcher
-and using list based continuations instead of higher-order functions.
-For comparison, we will present both the defunctionalized and higher-order
-versions of the matcher in this paper.
+If our matcher function is going to return a derivation that proves that a
+string is the language of a regular expression, then we cannot simple have a
+continuation function |String → Bool| anymore; we have to enhance the
+continuation so that it returns a part of the derivation that we can use to
+construct the entire derivation.  This turns out to be a complex task, so we
+tried defunctionalizing the matcher and using list based continuations instead
+of higher-order functions.  For comparison, we will present both the
+defunctionalized and higher-order continuation versions of the matcher in this
+paper.
 
 \section{Background}
 
 \subsection{Regular Expressions and Languages}
 
+We will not review regular expressions, but we should remember
+that the Kleene plus is defined as $\Sigma^+ = \Sigma \Sigma^* $, where
+$\Sigma^*$ is the Kleene star.
+
 \subsection{Monadic Functions}
 
-Before we move on the definitions of the matchers, we should remember the
+Before we move onto the definitions of the matchers, we should remember the
 definitions of the monadic functions we use in our code, for the |Maybe| type:
 
 \begin{code}
@@ -119,17 +139,29 @@ fail : ∀ {A} → Maybe A
 fail = nothing
 
 _>>=_ : ∀ {A B} → Maybe A → (A → Maybe B) → Maybe B
-(just x) >>= f = f x
+just x >>= f = f x
 nothing >>= f = nothing
 
 _∣_ : ∀ {A} → Maybe A → Maybe A → Maybe A
-(just x) ∣ _ = just x
+just x ∣ _ = just x
 nothing | y = y
+
+_<$$>_ : ∀ {A B} → Maybe A → (A → B) → Maybe B
+just x <$$> f = just (f x)
+nothing <$$> _ = nothing
 \end{code}
+
+With Haskell terminology, |_∣_| is |mplus| and |_<$$>_| is |flip fmap|.
 
 \section{StdRegExp description}
 
-Let's define $\SRE$ as follows:
+The standard form regular expressions defined by Harper do not accept the empty
+string. Our new type for such regular expressions will closely resemble the
+usual regular expressions, however it will vary in the cases that accept the
+empty string. We will omit the $\varepsilon$ case in usual regular expressions,
+and replace Kleene star with Kleene plus.
+
+Let's define \SRE as follows:
 
 \begin{code}
 data StdRegExp : Set where
@@ -140,11 +172,13 @@ data StdRegExp : Set where
   _⁺ˢ : StdRegExp → StdRegExp
 \end{code}
 
-|∅ˢ| is the empty set, |Litˢ| is the character literal, |_·ˢ_| is concatenation,
-|_⊕ˢ_| is alternation. Concatenation and alternation are closed in standard
-regular expressions. Lastly, |_⁺ˢ| is the Kleene plus case.
+|∅ˢ| is the empty set, |Litˢ| is the character literal, |_·ˢ_| is
+concatenation, |_⊕ˢ_| is alternation. Concatenation and alternation are closed
+in standard regular expressions. Lastly, |_⁺ˢ| is the Kleene plus case.
 
-We can define the rules for a string to be in the language of Kleene plus as such:
+We can define the rules for a string to be in the language of Kleene plus as
+such:
+
 \begin{prooftree}
   \AxiomC{$s \in L(|r|)$}
   \UnaryInfC{$s \in L(|r ⁺ˢ|)$}
@@ -174,9 +208,9 @@ mutual
       C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
 \end{code}
 
-Note that, if we are given a list of characters $x$ and two derivations of
-of the type |x ∈Lˢ r|, the derivations are not necessarily the same.
-An example of this is the following:
+Note that, if we are given a list of characters $x$ and two derivations of of
+the type |x ∈Lˢ r|, the derivations are not necessarily the same.  An example
+of this is the following:
 
 % write them as derivation trees with inference rules
 
@@ -211,8 +245,8 @@ An example of this is the following:
 \end{prooftree}
 
 As you can see in derivations C and D, the same string can have different
-derivations for the same regular expression.
-The same argument can be made for derivations of non-standard regular expressions.
+derivations for the same regular expression.  The same argument can be made for
+derivations of non-standard regular expressions.
 
 % two different values in the same type written in Agda
 
@@ -223,12 +257,14 @@ The same argument can be made for derivations of non-standard regular expression
 % ex₂ = ('a' ∷ 'a' ∷ [] , 'a' ∷ []) , refl , C+ refl refl (S+ refl) , S+ refl
 % \end{code}
 
+We will now define the matcher functions using only standard regular expressions.
+
 \section{Defunctionalized intrinsic matcher}
 
 % some introduction about list based continuation
 
-Before we start the |match| function, we should define a type for a string
-to be in the language of a list of regular expressions:
+Before we start the |match| function, we should define a type for a string to
+be in the language of a list of regular expressions:
 
 \begin{code}
 _∈Lᵏ_ : List Char → List StdRegExp → Set
@@ -272,14 +308,15 @@ The empty language does not accept any string.
 match (Litˢ c) [] k = fail
 match (Litˢ c) (x ∷ xs) k =
     (isEqual x c) >>=
-      (λ p → (match-helper k xs) >>=
-        (λ pf → return ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))))
+      (λ p → match-helper k xs <$$>
+        (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))))
 \end{code}
 
-If we are trying to match an empty list with a regular expression that requires a character, the matcher fails.
-If not, we try to match the first character of the string to |c| and then
-match the continuation using the function |match-helper| which is
-mutually recursive with our matcher and is defined as follows:
+If we are trying to match an empty list with a regular expression that requires
+a character, the matcher fails.  If not, we try to match the first character of
+the string to |c| and then match the continuation using the function
+|match-helper| which is mutually recursive with our matcher and is defined as
+follows:
 
 \begin{code}
 match-helper : (k : List StdRegExp) → (s : List Char) → Maybe (s ∈Lᵏ k)
@@ -295,19 +332,28 @@ if the rest of the list indeed matches the rest of the |StdRegExp|s in |k|.
 
 \begin{code}
 match (r₁ ·ˢ r₂) s k =
-    (match r₁ s (r₂ ∷ k)) >>= collect-left (λ inL inL' → _ , refl , inL , inL')
+  match r₁ s (r₂ ∷ k) <$$> collect-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL')
 \end{code}
+
+% TODO: maybe explain the helper functions before using them?
+If we have to \SRE to match to the beginning of the string and another one to
+match to the rest of the string, we try to match the first one first. We will
+get a split |xs ++ ys ≡ s| and derivations of the type |xs ∈Lˢ r₁| and
+|ys ∈Lᵏ k|. If we unpack the second derivation, we will have another split
+|as ++ bs ≡ ys| and derivations |as ∈Lˢ r₂| and |bs ∈Lᵏ k|. Our helper
+function |collect-left| states that if we have such a situation, we should be
+able to state that |xs ++ as| matches the entire \SRE, in this case, |r₁ ·ˢ r₂|.
 
 \begin{code}
 match (r₁ ⊕ˢ r₂) s k =
-  ((match r₁ s k) >>= change-∈L inj₁) ∣
-  ((match r₂ s k) >>= change-∈L inj₂)
+  (match r₁ s k <$$> change-∈L inj₁) ∣
+  (match r₂ s k <$$> change-∈L inj₂)
 \end{code}
 
 \begin{code}
 match (r ⁺ˢ) s k =
-  ((match r s k) >>= change-∈L S+) ∣
-  ((match r s ((r ⁺ˢ) ∷ k)) >>= collect-left (λ inL inL' → C+ refl inL inL'))
+  (match r s k <$$> change-∈L S+) ∣
+  (match r s ((r ⁺ˢ) ∷ k) <$$> collect-left {R = λ r _ → r ⁺ˢ} (λ inL inL' → C+ refl inL inL'))
 \end{code}
 
 \subsection{Verification}
@@ -328,11 +374,11 @@ match-completeness : (r : StdRegExp)
 % introduction about function based continuation
 
 A problem that arises with the function based continuations is regarding the
-totality checker. It is not evident to Agda that our |match| function terminates,
-because there is no obviously diminishing list of continuations like the
-defunctionalized matcher. This is why we have to show Agda that our recursive
-function really terminates, by providing an extra argument that is obviously
-diminishing. We define it as following:
+totality checker. It is not evident to Agda that our |match| function
+terminates, because there is no obviously diminishing list of continuations
+like the defunctionalized matcher. This is why we have to show Agda that our
+recursive function really terminates, by providing an extra argument that is
+obviously diminishing. We define it as following:
 
 \begin{code}
 data RecursionPermission {A : Set} : List A → Set where
@@ -354,18 +400,18 @@ match : (C : Set)
 
 The |match| function is now taking an extra argument |C| that helps us define
 the continuation function and the return type.  The purpose for having |C| as
-an argument is to be able to refer to the top level of the recursive calls
-in every sub recursive call.
+an argument is to be able to refer to the top level of the recursive calls in
+every sub recursive call.
 
-Notice that the continuation |k| is a function, unlike the defunctionalized version,
-but similar to Harper's matcher. It is a function that possibly gives a derivation
-(hence the |Maybe| type) for the entire string given that there is a split of it
-such that the first part is in the language of |r|.
+Notice that the continuation |k| is a function, unlike the defunctionalized
+version, but similar to Harper's matcher. It is a function that possibly gives
+a derivation (hence the |Maybe| type) for the entire string given that there is
+a split of it such that the first part is in the language of |r|.
 
 We also need an extra argument of type |RecursionPermission s| to explicitly
-show Agda that the string |s| gets shorter in each recursive call. Remember that
-to get a new |RecursionPermission s'| depending on an existing |RecursionPermission s|,
-it has to be that |s'| is a strict suffix of |s|.
+show Agda that the string |s| gets shorter in each recursive call. Remember
+that to get a new |RecursionPermission s'| depending on an existing
+|RecursionPermission s|, it has to be that |s'| is a strict suffix of |s|.
 
 \begin{code}
 match C ∅ˢ s k perm = fail
@@ -393,15 +439,16 @@ match C (r₁ ·ˢ r₂) s k (CanRec f) =
                         (f _ (suffix-continuation eq inL))) (CanRec f)
 \end{code}
 
-In the concatenation case of the defunctionalized version,
-we could add |r₂| to the list of continuations to be matched later.
-However, the higher-order matcher needs to construct a new
-continuation function. Once |r₁| was matched with the beginning of the string,
-the continuation would match the rest of the string with |r₂|.
+In the concatenation case of the defunctionalized version, we could add |r₂| to
+the list of continuations to be matched later.  However, the higher-order
+matcher needs to construct a new continuation function. Once |r₁| was matched
+with the beginning of the string, the continuation would match the rest of the
+string with |r₂|.
 
 Notice that to be able to call |match| with |r₂|, you need to prove that the
 rest of the string is a strict suffix of the entire string so that you can get
-a |RecursionPermission| for the rest. The function |suffix-continuation| does exactly that.
+a |RecursionPermission| for the rest. The function |suffix-continuation| does
+exactly that.
 
 \begin{code}
 match C (r₁ ⊕ˢ r₂) s k perm =
@@ -409,9 +456,9 @@ match C (r₁ ⊕ˢ r₂) s k perm =
   match C r₂ s (λ eq inL → k eq (inj₂ inL)) perm
 \end{code}
 
-The alternation case is similar to the defunctionalized version except the continuations.
-The matcher first tries to match |r₁| with |s| and
-tries to match |r₂| only if the first one does not match.
+The alternation case is similar to the defunctionalized version except the
+continuations.  The matcher first tries to match |r₁| with |s| and tries to
+match |r₂| only if the first one does not match.
 
 \begin{code}
 match C (r ⁺ˢ) s k (CanRec f) =
@@ -422,10 +469,10 @@ match C (r ⁺ˢ) s k (CanRec f) =
                       (f _ (suffix-continuation eq inL))) (CanRec f)
 \end{code}
 
-The structure of the Kleene plus case is similar to the defunctionalized version except the continuations.
-The matcher first tries to match |r| with |s| and tries to match the concatenation
-of |r| and |r ⁺ˢ| only if the first try fails. Observe that the second try is
-similar to the |·ˢ| case.
+The structure of the Kleene plus case is similar to the defunctionalized
+version except the continuations.  The matcher first tries to match |r| with
+|s| and tries to match the concatenation of |r| and |r ⁺ˢ| only if the first
+try fails. Observe that the second try is similar to the |·ˢ| case.
 
 \subsection{Verification}
 

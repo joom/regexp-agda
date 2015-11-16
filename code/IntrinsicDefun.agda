@@ -28,15 +28,16 @@ module IntrinsicDefun where
   change-∈L : {a b d : List Char → Set} {c : List Char → List Char → Set}
             → (∀ {s} → a s → b s)
             → (Σ _ (λ {(p , s') → (c p s') × (a p) × (d s')}))
-            → Maybe (Σ _ (λ {(p , s') → (c p s') × (b p) × (d s')}))
-  change-∈L f (x , eq , inL , rest) = return (x , eq , f inL , rest)
+            → (Σ _ (λ {(p , s') → (c p s') × (b p) × (d s')}))
+  change-∈L f (x , eq , inL , rest) = (x , eq , f inL , rest)
 
-  collect-left : ∀ {r₁ r₂ s k} {C : List Char → List Char → Set}
-               → (f : ∀ {xs as bs} → xs ∈Lˢ r₁ → as ∈Lˢ r₂ → C (xs ++ as) bs)
+  -- reassociate-left ?
+  collect-left : ∀ {r₁ r₂ s k} {R : StdRegExp → StdRegExp → StdRegExp}
+               → (f : ∀ {xs as} → xs ∈Lˢ r₁ → as ∈Lˢ r₂ → ((xs ++ as) ∈Lˢ R r₁ r₂))
                → Σ _ (λ { (xs , ys) → (xs ++ ys ≡ s) × xs ∈Lˢ r₁ × Σ _ (λ {(as , bs) → (as ++ bs ≡ ys) × as ∈Lˢ r₂ × bs ∈Lᵏ k})})
-               → Maybe (Σ _ (λ { (p , s') → (p ++ s' ≡ s) × C p s' × s' ∈Lᵏ k}))
+               → (Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ R r₁ r₂) × s' ∈Lᵏ k}))
   collect-left {_}{_}{s} f ((xs , ys) , eq , inL , (as , bs) , eq' , inL' , rest) =
-    return ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , f inL inL' , rest )
+    ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , f inL inL' , rest )
 
   mutual
     match-helper : (k : List StdRegExp) → (s : List Char) → Maybe (s ∈Lᵏ k)
@@ -52,13 +53,15 @@ module IntrinsicDefun where
     match ∅ˢ s k = fail
     match (Litˢ c) [] k = fail
     match (Litˢ c) (x ∷ xs) k =
-        (isEqual x c) >>= (λ p → (match-helper k xs) >>= (λ pf → return ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))))
+      (isEqual x c) >>= (λ p → match-helper k xs <$$> (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))))
     match (r₁ ·ˢ r₂) s k =
-        (match r₁ s (r₂ ∷ k)) >>= collect-left (λ inL inL' → _ , refl , inL , inL')
+      match r₁ s (r₂ ∷ k) <$$> collect-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL')
     match (r₁ ⊕ˢ r₂) s k =
-      ((match r₁ s k) >>= change-∈L inj₁) ∣ ((match r₂ s k) >>= change-∈L inj₂)
+      (match r₁ s k <$$> change-∈L inj₁) ∣
+      (match r₂ s k <$$> change-∈L inj₂)
     match (r ⁺ˢ) s k =
-      ((match r s k) >>= change-∈L S+) ∣ ((match r s ((r ⁺ˢ) ∷ k)) >>= collect-left (λ inL inL' → C+ refl inL inL'))
+      (match r s k <$$> change-∈L S+) ∣
+      (match r s ((r ⁺ˢ) ∷ k) <$$> collect-left {R = λ r _ → r ⁺ˢ} (λ inL inL' → C+ refl inL inL'))
 
   mutual
     match-helper-some : (k : List StdRegExp) → (s : List Char) → (s ∈Lᵏ k) → isJust (match-helper k s)

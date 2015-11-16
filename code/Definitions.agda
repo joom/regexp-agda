@@ -1,5 +1,6 @@
 module Definitions where
 
+  open import Function
   open import Data.Char
   open import Data.Bool
   open import Data.Empty
@@ -56,3 +57,6 @@ module Definitions where
 
   isEqual : (x y : Char) → Maybe (x ≡ y)
   isEqual x y = decToMaybe (x Data.Char.≟ y)
+
+  _<$$>_ : ∀ {l1 l2} {A : Set l1} {B : Set l2} → Maybe A → (A → B) → Maybe B
+  _<$$>_ = flip Data.Maybe.map
