@@ -332,17 +332,16 @@ if the rest of the list indeed matches the rest of the |StdRegExp|s in |k|.
 
 \begin{code}
 match (r₁ ·ˢ r₂) s k =
-  match r₁ s (r₂ ∷ k) <$$> collect-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL')
+  match r₁ s (r₂ ∷ k) <$$> reassociate-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL')
 \end{code}
 
 % TODO: maybe explain the helper functions before using them?
-If we have to \SRE to match to the beginning of the string and another one to
-match to the rest of the string, we try to match the first one first. We will
-get a split |xs ++ ys ≡ s| and derivations of the type |xs ∈Lˢ r₁| and
-|ys ∈Lᵏ k|. If we unpack the second derivation, we will have another split
-|as ++ bs ≡ ys| and derivations |as ∈Lˢ r₂| and |bs ∈Lᵏ k|. Our helper
-function |collect-left| states that if we have such a situation, we should be
-able to state that |xs ++ as| matches the entire \SRE, in this case, |r₁ ·ˢ r₂|.
+If we have one |StdRegExp| to match to the beginning of the string and another one to
+match to the rest of the string, we try to match the first one first, and add the second one to the continuation list of regular expressions |k|. Now calling match on |r₁ s (r₂ ∷ k)| will
+give us a split |xs ++ ys ≡ s| and derivations of the type |xs ∈Lˢ r₁| and
+|ys ∈Lᵏ r₂ ∷ k|. If we unpack the second derivation (provided by our definition of ∈Lᵏ and the fact that our continuation list contains at least one element, r₂), we will have another split |as ++ bs ≡ ys| and derivations |as ∈Lˢ r₂| and |bs ∈Lᵏ k|. Our helper
+function |reassociate-left| states that if we have such a situation, we should be
+able to state that |xs ++ as| matches the entire starting |StdRegExp r|, in this case, |r₁ ·ˢ r₂|.
 
 \begin{code}
 match (r₁ ⊕ˢ r₂) s k =
@@ -350,11 +349,18 @@ match (r₁ ⊕ˢ r₂) s k =
   (match r₂ s k <$$> change-∈L inj₂)
 \end{code}
 
+We define the alternation case by trying to match the string with the first part of the alternation, and if that fails we try to match with the second part.
+\begin{code}
+change-∈L f (x , eq , inL , rest) = (x , eq , f inL , rest)
+\end{code}
+We use |change-∈L| in order to apply inj₁ or inj₂ to the derivation, depending on which part of the alternation successfully matched the string.
+
 \begin{code}
 match (r ⁺ˢ) s k =
   (match r s k <$$> change-∈L S+) ∣
-  (match r s ((r ⁺ˢ) ∷ k) <$$> collect-left {R = λ r _ → r ⁺ˢ} (λ inL inL' → C+ refl inL inL'))
+  (match r s ((r ⁺ˢ) ∷ k) <$$> reassociate-left {R = λ r _ → r ⁺ˢ} (λ inL inL' → C+ refl inL inL'))
 \end{code}
+In the Kleene plus case, we first try to match |s| with just |r| and if that succeeds we apply |change-∈L S+| to the derivation since we matched from the single |r| case. If this fails, then similar to the ·ˢ case, we try to match a prefix of the string to |r| and then the suffix that follows with the continuation which now includes |r ⁺ˢ|. Just like in the ·ˢ case, we use |reassociate-left| in order to get that our splitting of |s| matches the entire starting |r|.
 
 \subsection{Verification}
 
