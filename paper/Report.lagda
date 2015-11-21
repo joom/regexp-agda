@@ -146,12 +146,12 @@ _∣_ : ∀ {A} → Maybe A → Maybe A → Maybe A
 just x ∣ _ = just x
 nothing | y = y
 
-_<$$>_ : ∀ {A B} → Maybe A → (A → B) → Maybe B
-just x <$$> f = just (f x)
-nothing <$$> _ = nothing
+map : ∀ {A B} → (A → B) → Maybe A → Maybe B
+map f (just x) = just (f x)
+map _ nothing  = nothing
 \end{code}
 
-With Haskell terminology, |_∣_| is |mplus| and |_<$$>_| is |flip fmap|.
+With Haskell terminology, |_∣_| is |mplus| and |map| is |fmap|.
 
 \section{StdRegExp description}
 
@@ -305,11 +305,10 @@ match ∅ˢ s k = fail
 The empty language does not accept any string.
 
 \begin{code}
-match (Litˢ c) [] k = fail
 match (Litˢ c) (x ∷ xs) k =
-    (isEqual x c) >>=
-      (λ p → match-helper k xs <$$>
-        (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))))
+  (isEqual x c) >>=
+    (λ p → map (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf)))
+               (match-helper k xs))
 \end{code}
 
 If we are trying to match an empty list with a regular expression that requires
@@ -332,7 +331,7 @@ if the rest of the list indeed matches the rest of the |StdRegExp|s in |k|.
 
 \begin{code}
 match (r₁ ·ˢ r₂) s k =
-  match r₁ s (r₂ ∷ k) <$$> reassociate-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL')
+  map (reassociate-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL')) (match r₁ s (r₂ ∷ k))
 \end{code}
 
 % TODO: maybe explain the helper functions before using them?
@@ -345,21 +344,24 @@ able to state that |xs ++ as| matches the entire starting |StdRegExp r|, in this
 
 \begin{code}
 match (r₁ ⊕ˢ r₂) s k =
-  (match r₁ s k <$$> change-∈L inj₁) ∣
-  (match r₂ s k <$$> change-∈L inj₂)
+  (map (change-∈L inj₁) (match r₁ s k)) ∣
+  (map (change-∈L inj₂) (match r₂ s k))
 \end{code}
 
 We define the alternation case by trying to match the string with the first part of the alternation, and if that fails we try to match with the second part.
+
 \begin{code}
 change-∈L f (x , eq , inL , rest) = (x , eq , f inL , rest)
 \end{code}
+
 We use |change-∈L| in order to apply inj₁ or inj₂ to the derivation, depending on which part of the alternation successfully matched the string.
 
 \begin{code}
 match (r ⁺ˢ) s k =
-  (match r s k <$$> change-∈L S+) ∣
-  (match r s ((r ⁺ˢ) ∷ k) <$$> reassociate-left {R = λ r _ → r ⁺ˢ} (λ inL inL' → C+ refl inL inL'))
+  (map (change-∈L S+) (match r s k)) ∣
+  (map (reassociate-left {R = λ r _ → r ⁺ˢ} (λ inL inL' → C+ refl inL inL')) (match r s ((r ⁺ˢ) ∷ k)))
 \end{code}
+
 In the Kleene plus case, we first try to match |s| with just |r| and if that succeeds we apply |change-∈L S+| to the derivation since we matched from the single |r| case. If this fails, then similar to the ·ˢ case, we try to match a prefix of the string to |r| and then the suffix that follows with the continuation which now includes |r ⁺ˢ|. Just like in the ·ˢ case, we use |reassociate-left| in order to get that our splitting of |s| matches the entire starting |r|.
 
 \subsection{Verification}
@@ -371,9 +373,44 @@ we should write a completeness proof:
 match-completeness : (r : StdRegExp)
                    → (s : List Char)
                    → (k : List StdRegExp)
-                   → Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k})
-                   → isJust (match r s k )
+                   → Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ∈Lᵏ k)})
+                   → isJust (match r s k)
 \end{code}
+
+We are going to prove that if we have |r|, |s|, |k| and a split of
+|p ++ s' ≡ s| such that there are derivations of type |p ∈Lˢ r| and |s' ∈Lᵏ k|,
+then we know that our |match| function does not fail. Notice that we cannot
+make a stronger claim and say that it returns the same derivations, because as
+we showed before, derivations of the same type are not necessarily the same.
+
+The base cases |∅ˢ| and |Litˢ| are trivial. Since the Kleene plus case captures
+the essence of both concatenation and alternation cases, we will only explain
+the completeness proof of the Kleene plus case.
+
+\begin{code}
+match-completeness (r ⁺ˢ) s k ((xs , ys) , eq , S+ x , rest)
+  with match r s k | match-completeness r s k ((xs , ys) , eq , x , rest)
+... | nothing | ()
+... | just _  | _ = tt
+\end{code}
+
+The constructor |S+| corresponds to the first derivation rule of Kleene plus.
+In that case, if we have a derivation of type |xs ∈Lˢ (r ⁺ˢ)|
+
+\begin{code}
+match-completeness (r ⁺ˢ) s k ((xs , ys) , eq , C+ x y inL , rest)
+  with match r s k
+... | just _ = tt
+match-completeness (r ⁺ˢ) .((s₁ ++ s₂) ++ ys) k ((._ , ys) , refl , C+ {._}{s₁}{s₂} refl y inL , rest) | nothing
+  with match r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k)
+    | match-completeness r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k)
+                         (_ , append-assoc s₁ s₂ ys , y , (_ , ys) , refl , inL , rest)
+... | nothing | ()
+... | just _  | _ = tt
+\end{code}
+
+The constructor |C+| corresponds to the second derivation rule of Kleene plus.
+
 
 \section{Higher-order intrinsic matcher}
 
@@ -494,6 +531,16 @@ match-completeness : (C : Set)
                    → Σ _ (λ { (p , s') → Σ _ (λ eq → Σ _ (λ inL → isJust (k {p}{s'} eq inL))) })
                    → isJust (match C r s k perm)
 \end{code}
+
+We are going to prove that if we have |r|, |s|, |k| % TODO
+then we know that our |match| function does not fail. Notice that we cannot
+make a stronger claim and say that it returns the same derivations, because as
+we showed before, derivations of the same type are not necessarily the same.
+
+The base cases |∅ˢ| and |Litˢ| are trivial. Since the Kleene plus case captures
+the essence of both concatenation and alternation cases, we will only explain
+the completeness proof of the Kleene plus case.
+
 
 \section{Conversion from RegExp to StdRegExp}
 
