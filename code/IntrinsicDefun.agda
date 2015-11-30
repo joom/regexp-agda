@@ -52,15 +52,15 @@ module IntrinsicDefun where
     match ∅ˢ s k = fail
     match (Litˢ c) [] k = fail
     match (Litˢ c) (x ∷ xs) k =
-      (isEqual x c) >>= (λ p → match-helper k xs <$$> (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))))
+      (isEqual x c) >>= (λ p → Data.Maybe.map (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))) (match-helper k xs))
     match (r₁ ·ˢ r₂) s k =
-      match r₁ s (r₂ ∷ k) <$$> reassociate-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL')
+      Data.Maybe.map (reassociate-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL')) (match r₁ s (r₂ ∷ k))
     match (r₁ ⊕ˢ r₂) s k =
-      (match r₁ s k <$$> change-∈L inj₁) ∣
-      (match r₂ s k <$$> change-∈L inj₂)
+      (Data.Maybe.map (change-∈L inj₁) (match r₁ s k)) ∣
+      (Data.Maybe.map (change-∈L inj₂) (match r₂ s k))
     match (r ⁺ˢ) s k =
-      (match r s k <$$> change-∈L S+) ∣
-      (match r s ((r ⁺ˢ) ∷ k) <$$> reassociate-left {R = λ r _ → r ⁺ˢ} (λ inL inL' → C+ refl inL inL'))
+      (Data.Maybe.map (change-∈L S+) (match r s k)) ∣
+      (Data.Maybe.map (reassociate-left {R = λ r _ → r ⁺ˢ} (λ inL inL' → C+ refl inL inL')) (match r s ((r ⁺ˢ) ∷ k)))
 
   mutual
     match-helper-some : (k : List StdRegExp) → (s : List Char) → (s ∈Lᵏ k) → isJust (match-helper k s)

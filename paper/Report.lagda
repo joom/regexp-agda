@@ -278,6 +278,8 @@ regular expressions. If the list is empty, the string also has to be empty.
 If the list has a head, then a prefix of the string should match the head of
 the list and the rest of the list should match with the rest of the string.
 
+\subsection{Definition}
+
 Now that we know how to handle the continuation list, we can define the main
 function for the defunctionalized intrinsic matcher case by case as following:
 
@@ -297,6 +299,8 @@ a derivation that |p| is in the language of |r| and a derivation
 that |s' ∈Lᵏ k|, which is defined to mean that if |k| is empty,
 then |s'| has to be empty as well, otherwise |k = r'::rs| and there is
 a splitting of |s'|, |s' ≡ p' ++ s''|, such that |p' ∈Lˢ r'| and |s'' ∈Lᵏ rs|.
+
+\subsubsection{Base cases}
 
 \begin{code}
 match ∅ˢ s k = fail
@@ -329,18 +333,29 @@ then we call |match-helper| on the continuation and the rest of the list.
 Then from |match-helper| we will get a derivation of the type |s ∈Lᵏ k|
 if the rest of the list indeed matches the rest of the |StdRegExp|s in |k|.
 
+\subsubsection{Concatenation}
+
 \begin{code}
 match (r₁ ·ˢ r₂) s k =
-  map (reassociate-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL')) (match r₁ s (r₂ ∷ k))
+  map (reassociate-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL'))
+    (match r₁ s (r₂ ∷ k))
 \end{code}
 
-% TODO: maybe explain the helper functions before using them?
-If we have one |StdRegExp| to match to the beginning of the string and another one to
-match to the rest of the string, we try to match the first one first, and add the second one to the continuation list of regular expressions |k|. Now calling match on |r₁ s (r₂ ∷ k)| will
-give us a split |xs ++ ys ≡ s| and derivations of the type |xs ∈Lˢ r₁| and
-|ys ∈Lᵏ r₂ ∷ k|. If we unpack the second derivation (provided by our definition of ∈Lᵏ and the fact that our continuation list contains at least one element, r₂), we will have another split |as ++ bs ≡ ys| and derivations |as ∈Lˢ r₂| and |bs ∈Lᵏ k|. Our helper
-function |reassociate-left| states that if we have such a situation, we should be
-able to state that |xs ++ as| matches the entire starting |StdRegExp r|, in this case, |r₁ ·ˢ r₂|.
+% \ToDo{maybe explain the helper functions before using them?}
+
+If we have one |StdRegExp| to match to the beginning of the string and another
+one to match to the rest of the string, we try to match the first one first,
+and add the second one to the continuation list of regular expressions |k|. Now
+calling match on |r₁ s (r₂ ∷ k)| will give us a split |xs ++ ys ≡ s| and
+derivations of the type |xs ∈Lˢ r₁| and |ys ∈Lᵏ r₂ ∷ k|. If we unpack the
+second derivation (provided by our definition of ∈Lᵏ and the fact that our
+continuation list contains at least one element, r₂), we will have another
+split |as ++ bs ≡ ys| and derivations |as ∈Lˢ r₂| and |bs ∈Lᵏ k|. Our helper
+function |reassociate-left| states that if we have such a situation, we should
+be able to state that |xs ++ as| matches the entire starting |StdRegExp r|, in
+this case, |r₁ ·ˢ r₂|.
+
+\subsubsection{Alternation}
 
 \begin{code}
 match (r₁ ⊕ˢ r₂) s k =
@@ -348,26 +363,47 @@ match (r₁ ⊕ˢ r₂) s k =
   (map (change-∈L inj₂) (match r₂ s k))
 \end{code}
 
-We define the alternation case by trying to match the string with the first part of the alternation, and if that fails we try to match with the second part.
+We define the alternation case by trying to match the string with the first
+part of the alternation, and if that fails we try to match with the second
+part.
+
+Notice that if the call |match r₁ s k| does not fail, it will contain a
+derivation of type |s ∈Lˢ r₁|. However the return type for the alternation case
+should contain a derivation of type |s ∈Lˢ (r₁ ⊕ˢ r₂)|. Our helper function
+|change-∈L| allows us to do that.
 
 \begin{code}
+change-∈L : {a b d : List Char → Set} {c : List Char → List Char → Set}
+          → (∀ {s} → a s → b s)
+          → (Σ _ (λ {(p , s') → (c p s') × (a p) × (d s')}))
+          → (Σ _ (λ {(p , s') → (c p s') × (b p) × (d s')}))
 change-∈L f (x , eq , inL , rest) = (x , eq , f inL , rest)
 \end{code}
 
-We use |change-∈L| in order to apply inj₁ or inj₂ to the derivation, depending on which part of the alternation successfully matched the string.
+We use |change-∈L| to apply |inj₁| or |inj₂| to the derivation, depending on
+which part of the alternation successfully matched the string.
+
+\subsubsection{Kleene plus}
 
 \begin{code}
 match (r ⁺ˢ) s k =
   (map (change-∈L S+) (match r s k)) ∣
-  (map (reassociate-left {R = λ r _ → r ⁺ˢ} (λ inL inL' → C+ refl inL inL')) (match r s ((r ⁺ˢ) ∷ k)))
+  (map (reassociate-left {R = λ r _ → r ⁺ˢ} (λ inL inL' → C+ refl inL inL'))
+    (match r s ((r ⁺ˢ) ∷ k)))
 \end{code}
 
-In the Kleene plus case, we first try to match |s| with just |r| and if that succeeds we apply |change-∈L S+| to the derivation since we matched from the single |r| case. If this fails, then similar to the ·ˢ case, we try to match a prefix of the string to |r| and then the suffix that follows with the continuation which now includes |r ⁺ˢ|. Just like in the ·ˢ case, we use |reassociate-left| in order to get that our splitting of |s| matches the entire starting |r|.
+In the Kleene plus case, we first try to match |s| with just |r| and if that
+succeeds we apply |change-∈L S+| to the derivation since we matched from the
+single |r| case. If this fails, then similar to the ·ˢ case, we try to match a
+prefix of the string to |r| and then the suffix that follows with the
+continuation which now includes |r ⁺ˢ|. Just like in the ·ˢ case, we use
+|reassociate-left| in order to get that our splitting of |s| matches the entire
+starting |r|.
 
 \subsection{Verification}
 
-To verify that our matcher works correctly for a match that we have a proof for,
-we should write a completeness proof:
+To verify that our matcher works correctly for a match that we have a proof
+for, we should write a completeness proof:
 
 \begin{code}
 match-completeness : (r : StdRegExp)
@@ -401,7 +437,8 @@ In that case, if we have a derivation of type |xs ∈Lˢ (r ⁺ˢ)|
 match-completeness (r ⁺ˢ) s k ((xs , ys) , eq , C+ x y inL , rest)
   with match r s k
 ... | just _ = tt
-match-completeness (r ⁺ˢ) .((s₁ ++ s₂) ++ ys) k ((._ , ys) , refl , C+ {._}{s₁}{s₂} refl y inL , rest) | nothing
+match-completeness (r ⁺ˢ) .((s₁ ++ s₂) ++ ys) k
+    ((._ , ys) , refl , C+ {._}{s₁}{s₂} refl y inL , rest) | nothing
   with match r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k)
     | match-completeness r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k)
                          (_ , append-assoc s₁ s₂ ys , y , (_ , ys) , refl , inL , rest)
@@ -430,6 +467,8 @@ data RecursionPermission {A : Set} : List A → Set where
          → RecursionPermission ys
 \end{code}
 
+\subsection{Definition}
+
 The main function for the higher-order intrinsic matcher is defined case by case as following:
 
 \begin{code}
@@ -456,6 +495,8 @@ show Agda that the string |s| gets shorter in each recursive call. Remember
 that to get a new |RecursionPermission s'| depending on an existing
 |RecursionPermission s|, it has to be that |s'| is a strict suffix of |s|.
 
+\subsubsection{Base cases}
+
 \begin{code}
 match C ∅ˢ s k perm = fail
 \end{code}
@@ -472,6 +513,8 @@ match C (Litˢ x) (y ∷ ys) k perm with y Data.Char.≟ x
 The character literal language should only accept the string if the
 first character is the same as the one required by |r| and the continuation
 returns a derivation for the rest of the string.
+
+\subsubsection{Concatenation}
 
 \begin{code}
 match C (r₁ ·ˢ r₂) s k (CanRec f) =
@@ -493,6 +536,8 @@ rest of the string is a strict suffix of the entire string so that you can get
 a |RecursionPermission| for the rest. The function |suffix-continuation| does
 exactly that.
 
+\subsubsection{Alternation}
+
 \begin{code}
 match C (r₁ ⊕ˢ r₂) s k perm =
   match C r₁ s (λ eq inL → k eq (inj₁ inL)) perm ∣
@@ -502,6 +547,8 @@ match C (r₁ ⊕ˢ r₂) s k perm =
 The alternation case is similar to the defunctionalized version except the
 continuations.  The matcher first tries to match |r₁| with |s| and tries to
 match |r₂| only if the first one does not match.
+
+\subsubsection{Kleene plus}
 
 \begin{code}
 match C (r ⁺ˢ) s k (CanRec f) =
@@ -532,15 +579,29 @@ match-completeness : (C : Set)
                    → isJust (match C r s k perm)
 \end{code}
 
-We are going to prove that if we have |r|, |s|, |k| % TODO
-then we know that our |match| function does not fail. Notice that we cannot
-make a stronger claim and say that it returns the same derivations, because as
+The type above translates to this: Suppose we have |C|, |r|, |s|, |k| and
+|perm|. Suppose there exists a split of |p ++ s' ≡ s| such that there exists a
+derivation of type |p ∈Lˢ r| such that the continuation called with those
+arguments does not return |nothing|. Then we have to show that |match| function
+does not fail.
+
+Notice that we cannot make a stronger claim and say that the calls to the
+continuation and the |match| function return the same derivations, because as
 we showed before, derivations of the same type are not necessarily the same.
 
 The base cases |∅ˢ| and |Litˢ| are trivial. Since the Kleene plus case captures
 the essence of both concatenation and alternation cases, we will only explain
 the completeness proof of the Kleene plus case.
 
+\begin{code}
+match-completeness C (r ⁺ˢ) s k (CanRec f) ((xs , ys) , eq , S+ x , m) =
+  or-just (inj₁ (match-completeness C r s (λ {p}{s'} eq' inL' → k eq' (S+ inL')) (CanRec f) (_ , eq , x , m)))
+match-completeness C (r ⁺ˢ) ._ k (CanRec f) ((._ , ys) , refl , C+ {._}{s₁}{s₂} refl inL inL2 , m)
+  with match-completeness C (r ⁺ˢ) (s₂ ++ ys) _ (f _ (suffix-continuation (append-assoc s₁ s₂ ys) inL))
+                          (_ , refl , inL2 , subst (λ H → isJust (k H (C+ refl inL inL2))) (sym (uip _)) m)
+... | pf = or-just {_}{match C r _ (λ eq inL → k eq (S+ inL)) (CanRec f)}
+                    (inj₂ (match-completeness C r ((s₁ ++ s₂) ++ ys) _ _ (_ , append-assoc s₁ s₂ ys , inL , pf)))
+\end{code}
 
 \section{Conversion from RegExp to StdRegExp}
 
