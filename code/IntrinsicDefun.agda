@@ -95,10 +95,12 @@ module IntrinsicDefun where
       with match r s k | match-completeness r s k ((xs , ys) , eq , x , rest)
     ... | nothing | ()
     ... | just _  | _ = tt
-    match-completeness (r ⁺ˢ) s k ((xs , ys) , eq , C+ x y inL , rest) with match r s k
+    match-completeness (r ⁺ˢ) .((s₁ ++ s₂) ++ ys) k ((._ , ys) , refl , C+ {._}{s₁}{s₂} refl y inL , rest)
+      with match r ((s₁ ++ s₂) ++ ys) k
     ... | just _ = tt
-    match-completeness (r ⁺ˢ) .((s₁ ++ s₂) ++ ys) k ((._ , ys) , refl , C+ {._}{s₁}{s₂} refl y inL , rest) | nothing
-      with match r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k) | match-completeness r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k) (_ , append-assoc s₁ s₂ ys , y , (_ , ys) , refl , inL , rest)
+    ... | nothing
+      with match r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k)
+         | match-completeness r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k) (_ , append-assoc s₁ s₂ ys , y , (_ , ys) , refl , inL , rest)
     ... | nothing | ()
     ... | just _  | _ = tt
 

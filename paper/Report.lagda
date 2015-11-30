@@ -341,18 +341,16 @@ match (r₁ ·ˢ r₂) s k =
     (match r₁ s (r₂ ∷ k))
 \end{code}
 
-% \ToDo{maybe explain the helper functions before using them?}
-
 If we have one |StdRegExp| to match to the beginning of the string and another
 one to match to the rest of the string, we try to match the first one first,
 and add the second one to the continuation list of regular expressions |k|. Now
 calling match on |r₁ s (r₂ ∷ k)| will give us a split |xs ++ ys ≡ s| and
-derivations of the type |xs ∈Lˢ r₁| and |ys ∈Lᵏ r₂ ∷ k|. If we unpack the
-second derivation (provided by our definition of ∈Lᵏ and the fact that our
-continuation list contains at least one element, r₂), we will have another
+derivations of the type |xs ∈Lˢ r₁| and |ys ∈Lᵏ (r₂ ∷ k)|. If we unpack the
+second derivation (provided by our definition of |∈Lᵏ| and the fact that our
+continuation list contains at least one element, |r₂|), we will have another
 split |as ++ bs ≡ ys| and derivations |as ∈Lˢ r₂| and |bs ∈Lᵏ k|. Our helper
 function |reassociate-left| states that if we have such a situation, we should
-be able to state that |xs ++ as| matches the entire starting |StdRegExp r|, in
+be able to state that |xs ++ as| matches the entire regular expression, in
 this case, |r₁ ·ˢ r₂|.
 
 \subsubsection{Alternation}
@@ -431,17 +429,18 @@ match-completeness (r ⁺ˢ) s k ((xs , ys) , eq , S+ x , rest)
 \end{code}
 
 The constructor |S+| corresponds to the first derivation rule of Kleene plus.
-In that case, if we have a derivation of type |xs ∈Lˢ (r ⁺ˢ)|
+In that case, if we have a derivation of type |xs ∈Lˢ (r ⁺ˢ)|, then it is
+trivial to show that we can get a derivation of type |xs ∈Lˢ r|.
 
 \begin{code}
-match-completeness (r ⁺ˢ) s k ((xs , ys) , eq , C+ x y inL , rest)
-  with match r s k
-... | just _ = tt
 match-completeness (r ⁺ˢ) .((s₁ ++ s₂) ++ ys) k
-    ((._ , ys) , refl , C+ {._}{s₁}{s₂} refl y inL , rest) | nothing
+    ((._ , ys) , refl , C+ {._}{s₁}{s₂} refl y inL , rest)
+  with match r ((s₁ ++ s₂) ++ ys) k
+... | just _ = tt
+... | nothing
   with match r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k)
-    | match-completeness r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k)
-                         (_ , append-assoc s₁ s₂ ys , y , (_ , ys) , refl , inL , rest)
+     | match-completeness r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k)
+        (_ , append-assoc s₁ s₂ ys , y , (_ , ys) , refl , inL , rest)
 ... | nothing | ()
 ... | just _  | _ = tt
 \end{code}
