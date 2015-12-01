@@ -74,12 +74,13 @@ as an argument and then handle the type conversions to show that our program
 manages to solve the original problem. We use Agda as a proof checker to prove
 this.
 
-The matcher functions described by Harper has the type signature:
+The matcher functions described by Harper have the type signatures:
 
-\begin{code}
-_accepts_ : RegExp → String → Bool
-match: RegExp → List Char → (List Char → Bool) → Bool
-\end{code}
+\vspace{4mm}
+|match: RegExp → List Char → (List Char → Bool) → Bool|
+
+|_accepts_ : RegExp → String → Bool|
+\vspace{4mm}
 
 Obviously, |_accepts_| takes a regular expression and a string, and returns
 |true| if the regular expression accepts the string or it returns |false|
@@ -161,7 +162,7 @@ usual regular expressions, however it will vary in the cases that accept the
 empty string. We will omit the $\varepsilon$ case in usual regular expressions,
 and replace Kleene star with Kleene plus.
 
-Let's define \SRE as follows:
+Let's define |StdRegExp| as follows:
 
 \begin{code}
 data StdRegExp : Set where
@@ -392,9 +393,9 @@ match (r ⁺ˢ) s k =
 
 In the Kleene plus case, we first try to match |s| with just |r| and if that
 succeeds we apply |change-∈L S+| to the derivation since we matched from the
-single |r| case. If this fails, then similar to the ·ˢ case, we try to match a
-prefix of the string to |r| and then the suffix that follows with the
-continuation which now includes |r ⁺ˢ|. Just like in the ·ˢ case, we use
+single |r| case. If this fails, then similar to the |·ˢ| case, we try to match
+a prefix of the string to |r| and then the suffix that follows with the
+continuation which now includes |r ⁺ˢ|. Just like in the |·ˢ| case, we use
 |reassociate-left| in order to get that our splitting of |s| matches the entire
 starting |r|.
 
@@ -446,11 +447,21 @@ match-completeness (r ⁺ˢ) .((s₁ ++ s₂) ++ ys) k
 \end{code}
 
 The constructor |C+| corresponds to the second derivation rule of Kleene plus.
+We already had a split |xs ++ ys ≡ s|, so we can replace |s| with |xs ++ ys|.
+The constructor |C+| gives us another split |s₁ ++ s₂ ≡ xs|, so we can replace
+|xs| with |s₁ ++ s₂|. This means now we have |(s₁ ++ s₂) ++ ys| instead of |s|.
 
+The definition of the Kleene plus case uses |_∣_|, which has to try and fail
+the first case to return the second case. To satisfy that, we make a call to
+|match r ((s₁ ++ s₂) ++ ys) k|.  If the call succeeds, then we satisfy the
+first case of |_∣_|. If the call fails, then we verify that |s₁| matches |r|
+and |s₂ ++ ys| matches the continuation.  We use the associative property of
+appending lists to show that it is the same string.
 
 \section{Higher-order intrinsic matcher}
 
 % introduction about function based continuation
+
 
 A problem that arises with the function based continuations is regarding the
 totality checker. It is not evident to Agda that our |match| function
@@ -604,15 +615,96 @@ match-completeness C (r ⁺ˢ) ._ k (CanRec f) ((._ , ys) , refl , C+ {._}{s₁}
 
 \section{Conversion from RegExp to StdRegExp}
 
-In order to guarantee the termination of the matching function, the input
-regular expression is converted to a standard form regular expression.
-We define a function $\standardize : \RE \to \SRE$ such that
+\subsection{Definitions}
 
-$$L( \standardize (r)) = L(r) \setminus L(\varepsilon)$$
+Notice that we defined our |match| functions in terms of standard form regular
+expressions, in order to guarantee the termination. What we want at the end is
+an |_accepts_| function in terms of |RegExp|, like Harper's. Therefore we should
+define a new type |RegExp| and a function to convert |RegExp| to |StdRegExp|.
 
-We do not have a definition for the language itself, but we can define the
-requirements of a string being in the language of a regular expression.
-Hence, we should prove
+\begin{code}
+data RegExp : Set where
+  ∅ : RegExp
+  ε : RegExp
+  Lit : Char → RegExp
+  _·_ : RegExp → RegExp → RegExp
+  _⊕_ : RegExp → RegExp → RegExp
+  _* : RegExp → RegExp
+  G : RegExp → RegExp
+\end{code}
+
+|∅| is the empty set, |ε| is the empty string, |Lit| is the literal character,
+|_·_| is concatenation, |_⊕_| is alternation, |_*| is Kleene star and |G| is
+grouping. \ToDo{explain grouping}
+
+Before we define the conversion function, we need a helper function that checks
+if a regular expression accepts the empty string. Even though we can simply
+define this as a function |RegExp → Bool|, proving it will be helpful for the
+correctness of our overall program.
+
+\begin{code}
+δ' : (r : RegExp) → ([] ∈L r) ⊎ (¬ ([] ∈L r))
+\end{code}
+
+Using |δ'|, we can trivially define |δ : RegExp → Bool|.  We define a function
+$\standardize$ as follows:
+
+\begin{code}
+standardize : RegExp → StdRegExp
+standardize ∅ = ∅ˢ
+standardize ε = ∅ˢ
+standardize (Lit x) = Litˢ x
+standardize (r₁ · r₂) with standardize r₁ | standardize r₂ | δ r₁ | δ r₂
+... | x₁ | x₂ | false | false = x₁ ·ˢ x₂
+... | x₁ | x₂ | false | true = x₁ ⊕ˢ (x₁ ·ˢ x₂)
+... | x₁ | x₂ | true | false = x₂ ⊕ˢ (x₁ ·ˢ x₂)
+... | x₁ | x₂ | true | true = x₁ ⊕ˢ x₂ ⊕ˢ (x₁ ·ˢ x₂)
+standardize (r₁ ⊕ r₂) = standardize r₁ ⊕ˢ standardize r₂
+standardize (r *) = (standardize r) ⁺ˢ
+standardize (G r) = standardize r
+\end{code}
+
+Observe that the empty string language |ε| becomes the empty set |∅ˢ| and
+Kleene star becomes Kleene plus. This definition directly follows
+Harper's definition of standardization except the concatenation case.
+
+Harper's definition of |δ| returns either |∅| or |ε|, hence the type of |δ| would be |RegExp → RegExp|.
+
+If we try to directly follow Harper's standardization for concatenation, we
+would have to write
+% \ToDo{Harper's paper has a typo in that section, I don't know how to deal with that}
+\begin{code}
+standardize (r₁ · r₂) =
+  ((δ r₁) ·ˢ (standardize r₂)) ⊕ˢ
+  ((standardize r₁) ·ˢ (δ r₂)) ⊕ˢ
+  ((standardize r₁) ·ˢ (standardize r₂))
+\end{code}
+
+Observe that this does not type check, because |_·ˢ_| requires two
+|StdRegExp|s, yet Harper's definition of |δ| returns a |RegExp|.
+Also observe that, if it did type check, for any |r|, both |∅ ·ˢ r| and
+|r ·ˢ ∅| would effectively be equal to |∅|. Likewise, for any |r|, both
+|ε ·ˢ r| and |r ·ˢ ε| would effectively be equal to |r|. Hence we can
+simplify the parts of the alternation in Harper's concatenation standardization
+process. In fact, it a given part is equal to |∅|, we do not have to include it
+in the alternation at all.
+
+If |r₁| accepts the empty string but |r₂| does not, using Harper's
+standardization that does not type check in Agda, we would have
+\begin{code}
+(ε ·ˢ (standardize r₂)) ⊕ˢ ((standardize r₁) ·ˢ ∅) ⊕ˢ ((standardize r₁) ·ˢ (standardize r₂))
+\end{code}
+Using the observations we made above, we can simplify this to
+\begin{code}
+(standardize r₂) ⊕ˢ ((standardize r₁) ·ˢ (standardize r₂))
+\end{code}
+The simple version does type check, and it is what how we define the
+concatenation case of |standardize|, where |δ r₁| is |true| but |δ r₂| is
+|false|. The other cases are defined using the same observation.
+
+\subsection{Verification}
+
+We should prove
 $$(\forall s) \; \big[ s \in L(r) \Longleftrightarrow \left[ (\delta(r) = true \land s = []) \lor s \in L( \standardize (r))\right] \big]$$
 
 We are going to prove the previously stated theorem in Agda.
