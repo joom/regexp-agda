@@ -38,20 +38,19 @@ module OverallMatcher where
   -}
 
   -- Shows a string accepted by the language of a regexp. Type "\in L".
-  _∈L_ : List Char → RegExp → Set
-  data _∈Lˣ_ : List Char → RegExp → Set
+  mutual
+    _∈L_ : List Char → RegExp → Set
+    _ ∈L ∅ = ⊥
+    s ∈L ε = s ≡ []
+    s ∈L (Lit c) = s ≡ c ∷ []
+    s ∈L (r₁ ⊕ r₂) = (s ∈L r₁) ⊎ (s ∈L r₂)
+    s ∈L (r₁ · r₂) = Σ (List Char × List Char) (λ { (p , q) → (p ++ q ≡ s) × (p ∈L r₁) × (q ∈L r₂) })
+    s ∈L (r *) = s ∈Lˣ r
+    s ∈L (G r) = s ∈L r
 
-  _ ∈L ∅ = ⊥
-  s ∈L ε = s ≡ []
-  s ∈L (Lit c) = s ≡ c ∷ []
-  s ∈L (r₁ ⊕ r₂) = (s ∈L r₁) ⊎ (s ∈L r₂)
-  s ∈L (r₁ · r₂) = Σ (List Char × List Char) (λ { (p , q) → (p ++ q ≡ s) × (p ∈L r₁) × (q ∈L r₂) })
-  s ∈L (r *) = s ∈Lˣ r
-  s ∈L (G r) = s ∈L r
-
-  data _∈Lˣ_ where
-    Ex : ∀ {s r} → s ≡ [] → s ∈Lˣ r
-    Cx : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈L r → s₂ ∈Lˣ r → s ∈Lˣ r
+    data _∈Lˣ_ : List Char → RegExp → Set where
+        Ex : ∀ {s r} → s ≡ [] → s ∈Lˣ r
+        Cx : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈L r → s₂ ∈Lˣ r → s ∈Lˣ r
 
   empty-append-δ : ∀ {x y r} → x ++ y ≡ [] → (x ∈L r) ⊎ (y ∈L r) → ([] ∈L r → ⊥) → ⊥
   empty-append-δ {x}{y}{r} eq inL f with empty-append {x}{y} eq
@@ -186,12 +185,12 @@ module OverallMatcher where
   extract {∅} ()
   extract {ε} refl = []
   extract {Lit x} refl = []
-  extract {r₁ · r₂}{xs} ((as , bs) , a , b , c) = extract {r₁}{as} b ++ extract {r₂}{bs} c
-  extract {r₁ ⊕ r₂}{xs} (inj₁ x) = extract {r₁}{xs} x
-  extract {r₁ ⊕ r₂}{xs} (inj₂ x) = extract {r₂}{xs} x
+  extract {r₁ · r₂} ((as , bs) , eq , a , b) = extract {r₁}{as} a ++ extract {r₂}{bs} b
+  extract {r₁ ⊕ r₂} (inj₁ x) = extract {r₁} x
+  extract {r₁ ⊕ r₂} (inj₂ y) = extract {r₂} y
   extract {r *} (Ex refl) = []
-  extract {r *} (Cx {s}{s₁}{s₂} x x₁ inL) = extract {r}{s₁} x₁ ++ extract {r *}{s₂} inL
-  extract {G r}{xs} inL = xs ∷ extract {r}{xs} inL
+  extract {r *} (Cx {s}{s₁}{s₂} x x₁ inL) = extract {r} x₁ ++ extract {r *} inL
+  extract {G r}{xs} inL = xs ∷ extract {r} inL
 
 module Matcher {_acceptsˢ_ : StdRegExp → List Char → Bool}
                {acceptsˢ-soundness : (r : StdRegExp) → (s : List Char) → r acceptsˢ s ≡ true → s ∈Lˢ r}
