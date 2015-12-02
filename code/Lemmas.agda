@@ -163,7 +163,7 @@ module Lemmas where
   open RawMonadPlus {Agda.Primitive.lzero} Data.Maybe.monadPlus renaming (∅ to fail)
   or-just : ∀ {A} {a b : Maybe A} → (isJust a) ⊎ (isJust b) → isJust (a ∣ b)
   or-just {a = just x} m = tt
-  or-just {a = nothing} (inj₁ x) = ⊥-elim x
+  or-just {a = nothing} (inj₁ ())
   or-just {a = nothing} (inj₂ y) = y
 
   {- uniqueness of identity -}

@@ -563,6 +563,23 @@ version except the continuations.  The matcher first tries to match |r| with
 |s| and tries to match the concatenation of |r| and |r ⁺ˢ| only if the first
 try fails. Observe that the second try is similar to the |·ˢ| case.
 
+\subsubsection{Accepting a string}
+\begin{code}
+  _acceptsˢ_ : StdRegExp → List Char → Bool
+  r acceptsˢ s = is-just (match _ r s empty-continuation (well-founded s))
+\end{code}
+
+We use the function |acceptsˢ| to see if a given |StdRegExp r| accepts a list of characters |s| by calling our HOF matcher with |r,s| and an empty continuation as well as a recursive permission for our list |s|. We define the empty-continuation and the well-foundness of any list as follows:
+
+\begin{code}
+empty-continuation : ∀ {p' s' s'' r} → (p' ++ s'' ≡ s') → (p' ∈Lˢ r) → Maybe (s' ∈Lˢ r)
+\end{code}
+
+\begin{code}
+well-founded : {A : Set} (ys : List A) → RecursionPermission ys
+\end{code}
+
+
 \subsection{Verification}
 
 To verify that our matcher works correctly for a match that we have a proof for,
@@ -595,6 +612,9 @@ the completeness proof of the Kleene plus case.
 \begin{code}
 match-completeness C (r ⁺ˢ) s k (CanRec f) ((xs , ys) , eq , S+ x , m) =
   or-just (inj₁ (match-completeness C r s (λ {p}{s'} eq' inL' → k eq' (S+ inL')) (CanRec f) (_ , eq , x , m)))
+\end{code}
+
+\begin{code}
 match-completeness C (r ⁺ˢ) ._ k (CanRec f) ((._ , ys) , refl , C+ {._}{s₁}{s₂} refl inL inL2 , m)
   with match-completeness C (r ⁺ˢ) (s₂ ++ ys) _ (f _ (suffix-continuation (append-assoc s₁ s₂ ys) inL))
                           (_ , refl , inL2 , subst (λ H → isJust (k H (C+ refl inL inL2))) (sym (uip _)) m)
