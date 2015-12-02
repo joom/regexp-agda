@@ -27,8 +27,10 @@
 % Unicode chars not supported by lhs2TeX
 \DeclareUnicodeCharacter{738}{$^\text{s}$}
 \DeclareUnicodeCharacter{7503}{$^\text{k}$}
+\DeclareUnicodeCharacter{739}{$^\text{x}$}
+\DeclareUnicodeCharacter{8709}{$\varnothing$} % overwriting \emptyset
 
-\title{Regular Expression Matching with Dependent Types}
+\title{Regular Expression Matching \break with Dependent Types}
 \author[Joomy Korkut, Maksim Trifunovski, Daniel R. Licata]
        {JOOMY KORKUT, MAKSIM TRIFUNOVSKI, DANIEL R. LICATA\\
         Wesleyan University}
@@ -94,9 +96,9 @@ type of |match| to be able to show Agda that it definitely terminates.
 
 When we prove the soundness of our matcher function, we will have to create a
 proof that the given string is in the language of the given regular expression.
-There is a value we can get out of our soundness proof; we can have grouping in
-our regular expressions and extract which part of the string matched which part
-of our regular expression.
+There is a value we can get out of our soundness proof; we can have capture
+groups in our regular expressions and extract which part of the string matched
+which part of our regular expression.
 
 Yet this would not be an efficient implementation of grouping in regular
 expressions, because we would have to run the matcher twice in this case: one
@@ -193,7 +195,7 @@ such:
   \TrinaryInfC{$s \in L(|r ⁺ˢ|)$}
 \end{prooftree}
 
-We encode these languages in Agda in the following way:
+We encode these languages and the others in Agda in the following way:
 
 \begin{code}
 mutual
@@ -201,7 +203,8 @@ mutual
   _ ∈Lˢ ∅ˢ = ⊥
   s ∈Lˢ (Litˢ c) = s ≡ c ∷ []
   s ∈Lˢ (r₁ ⊕ˢ r₂) = (s ∈Lˢ r₁) ⊎ (s ∈Lˢ r₂)
-  s ∈Lˢ (r₁ ·ˢ r₂) = Σ (List Char × List Char) (λ { (p , q)  → (p ++ q ≡ s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
+  s ∈Lˢ (r₁ ·ˢ r₂) =
+    Σ (List Char × List Char) (λ { (p , q)  → (p ++ q ≡ s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
   s ∈Lˢ (r ⁺ˢ) = s ∈L⁺ r
 
   data _∈L⁺_ : List Char → StdRegExp → Set where
@@ -613,9 +616,11 @@ match-completeness C (r ⁺ˢ) ._ k (CanRec f) ((._ , ys) , refl , C+ {._}{s₁}
                     (inj₂ (match-completeness C r ((s₁ ++ s₂) ++ ys) _ _ (_ , append-assoc s₁ s₂ ys , inL , pf)))
 \end{code}
 
-\section{Conversion from RegExp to StdRegExp}
+\section{Overall matcher}
 
-\subsection{Definitions}
+\subsection{Conversion from RegExp to StdRegExp}
+
+\subsubsection{Definitions}
 
 Notice that we defined our |match| functions in terms of standard form regular
 expressions, in order to guarantee the termination. What we want at the end is
@@ -635,7 +640,31 @@ data RegExp : Set where
 
 |∅| is the empty set, |ε| is the empty string, |Lit| is the literal character,
 |_·_| is concatenation, |_⊕_| is alternation, |_*| is Kleene star and |G| is
-grouping. \ToDo{explain grouping}
+capturing group.
+
+Capturing groups are not included in Harper's paper, but it is an operation we
+often want to do with regular expressions and it is trivial to implement with
+our intrinsic matchers. We will elaborate on this in the next section.
+
+Similarly to |_∈Lˢ_|, we also define a notion of a string being in the language
+of a regular expression:
+
+\begin{code}
+mutual
+  _∈L_ : List Char → RegExp → Set
+  _ ∈L ∅ = ⊥
+  s ∈L ε = s ≡ []
+  s ∈L (Lit c) = s ≡ c ∷ []
+  s ∈L (r₁ ⊕ r₂) = (s ∈L r₁) ⊎ (s ∈L r₂)
+  s ∈L (r₁ · r₂) =
+    Σ (List Char × List Char) (λ { (p , q) → (p ++ q ≡ s) × (p ∈L r₁) × (q ∈L r₂) })
+  s ∈L (r *) = s ∈Lˣ r
+  s ∈L (G r) = s ∈L r
+
+  data _∈Lˣ_ : List Char → RegExp → Set where
+    Ex : ∀ {s r} → s ≡ [] → s ∈Lˣ r
+    Cx : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈L r → s₂ ∈Lˣ r → s ∈Lˣ r
+\end{code}
 
 Before we define the conversion function, we need a helper function that checks
 if a regular expression accepts the empty string. Even though we can simply
@@ -702,7 +731,20 @@ The simple version does type check, and it is what how we define the
 concatenation case of |standardize|, where |δ r₁| is |true| but |δ r₂| is
 |false|. The other cases are defined using the same observation.
 
-\subsection{Verification}
+Now that we have a complete |standardize| function, we can define |_accepts_| as follows:
+
+\begin{code}
+_accepts_ : RegExp → String → Bool
+r accepts s with δ r | standardize r | String.toList s
+... | true  | r' | xs = (null xs) ∨ (r' acceptsˢ xs)
+... | false | r' | xs = r' acceptsˢ xs
+\end{code}
+
+If |r| accepts empty string, we return |true| if |xs| is empty or the
+standardization of |r| accepts |xs|. If |r| does not accept the empty string,
+then we only have the latter option.
+
+\subsubsection{Verification}
 
 We should prove
 $$(\forall s) \; \big[ s \in L(r) \Longleftrightarrow \left[ (\delta(r) = true \land s = []) \lor s \in L( \standardize (r))\right] \big]$$
@@ -745,6 +787,53 @@ decidability : (r : RegExp)
              → (s : String)
              → ((String.toList s) ∈L r) ⊎ (¬ ((String.toList s) ∈L r))
 \end{code}
+
+\subsection{Capturing groups}
+
+Capturing groups tell us which substring matches which part of the regular
+expressions. For example, if our regular expression checks if a string is a
+valid e-mail address, we might want to extract parts before and after the |@|
+sign. Suppose we have a regular expression that accepts a single alphanumeric
+character, namely |alphanumeric : RegExp|. Now we can define a very simple
+regular expression for e-mail addresses, such as
+
+\begin{code}
+e-mail : RegExp
+e-mail = G (alphanumeric *) · Lit '@' · G (alphanumeric *) · Lit '.' · G (alphanumeric *)
+\end{code}
+
+Now, if we match the string ``jdoe|@|wesleyan.edu" with |e-mail|, we want to be
+able to extract ``jdoe", ``wesleyan" and ``edu".
+
+One of the advantages of generating a derivation of type |xs ∈L r| for some
+|xs| and |r| is that the derivation directly tells you which substring of |xs|
+is matched by which part of |r|. All we have to do is to traverse the
+derivation tree and add the ones matched by a capturing group to a list. We
+want to obtain a list of strings at the end. The function to do this can be
+defined as follows:
+
+\begin{code}
+extract : {r : RegExp} → {xs : List Char} → xs ∈L r → List (List Char)
+extract {∅} ()
+extract {ε} refl = []
+extract {Lit x} refl = []
+extract {r₁ · r₂} ((as , bs) , eq , a , b) = extract {r₁}{as} a ++ extract {r₂}{bs} b
+extract {r₁ ⊕ r₂} (inj₁ x) = extract {r₁} x
+extract {r₁ ⊕ r₂} (inj₂ y) = extract {r₂} y
+extract {r *} (Ex refl) = []
+extract {r *} (Cx {s}{s₁}{s₂} x x₁ inL) = extract {r} x₁ ++ extract {r *} inL
+extract {G r}{xs} inL = xs ∷ extract {r} inL
+\end{code}
+
+To collect all the strings matched by capturing groups, we traverse the entire
+derivation. Base cases |∅|, |ε|, |Lit| will return an empty list because if
+they are captured by a group, the substring is already added to the list
+in the previous recursive calls to |extract|. In concatenation, we make
+two recursive calls and append the results because |r₁| and |r₂| match
+different substrings and they may have different capturing groups inside
+them. In alternation, the entire string matches either |r₁| or |r₂|, so we
+make one recursive call to the one it matches. Kleene star case follows the
+same principles.
 
 \section{Conclusion}
 
