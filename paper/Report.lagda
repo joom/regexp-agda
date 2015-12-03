@@ -1,22 +1,18 @@
 \RequirePackage{amsmath}
 \documentclass{jfp1}
+\bibliographystyle{jfp}
 
 \def\textmu{}
 
 %include agda.fmt
 \usepackage{textgreek} % not reproducible without textgreek
 \usepackage{bussproofs}
-
 \usepackage{color}
 
 % Editorial commands
 \newcommand{\Red}[1]{{\color{red} #1}}
 \newcommand{\ToDo}[1]{{\color{blue} ToDo: #1}}
-\newcommand{\nb}[1]{$\lhd$ \Red{#1} $\rhd$}
 \newcommand{\tocite}[0]{{\color{red} [cite]}\xspace}
-
-\newcommand{\XXX}{\Red{XXX}}
-
 
 % Math and code commands
 \newcommand{\set}[1]{\left\{#1\right\}}
@@ -66,7 +62,7 @@ not terminate for all regular expressions. Harper fixes this flaw by changing
 the specification and allowing only the standard form regular expressions as an
 argument to the matching function. The paper also proves that the new
 specification suffices to cover all regular expressions and hence solve the
-original problem.
+original problem. \cite{harper}
 
 The algorithm described by Harper is simple, however its termination depends on
 preconditions about its arguments, not its type. Therefore, in a total language
@@ -113,7 +109,7 @@ mean defining the matcher function and the soundness proof at the same time.
 
 If our matcher function is going to return a derivation that proves that a
 string is the language of a regular expression, then we cannot simple have a
-continuation function |String → Bool| anymore; we have to enhance the
+continuation function |List Char → Bool| anymore; we have to enhance the
 continuation so that it returns a part of the derivation that we can use to
 construct the entire derivation.  This turns out to be a complex task, so we
 tried defunctionalizing the matcher and using list based continuations instead
@@ -123,7 +119,15 @@ paper.
 
 \section{Background}
 
-\ToDo{Some note about using the term "string" and "list of characters" interchangably. |String| and |List Char| are different types in Agda and even though converting between them is trivial, |List Char| allows direct pattern matching.}
+\Red{
+
+Note that we use the terms ``string" and ``list of characters" interchangeably.
+|String| and |List Char| are different types in Agda and even though converting
+between them is trivial, |List Char| allows direct pattern matching.
+Conceptually, the two represent the same data, so using the term string is
+often more explanatory and less verbose.
+
+}
 
 \subsection{Regular Expressions and Languages}
 
@@ -697,6 +701,11 @@ mutual
     Cx : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈L r → s₂ ∈Lˣ r → s ∈Lˣ r
 \end{code}
 
+The definition of |_∈L_| is the same as |_∈Lˢ_| except three cases. We now have
+a case for |ε| that requires an empty string. The Kleene star case is very
+similar to the Kleene plus case. |Cx| and |C+| are very similarly defined, but
+|Ex| is requires an empty string, while |S+| does not.
+
 Before we define the conversion function, we need a helper function that checks
 if a regular expression accepts the empty string. Even though we can simply
 define this as a function |RegExp → Bool|, proving it will be helpful for the
@@ -869,7 +878,6 @@ same principles.
 \section{Conclusion}
 
 
-\bibliographystyle{jfp}
 \bibliography{paper}
 
 \end{document}
