@@ -123,6 +123,8 @@ paper.
 
 \section{Background}
 
+\ToDo{Some note about using the term "string" and "list of characters" interchangably. |String| and |List Char| are different types in Agda and even though converting between them is trivial, |List Char| allows direct pattern matching.}
+
 \subsection{Regular Expressions and Languages}
 
 We will not review regular expressions, but we should remember
@@ -265,7 +267,11 @@ We will now define the matcher functions using only standard regular expressions
 
 \section{Defunctionalized intrinsic matcher}
 
-% some introduction about list based continuation
+Harper's solution to the regular expression matching problem uses higher-order
+functions to manage the continuation-passing. Since proving the termination of
+higher-order continuations in Agda is a more difficult task, we decided
+to first defunctionalize the algorithm described by Harper and use list based
+continuations instead.
 
 Before we start the |match| function, we should define a type for a string to
 be in the language of a list of regular expressions:
@@ -463,8 +469,10 @@ appending lists to show that it is the same string.
 
 \section{Higher-order intrinsic matcher}
 
-% introduction about function based continuation
-
+The intrinsic matcher using list based continuation achieves what we want to
+achieve with our matcher, but our initial question was to reimagine Harper's
+continuation-passing style algorithm in Agda. Therefore we will also attempt
+to write an intrinsic matcher that has functions as continuations.
 
 A problem that arises with the function based continuations is regarding the
 totality checker. It is not evident to Agda that our |match| function
@@ -583,7 +591,10 @@ try fails. Observe that the second try is similar to the |·ˢ| case.
   r acceptsˢ s = is-just (match _ r s empty-continuation (well-founded s))
 \end{code}
 
-We use the function |acceptsˢ| to see if a given |StdRegExp r| accepts a list of characters |s| by calling our HOF matcher with |r,s| and an empty continuation as well as a recursive permission for our list |s|. We define the empty-continuation and the well-foundness of any list as follows:
+We use the function |_acceptsˢ_| to see if a given |StdRegExp r| accepts a list
+of characters |s| by calling our HOF matcher with |r,s| and an empty
+continuation as well as a recursive permission for our list |s|. We define the
+empty-continuation and the well-foundness of any list as follows:
 
 \begin{code}
 empty-continuation : ∀ {p' s' s'' r} → (p' ++ s'' ≡ s') → (p' ∈Lˢ r) → Maybe (s' ∈Lˢ r)
