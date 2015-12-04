@@ -622,7 +622,7 @@ match C (r ⁺ˢ) s k (CanRec f) =
 \end{code}
 
 The structure of the Kleene plus case is similar to the defunctionalized
-version except the continuations.  The matcher first tries to match |r| with
+version except for the continuations.  The matcher first tries to match |r| with
 |s| and tries to match the concatenation of |r| and |r ⁺ˢ| only if the first
 try fails. Observe that the second try is similar to the |·ˢ| case.
 
@@ -667,22 +667,16 @@ _acceptsˢ_ : StdRegExp → List Char → Bool
 r acceptsˢ s = is-just (match _ r s empty-continuation (well-founded s))
 \end{code}
 
-<<<<<<< HEAD
-We use the function |acceptsˢ| to see if a given |StdRegExp r| accepts a string |s| by calling our HOF matcher with |r,s| and an empty continuation as well as a recursive permission for our string |s|. We define the empty-continuation and the well-foundness of any list as follows:
-=======
 We use the function |_acceptsˢ_| to see if a given standard regular expression
-accepts a list of characters by calling our matcher with an continuation base
+accepts a list of characters by calling our matcher with a continuation base
 case as well as a |RecursionPermission| for the list of characters. We define
 the |empty-continuation| as a continuation base case and |well-founded| to
 obtain a |RecursionPermission| for the initial list of characters.
 
-\ToDo{Definitions?}
->>>>>>> 227165ab0a6ac6525ad076c9daf6d35726b2f8ef
-
 \begin{code}
 empty-continuation : ∀ {p' s' s'' r} → (p' ++ s'' ≡ s') → (p' ∈Lˢ r) → Maybe (s' ∈Lˢ r)
 \end{code}
-|empty-continuation| is our higher order function substitute of the empty list |[]| we used as an empty continuation in our defunctionalized version. This function takes a splitting of a string |s'| as well as a proof that the first part of the string |p'| is in the language of |r| and then returns either |nothing| if the second part of the string |s'|, |s''| is not empty, or |Just (s' ∈Lˢ r)| if |s''| is empty.
+|empty-continuation| is our higher order function substitute of the empty list |[]| we used as an empty continuation in our defunctionalized version. This function takes a splitting of a string |s'| as well as a proof that its first part |p'|, is in the language of |r| and then returns either |nothing| if the second part of the string |s'|, |s''| is not empty, or |Just (s' ∈Lˢ r)| if |s''| is empty.
 
 \begin{code}
 well-founded : {A : Set} (ys : List A) → RecursionPermission ys
@@ -715,20 +709,9 @@ Notice that we cannot make a stronger claim and say that the calls to the
 continuation and the |match| function return the same derivations, because as
 we showed before, derivations of the same type are not necessarily the same.
 
-<<<<<<< HEAD
 The proof follows the same pattern as the proof of |match-completeness| for the
-defunctionalized version. Refer to the supplement code.
-
-=======
-\ToDo{
-
-The base cases |∅ˢ| and |Litˢ| are trivial. Since the Kleene plus case captures
-the essence of both concatenation and alternation cases, we will only explain
-the completeness proof of the Kleene plus case.
-% say something about how it's the same logic as the defunctionalized version
-% uses induction hypotheses in the same way, same "association munching"
-}
->>>>>>> 227165ab0a6ac6525ad076c9daf6d35726b2f8ef
+defunctionalized version by basically using the inductive hypotheses in the same
+way and applying some association munching. Refer to the supplement code.
 
 \section{Overall matcher}
 
