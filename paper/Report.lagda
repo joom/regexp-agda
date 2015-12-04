@@ -583,15 +583,18 @@ try fails. Observe that the second try is similar to the |·ˢ| case.
   r acceptsˢ s = is-just (match _ r s empty-continuation (well-founded s))
 \end{code}
 
-We use the function |acceptsˢ| to see if a given |StdRegExp r| accepts a list of characters |s| by calling our HOF matcher with |r,s| and an empty continuation as well as a recursive permission for our list |s|. We define the empty-continuation and the well-foundness of any list as follows:
+We use the function |acceptsˢ| to see if a given |StdRegExp r| accepts a string |s| by calling our HOF matcher with |r,s| and an empty continuation as well as a recursive permission for our string |s|. We define the empty-continuation and the well-foundness of any list as follows:
 
 \begin{code}
 empty-continuation : ∀ {p' s' s'' r} → (p' ++ s'' ≡ s') → (p' ∈Lˢ r) → Maybe (s' ∈Lˢ r)
 \end{code}
+|empty-continuation| is our higher order function substitute of the empty list |[]| we used as an empty continuation in our defunctionalized version. This function takes a splitting of a string |s'| as well as a proof that the first part of the string |p'| is in the language of |r| and then returns either |nothing| if the second part of the string |s'|, |s''| is not empty, or |Just (s' ∈Lˢ r)| if |s''| is empty.
 
 \begin{code}
 well-founded : {A : Set} (ys : List A) → RecursionPermission ys
 \end{code}
+|well-founded| just gives us a |RecursionPermission| for any given list.
+
 
 
 \subsection{Verification}
@@ -612,29 +615,16 @@ match-completeness : (C : Set)
 The type above translates to this: Suppose we have |C|, |r|, |s|, |k| and
 |perm|. Suppose there exists a split of |p ++ s' ≡ s| such that there exists a
 derivation of type |p ∈Lˢ r| such that the continuation called with those
-arguments does not return |nothing|. Then we have to show that |match| function
+arguments does not return |nothing|. Then we have to show that the |match| function
 does not fail.
 
 Notice that we cannot make a stronger claim and say that the calls to the
 continuation and the |match| function return the same derivations, because as
 we showed before, derivations of the same type are not necessarily the same.
 
-The base cases |∅ˢ| and |Litˢ| are trivial. Since the Kleene plus case captures
-the essence of both concatenation and alternation cases, we will only explain
-the completeness proof of the Kleene plus case.
+The proof follows the same pattern as the proof of |match-completeness| for the
+defunctionalized version. Refer to the supplement code.
 
-\begin{code}
-match-completeness C (r ⁺ˢ) s k (CanRec f) ((xs , ys) , eq , S+ x , m) =
-  or-just (inj₁ (match-completeness C r s (λ {p}{s'} eq' inL' → k eq' (S+ inL')) (CanRec f) (_ , eq , x , m)))
-\end{code}
-
-\begin{code}
-match-completeness C (r ⁺ˢ) ._ k (CanRec f) ((._ , ys) , refl , C+ {._}{s₁}{s₂} refl inL inL2 , m)
-  with match-completeness C (r ⁺ˢ) (s₂ ++ ys) _ (f _ (suffix-continuation (append-assoc s₁ s₂ ys) inL))
-                          (_ , refl , inL2 , subst (λ H → isJust (k H (C+ refl inL inL2))) (sym (uip _)) m)
-... | pf = or-just {_}{match C r _ (λ eq inL → k eq (S+ inL)) (CanRec f)}
-                    (inj₂ (match-completeness C r ((s₁ ++ s₂) ++ ys) _ _ (_ , append-assoc s₁ s₂ ys , inL , pf)))
-\end{code}
 
 \section{Overall matcher}
 
