@@ -853,7 +853,8 @@ which matcher we choose to use.
 
 \subsubsection{Verification}
 
-\ToDo{Some transition sentence}
+Now we want to prove the relationship between |RegExp|s and |StdRegExp|s. We want to prove that a string |s| is in the language of a regular
+expression |r| if and only if, either the string is empty, or |s| is in the language of the standardized version of |r|.
 
 We should prove
 $$(\forall s) \; \big[ s \in L(r) \Longleftrightarrow \left[ (\delta(r) = true \land s = []) \lor s \in L( \standardize (r))\right] \big]$$
@@ -872,7 +873,7 @@ We are going to prove the previously stated theorem in Agda.
                 → ((δ r ≡ true) × (s ≡ [])) ⊎ (s ∈Lˢ (standardize r))
 \end{code}
 
-Once we prove these this theorem, we can present the overall theorem we want from this theorem:
+Once we prove this theorem, we can present the overall theorem we want from this theorem:
 
 $$(\forall r)(\forall s) \; \big[ r \; |accepts| \;  s = |true| \Longleftrightarrow s \in L(r) \big]$$
 
