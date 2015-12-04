@@ -1,22 +1,18 @@
 \RequirePackage{amsmath}
 \documentclass{jfp1}
+\bibliographystyle{jfp}
 
 \def\textmu{}
 
 %include agda.fmt
 \usepackage{textgreek} % not reproducible without textgreek
 \usepackage{bussproofs}
-
 \usepackage{color}
 
 % Editorial commands
 \newcommand{\Red}[1]{{\color{red} #1}}
 \newcommand{\ToDo}[1]{{\color{blue} ToDo: #1}}
-\newcommand{\nb}[1]{$\lhd$ \Red{#1} $\rhd$}
 \newcommand{\tocite}[0]{{\color{red} [cite]}\xspace}
-
-\newcommand{\XXX}{\Red{XXX}}
-
 
 % Math and code commands
 \newcommand{\set}[1]{\left\{#1\right\}}
@@ -66,7 +62,7 @@ not terminate for all regular expressions. Harper fixes this flaw by changing
 the specification and allowing only the standard form regular expressions as an
 argument to the matching function. The paper also proves that the new
 specification suffices to cover all regular expressions and hence solve the
-original problem.
+original problem. \cite{harper}
 
 The algorithm described by Harper is simple, however its termination depends on
 preconditions about its arguments, not its type. Therefore, in a total language
@@ -89,10 +85,16 @@ Obviously, |_accepts_| takes a regular expression and a string, and returns
 otherwise.  The other function |match| takes a regular expression, a list of
 characters and a continuation as arguments. It returns |true| if a prefix of
 the list of characters matches the given regular expression and the
-continuation called with the the rest of the string returns |true|. It returns
-|false| otherwise. In our implementation of these functions in Agda, we will
-keep the type signature of |_accepts_| as it is, but we will have to modify the
-type of |match| to be able to show Agda that it definitely terminates.
+continuation called with the the rest of the string
+\footnote{ Note that we use the terms ``string" and ``list of characters"
+  interchangeably.  |String| and |List Char| are different types in Agda and
+  even though converting between them is trivial, |List Char| allows direct
+  pattern matching.  Conceptually, the two represent the same data, so using
+  the term string is often more explanatory and less verbose. }
+returns |true|. It returns |false| otherwise. In our implementation of these
+functions in Agda, we will keep the type signature of |_accepts_| as it is, but
+we will have to modify the type of |match| to be able to show Agda that it
+definitely terminates.
 
 When we prove the soundness of our matcher function, we will have to create a
 proof that the given string is in the language of the given regular expression.
@@ -113,7 +115,7 @@ mean defining the matcher function and the soundness proof at the same time.
 
 If our matcher function is going to return a derivation that proves that a
 string is the language of a regular expression, then we cannot simple have a
-continuation function |String → Bool| anymore; we have to enhance the
+continuation function |List Char → Bool| anymore; we have to enhance the
 continuation so that it returns a part of the derivation that we can use to
 construct the entire derivation.  This turns out to be a complex task, so we
 tried defunctionalizing the matcher and using list based continuations instead
@@ -265,7 +267,11 @@ We will now define the matcher functions using only standard regular expressions
 
 \section{Defunctionalized intrinsic matcher}
 
-% some introduction about list based continuation
+Harper's solution to the regular expression matching problem uses higher-order
+functions to manage the continuation-passing. Since proving the termination of
+higher-order continuations in Agda is a more difficult task, we decided
+to first defunctionalize the algorithm described by Harper and use list based
+continuations instead.
 
 Before we start the |match| function, we should define a type for a string to
 be in the language of a list of regular expressions:
@@ -402,6 +408,47 @@ continuation which now includes |r ⁺ˢ|. Just like in the |·ˢ| case, we use
 |reassociate-left| in order to get that our splitting of |s| matches the entire
 starting |r|.
 
+\begin{figure}
+\figrule
+\begin{code}
+match : (r : StdRegExp)
+      → (s : List Char)
+      → (k : List StdRegExp)
+      → Maybe (Σ (List Char × List Char)
+              (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
+match ∅ˢ s k = fail
+match (Litˢ c) (x ∷ xs) k =
+  (isEqual x c) >>=
+    (λ p → map (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf)))
+               (match-helper k xs))
+match (r₁ ·ˢ r₂) s k =
+  map (reassociate-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL'))
+    (match r₁ s (r₂ ∷ k))
+match (r₁ ⊕ˢ r₂) s k =
+  (map (change-∈L inj₁) (match r₁ s k)) ∣
+  (map (change-∈L inj₂) (match r₂ s k))
+match (r ⁺ˢ) s k =
+  (map (change-∈L S+) (match r s k)) ∣
+  (map (reassociate-left {R = λ r _ → r ⁺ˢ} (λ inL inL' → C+ refl inL inL'))
+    (match r s ((r ⁺ˢ) ∷ k)))
+\end{code}
+\caption{Complete definition of the |match| function for
+  the defunctionalized intrinsic matcher.}
+\figrule
+\end{figure}
+
+\subsubsection{Acceptance by StdRegExp}
+
+\begin{code}
+_acceptsˢ_ : StdRegExp → List Char → Bool
+r acceptsˢ s = is-just (match r s [])
+\end{code}
+
+We use the function |_acceptsˢ_| to see if a given standard regular expression
+accepts a list of characters by calling our matcher with an continuation base
+case. If our |match| function returns a derivation, then we know that the
+string is accepted by the standard form regular expression.
+
 \subsection{Verification}
 
 To verify that our matcher works correctly for a match that we have a proof
@@ -463,8 +510,10 @@ appending lists to show that it is the same string.
 
 \section{Higher-order intrinsic matcher}
 
-% introduction about function based continuation
-
+The intrinsic matcher using list based continuation achieves what we want to
+achieve with our matcher, but our initial question was to reimagine Harper's
+continuation-passing style algorithm in Agda. Therefore we will also attempt
+to write an intrinsic matcher that has functions as continuations.
 
 A problem that arises with the function based continuations is regarding the
 totality checker. It is not evident to Agda that our |match| function
@@ -577,13 +626,58 @@ version except the continuations.  The matcher first tries to match |r| with
 |s| and tries to match the concatenation of |r| and |r ⁺ˢ| only if the first
 try fails. Observe that the second try is similar to the |·ˢ| case.
 
-\subsubsection{Accepting a string}
+\begin{figure}
+\figrule
 \begin{code}
-  _acceptsˢ_ : StdRegExp → List Char → Bool
-  r acceptsˢ s = is-just (match _ r s empty-continuation (well-founded s))
+match : (C : Set)
+      → (r : StdRegExp)
+      → (s : List Char)
+      → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
+      → RecursionPermission s
+      → Maybe C
+match C ∅ˢ s k perm = fail
+match C (Litˢ x) [] k perm = fail
+match C (Litˢ x) (y ∷ ys) k perm with y Data.Char.≟ x
+... | no _ = fail
+... | yes p = k {[ y ]} {ys} refl (cong (λ q → [ q ]) p)
+match C (r₁ ·ˢ r₂) s k (CanRec f) =
+  match C r₁ s
+        (λ {p}{s'} eq inL →
+          match C r₂ s' (λ {p'}{s''} eq' inL' →
+                          k {p ++ p'}{s''} (replace-right p s' p' s'' s eq' eq) ((p , p') , refl , inL , inL'))
+                        (f _ (suffix-continuation eq inL))) (CanRec f)
+match C (r₁ ⊕ˢ r₂) s k perm =
+  match C r₁ s (λ eq inL → k eq (inj₁ inL)) perm ∣
+  match C r₂ s (λ eq inL → k eq (inj₂ inL)) perm
+match C (r ⁺ˢ) s k (CanRec f) =
+  match C r s (λ eq inL → k eq (S+ inL)) (CanRec f) ∣
+  match C r s (λ {p}{s'} eq inL →
+                match C (r ⁺ˢ) s' (λ {p'}{s''} eq' inL' →
+                                    k (replace-right p s' p' s'' s eq' eq) (C+ refl inL inL') )
+                      (f _ (suffix-continuation eq inL))) (CanRec f)
+\end{code}
+\caption{Complete definition of the |match| function for
+  the higher-order intrinsic matcher.}
+\figrule
+\end{figure}
+
+\subsubsection{Acceptance by StdRegExp}
+\begin{code}
+_acceptsˢ_ : StdRegExp → List Char → Bool
+r acceptsˢ s = is-just (match _ r s empty-continuation (well-founded s))
 \end{code}
 
+<<<<<<< HEAD
 We use the function |acceptsˢ| to see if a given |StdRegExp r| accepts a string |s| by calling our HOF matcher with |r,s| and an empty continuation as well as a recursive permission for our string |s|. We define the empty-continuation and the well-foundness of any list as follows:
+=======
+We use the function |_acceptsˢ_| to see if a given standard regular expression
+accepts a list of characters by calling our matcher with an continuation base
+case as well as a |RecursionPermission| for the list of characters. We define
+the |empty-continuation| as a continuation base case and |well-founded| to
+obtain a |RecursionPermission| for the initial list of characters.
+
+\ToDo{Definitions?}
+>>>>>>> 227165ab0a6ac6525ad076c9daf6d35726b2f8ef
 
 \begin{code}
 empty-continuation : ∀ {p' s' s'' r} → (p' ++ s'' ≡ s') → (p' ∈Lˢ r) → Maybe (s' ∈Lˢ r)
@@ -594,7 +688,6 @@ empty-continuation : ∀ {p' s' s'' r} → (p' ++ s'' ≡ s') → (p' ∈Lˢ r) 
 well-founded : {A : Set} (ys : List A) → RecursionPermission ys
 \end{code}
 |well-founded| just gives us a |RecursionPermission| for any given list.
-
 
 
 \subsection{Verification}
@@ -622,9 +715,20 @@ Notice that we cannot make a stronger claim and say that the calls to the
 continuation and the |match| function return the same derivations, because as
 we showed before, derivations of the same type are not necessarily the same.
 
+<<<<<<< HEAD
 The proof follows the same pattern as the proof of |match-completeness| for the
 defunctionalized version. Refer to the supplement code.
 
+=======
+\ToDo{
+
+The base cases |∅ˢ| and |Litˢ| are trivial. Since the Kleene plus case captures
+the essence of both concatenation and alternation cases, we will only explain
+the completeness proof of the Kleene plus case.
+% say something about how it's the same logic as the defunctionalized version
+% uses induction hypotheses in the same way, same "association munching"
+}
+>>>>>>> 227165ab0a6ac6525ad076c9daf6d35726b2f8ef
 
 \section{Overall matcher}
 
@@ -675,6 +779,11 @@ mutual
     Ex : ∀ {s r} → s ≡ [] → s ∈Lˣ r
     Cx : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈L r → s₂ ∈Lˣ r → s ∈Lˣ r
 \end{code}
+
+The definition of |_∈L_| is the same as |_∈Lˢ_| except three cases. We now have
+a case for |ε| that requires an empty string. The Kleene star case is very
+similar to the Kleene plus case. |Cx| and |C+| are very similarly defined, but
+|Ex| is requires an empty string, while |S+| does not.
 
 Before we define the conversion function, we need a helper function that checks
 if a regular expression accepts the empty string. Even though we can simply
@@ -754,7 +863,14 @@ If |r| accepts empty string, we return |true| if |xs| is empty or the
 standardization of |r| accepts |xs|. If |r| does not accept the empty string,
 then we only have the latter option.
 
+Note that we use |_acceptsˢ_| in this definition. Our definitions of it in
+the defunctionalized and higher-order matchers are different, but they have
+the same type, therefore the definition of |_accepts_| is independent of
+which matcher we choose to use.
+
 \subsubsection{Verification}
+
+\ToDo{Some transition sentence}
 
 We should prove
 $$(\forall s) \; \big[ s \in L(r) \Longleftrightarrow \left[ (\delta(r) = true \land s = []) \lor s \in L( \standardize (r))\right] \big]$$
@@ -848,7 +964,6 @@ same principles.
 \section{Conclusion}
 
 
-\bibliographystyle{jfp}
 \bibliography{paper}
 
 \end{document}
