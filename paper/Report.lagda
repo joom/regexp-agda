@@ -85,10 +85,16 @@ Obviously, |_accepts_| takes a regular expression and a string, and returns
 otherwise.  The other function |match| takes a regular expression, a list of
 characters and a continuation as arguments. It returns |true| if a prefix of
 the list of characters matches the given regular expression and the
-continuation called with the the rest of the string returns |true|. It returns
-|false| otherwise. In our implementation of these functions in Agda, we will
-keep the type signature of |_accepts_| as it is, but we will have to modify the
-type of |match| to be able to show Agda that it definitely terminates.
+continuation called with the the rest of the string
+\footnote{ Note that we use the terms ``string" and ``list of characters"
+  interchangeably.  |String| and |List Char| are different types in Agda and
+  even though converting between them is trivial, |List Char| allows direct
+  pattern matching.  Conceptually, the two represent the same data, so using
+  the term string is often more explanatory and less verbose. }
+returns |true|. It returns |false| otherwise. In our implementation of these
+functions in Agda, we will keep the type signature of |_accepts_| as it is, but
+we will have to modify the type of |match| to be able to show Agda that it
+definitely terminates.
 
 When we prove the soundness of our matcher function, we will have to create a
 proof that the given string is in the language of the given regular expression.
@@ -118,16 +124,6 @@ defunctionalized and higher-order continuation versions of the matcher in this
 paper.
 
 \section{Background}
-
-\Red{
-
-Note that we use the terms ``string" and ``list of characters" interchangeably.
-|String| and |List Char| are different types in Agda and even though converting
-between them is trivial, |List Char| allows direct pattern matching.
-Conceptually, the two represent the same data, so using the term string is
-often more explanatory and less verbose.
-
-}
 
 \subsection{Regular Expressions and Languages}
 
@@ -412,6 +408,47 @@ continuation which now includes |r ⁺ˢ|. Just like in the |·ˢ| case, we use
 |reassociate-left| in order to get that our splitting of |s| matches the entire
 starting |r|.
 
+\begin{figure}
+\figrule
+\begin{code}
+match : (r : StdRegExp)
+      → (s : List Char)
+      → (k : List StdRegExp)
+      → Maybe (Σ (List Char × List Char)
+              (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
+match ∅ˢ s k = fail
+match (Litˢ c) (x ∷ xs) k =
+  (isEqual x c) >>=
+    (λ p → map (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf)))
+               (match-helper k xs))
+match (r₁ ·ˢ r₂) s k =
+  map (reassociate-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL'))
+    (match r₁ s (r₂ ∷ k))
+match (r₁ ⊕ˢ r₂) s k =
+  (map (change-∈L inj₁) (match r₁ s k)) ∣
+  (map (change-∈L inj₂) (match r₂ s k))
+match (r ⁺ˢ) s k =
+  (map (change-∈L S+) (match r s k)) ∣
+  (map (reassociate-left {R = λ r _ → r ⁺ˢ} (λ inL inL' → C+ refl inL inL'))
+    (match r s ((r ⁺ˢ) ∷ k)))
+\end{code}
+\caption{Complete definition of the |match| function for
+  the defunctionalized intrinsic matcher.}
+\figrule
+\end{figure}
+
+\subsubsection{Acceptance by StdRegExp}
+
+\begin{code}
+_acceptsˢ_ : StdRegExp → List Char → Bool
+r acceptsˢ s = is-just (match r s [])
+\end{code}
+
+We use the function |_acceptsˢ_| to see if a given standard regular expression
+accepts a list of characters by calling our matcher with an continuation base
+case. If our |match| function returns a derivation, then we know that the
+string is accepted by the standard form regular expression.
+
 \subsection{Verification}
 
 To verify that our matcher works correctly for a match that we have a proof
@@ -589,16 +626,54 @@ version except the continuations.  The matcher first tries to match |r| with
 |s| and tries to match the concatenation of |r| and |r ⁺ˢ| only if the first
 try fails. Observe that the second try is similar to the |·ˢ| case.
 
-\subsubsection{Accepting a string}
+\begin{figure}
+\figrule
 \begin{code}
-  _acceptsˢ_ : StdRegExp → List Char → Bool
-  r acceptsˢ s = is-just (match _ r s empty-continuation (well-founded s))
+match : (C : Set)
+      → (r : StdRegExp)
+      → (s : List Char)
+      → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
+      → RecursionPermission s
+      → Maybe C
+match C ∅ˢ s k perm = fail
+match C (Litˢ x) [] k perm = fail
+match C (Litˢ x) (y ∷ ys) k perm with y Data.Char.≟ x
+... | no _ = fail
+... | yes p = k {[ y ]} {ys} refl (cong (λ q → [ q ]) p)
+match C (r₁ ·ˢ r₂) s k (CanRec f) =
+  match C r₁ s
+        (λ {p}{s'} eq inL →
+          match C r₂ s' (λ {p'}{s''} eq' inL' →
+                          k {p ++ p'}{s''} (replace-right p s' p' s'' s eq' eq) ((p , p') , refl , inL , inL'))
+                        (f _ (suffix-continuation eq inL))) (CanRec f)
+match C (r₁ ⊕ˢ r₂) s k perm =
+  match C r₁ s (λ eq inL → k eq (inj₁ inL)) perm ∣
+  match C r₂ s (λ eq inL → k eq (inj₂ inL)) perm
+match C (r ⁺ˢ) s k (CanRec f) =
+  match C r s (λ eq inL → k eq (S+ inL)) (CanRec f) ∣
+  match C r s (λ {p}{s'} eq inL →
+                match C (r ⁺ˢ) s' (λ {p'}{s''} eq' inL' →
+                                    k (replace-right p s' p' s'' s eq' eq) (C+ refl inL inL') )
+                      (f _ (suffix-continuation eq inL))) (CanRec f)
+\end{code}
+\caption{Complete definition of the |match| function for
+  the higher-order intrinsic matcher.}
+\figrule
+\end{figure}
+
+\subsubsection{Acceptance by StdRegExp}
+\begin{code}
+_acceptsˢ_ : StdRegExp → List Char → Bool
+r acceptsˢ s = is-just (match _ r s empty-continuation (well-founded s))
 \end{code}
 
-We use the function |_acceptsˢ_| to see if a given |StdRegExp r| accepts a list
-of characters |s| by calling our HOF matcher with |r,s| and an empty
-continuation as well as a recursive permission for our list |s|. We define the
-empty-continuation and the well-foundness of any list as follows:
+We use the function |_acceptsˢ_| to see if a given standard regular expression
+accepts a list of characters by calling our matcher with an continuation base
+case as well as a |RecursionPermission| for the list of characters. We define
+the |empty-continuation| as a continuation base case and |well-founded| to
+obtain a |RecursionPermission| for the initial list of characters.
+
+\ToDo{Definitions?}
 
 \begin{code}
 empty-continuation : ∀ {p' s' s'' r} → (p' ++ s'' ≡ s') → (p' ∈Lˢ r) → Maybe (s' ∈Lˢ r)
@@ -607,7 +682,6 @@ empty-continuation : ∀ {p' s' s'' r} → (p' ++ s'' ≡ s') → (p' ∈Lˢ r) 
 \begin{code}
 well-founded : {A : Set} (ys : List A) → RecursionPermission ys
 \end{code}
-
 
 \subsection{Verification}
 
@@ -634,22 +708,14 @@ Notice that we cannot make a stronger claim and say that the calls to the
 continuation and the |match| function return the same derivations, because as
 we showed before, derivations of the same type are not necessarily the same.
 
+\ToDo{
+
 The base cases |∅ˢ| and |Litˢ| are trivial. Since the Kleene plus case captures
 the essence of both concatenation and alternation cases, we will only explain
 the completeness proof of the Kleene plus case.
-
-\begin{code}
-match-completeness C (r ⁺ˢ) s k (CanRec f) ((xs , ys) , eq , S+ x , m) =
-  or-just (inj₁ (match-completeness C r s (λ {p}{s'} eq' inL' → k eq' (S+ inL')) (CanRec f) (_ , eq , x , m)))
-\end{code}
-
-\begin{code}
-match-completeness C (r ⁺ˢ) ._ k (CanRec f) ((._ , ys) , refl , C+ {._}{s₁}{s₂} refl inL inL2 , m)
-  with match-completeness C (r ⁺ˢ) (s₂ ++ ys) _ (f _ (suffix-continuation (append-assoc s₁ s₂ ys) inL))
-                          (_ , refl , inL2 , subst (λ H → isJust (k H (C+ refl inL inL2))) (sym (uip _)) m)
-... | pf = or-just {_}{match C r _ (λ eq inL → k eq (S+ inL)) (CanRec f)}
-                    (inj₂ (match-completeness C r ((s₁ ++ s₂) ++ ys) _ _ (_ , append-assoc s₁ s₂ ys , inL , pf)))
-\end{code}
+% say something about how it's the same logic as the defunctionalized version
+% uses induction hypotheses in the same way, same "association munching"
+}
 
 \section{Overall matcher}
 
@@ -784,7 +850,14 @@ If |r| accepts empty string, we return |true| if |xs| is empty or the
 standardization of |r| accepts |xs|. If |r| does not accept the empty string,
 then we only have the latter option.
 
+Note that we use |_acceptsˢ_| in this definition. Our definitions of it in
+the defunctionalized and higher-order matchers are different, but they have
+the same type, therefore the definition of |_accepts_| is independent of
+which matcher we choose to use.
+
 \subsubsection{Verification}
+
+\ToDo{Some transition sentence}
 
 We should prove
 $$(\forall s) \; \big[ s \in L(r) \Longleftrightarrow \left[ (\delta(r) = true \land s = []) \lor s \in L( \standardize (r))\right] \big]$$
