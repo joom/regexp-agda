@@ -711,7 +711,7 @@ we showed before, derivations of the same type are not necessarily the same.
 
 The proof follows the same pattern as the proof of |match-completeness| for the
 defunctionalized version by basically using the inductive hypotheses in the same
-way and applying some association munching. Refer to the supplement code.
+way. Refer to the supplement code.
 
 \section{Overall matcher}
 
@@ -720,7 +720,7 @@ way and applying some association munching. Refer to the supplement code.
 \subsubsection{Definitions}
 
 Notice that we defined our |match| functions in terms of standard form regular
-expressions, in order to guarantee the termination. What we want at the end is
+expressions, in order to guarantee termination. What we want at the end is
 an |_accepts_| function in terms of |RegExp|, like Harper's. Therefore we should
 define a new type |RegExp| and a function to convert |RegExp| to |StdRegExp|.
 
@@ -740,7 +740,7 @@ data RegExp : Set where
 capturing group.
 
 Capturing groups are not included in Harper's paper, but it is an operation we
-often want to do with regular expressions and it is trivial to implement with
+often want to use with regular expressions and it is trivial to implement with
 our intrinsic matchers. We will elaborate on this in the next section.
 
 Similarly to |_∈Lˢ_|, we also define a notion of a string being in the language
@@ -763,7 +763,7 @@ mutual
     Cx : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈L r → s₂ ∈Lˣ r → s ∈Lˣ r
 \end{code}
 
-The definition of |_∈L_| is the same as |_∈Lˢ_| except three cases. We now have
+The definition of |_∈L_| is the same as |_∈Lˢ_| except for three cases. We now have
 a case for |ε| that requires an empty string. The Kleene star case is very
 similar to the Kleene plus case. |Cx| and |C+| are very similarly defined, but
 |Ex| is requires an empty string, while |S+| does not.
@@ -817,7 +817,7 @@ Also observe that, if it did type check, for any |r|, both |∅ ·ˢ r| and
 |r ·ˢ ∅| would effectively be equal to |∅|. Likewise, for any |r|, both
 |ε ·ˢ r| and |r ·ˢ ε| would effectively be equal to |r|. Hence we can
 simplify the parts of the alternation in Harper's concatenation standardization
-process. In fact, it a given part is equal to |∅|, we do not have to include it
+process. In fact, if a given part is equal to |∅|, we do not have to include it
 in the alternation at all.
 
 If |r₁| accepts the empty string but |r₂| does not, using Harper's
@@ -829,7 +829,7 @@ Using the observations we made above, we can simplify this to
 \begin{code}
 (standardize r₂) ⊕ˢ ((standardize r₁) ·ˢ (standardize r₂))
 \end{code}
-The simple version does type check, and it is what how we define the
+The simple version does type check, and it is how we define the
 concatenation case of |standardize|, where |δ r₁| is |true| but |δ r₂| is
 |false|. The other cases are defined using the same observation.
 
@@ -842,7 +842,7 @@ r accepts s with δ r | standardize r | String.toList s
 ... | false | r' | xs = r' acceptsˢ xs
 \end{code}
 
-If |r| accepts empty string, we return |true| if |xs| is empty or the
+If |r| accepts the empty string, we return |true| if |xs| is empty or the
 standardization of |r| accepts |xs|. If |r| does not accept the empty string,
 then we only have the latter option.
 
@@ -856,10 +856,9 @@ which matcher we choose to use.
 Now we want to prove the relationship between |RegExp|s and |StdRegExp|s. We want to prove that a string |s| is in the language of a regular
 expression |r| if and only if, either the string is empty, or |s| is in the language of the standardized version of |r|.
 
-We should prove
 $$(\forall s) \; \big[ s \in L(r) \Longleftrightarrow \left[ (\delta(r) = true \land s = []) \lor s \in L( \standardize (r))\right] \big]$$
 
-We are going to prove the previously stated theorem in Agda.
+We are going to prove the above theorem in Agda.
 
 \begin{code}
 ∈L-soundness : (s : List Char)
@@ -873,7 +872,7 @@ We are going to prove the previously stated theorem in Agda.
                 → ((δ r ≡ true) × (s ≡ [])) ⊎ (s ∈Lˢ (standardize r))
 \end{code}
 
-Once we prove this theorem, we can present the overall theorem we want from this theorem:
+Once we prove this theorem, we can present the overall theorem:
 
 $$(\forall r)(\forall s) \; \big[ r \; |accepts| \;  s = |true| \Longleftrightarrow s \in L(r) \big]$$
 
@@ -900,7 +899,7 @@ decidability : (r : RegExp)
 
 \subsection{Capturing groups}
 
-Capturing groups tell us which substring matches which part of the regular
+Capturing groups tells us which substring matches which part of the regular
 expressions. For example, if our regular expression checks if a string is a
 valid e-mail address, we might want to extract parts before and after the |@|
 sign. Suppose we have a regular expression that accepts a single alphanumeric
