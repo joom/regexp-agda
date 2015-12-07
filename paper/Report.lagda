@@ -81,7 +81,7 @@ The matcher functions described by Harper have the type signatures:
 \vspace{4mm}
 
 Obviously, |_accepts_| takes a regular expression and a string, and returns
-|true| if the regular expression accepts the string or it returns |false|
+|true| if the regular expression accepts the string and returns |false|
 otherwise.  The other function |match| takes a regular expression, a list of
 characters and a continuation as arguments. It returns |true| if a prefix of
 the list of characters matches the given regular expression and the
@@ -103,7 +103,7 @@ groups in our regular expressions and extract which part of the string matched
 which part of our regular expression.
 
 Yet this would not be an efficient implementation of grouping in regular
-expressions, because we would have to run the matcher twice in this case: one
+expressions, because we would have to run the matcher twice in this case: once
 to check if the regular expression matches the string, and once again to get
 the soundness proof.
 
@@ -114,7 +114,7 @@ regular expression, in an option type (|Maybe| in Haskell and Agda). This would
 mean defining the matcher function and the soundness proof at the same time.
 
 If our matcher function is going to return a derivation that proves that a
-string is the language of a regular expression, then we cannot simple have a
+string is in the language of a regular expression, then we cannot simply have a
 continuation function |List Char → Bool| anymore; we have to enhance the
 continuation so that it returns a part of the derivation that we can use to
 construct the entire derivation.  This turns out to be a complex task, so we
@@ -214,7 +214,7 @@ mutual
       C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
 \end{code}
 
-Note that, if we are given a list of characters $x$ and two derivations of of
+Note that, if we are given a list of characters $x$ and two derivations of
 the type |x ∈Lˢ r|, the derivations are not necessarily the same.  An example
 of this is the following:
 
@@ -267,7 +267,7 @@ We will now define the matcher functions using only standard regular expressions
 
 \section{Defunctionalized intrinsic matcher}
 
-Harper's solution to the regular expression matching problem uses higher-order
+Harper's solution of the regular expression matching problem uses higher-order
 functions to manage the continuation-passing. Since proving the termination of
 higher-order continuations in Agda is a more difficult task, we decided
 to first defunctionalize the algorithm described by Harper and use list based
@@ -286,7 +286,7 @@ s ∈Lᵏ (r ∷ rs) =
 There are two possibilities for a string to be in the language of a list of
 regular expressions. If the list is empty, the string also has to be empty.
 If the list has a head, then a prefix of the string should match the head of
-the list and the rest of the list should match with the rest of the string.
+the list and the rest of the string should match with the rest of the list.
 
 \subsection{Definition}
 
@@ -445,7 +445,7 @@ r acceptsˢ s = is-just (match r s [])
 \end{code}
 
 We use the function |_acceptsˢ_| to see if a given standard regular expression
-accepts a list of characters by calling our matcher with an continuation base
+accepts a list of characters by calling our matcher with a continuation base
 case. If our |match| function returns a derivation, then we know that the
 string is accepted by the standard form regular expression.
 
