@@ -899,7 +899,7 @@ decidability : (r : RegExp)
 
 \subsection{Capturing groups}
 
-Capturing groups tells us which substring matches which part of the regular
+Capturing groups tell us which substring matches which part of the regular
 expressions. For example, if our regular expression checks if a string is a
 valid e-mail address, we might want to extract parts before and after the |@|
 sign. Suppose we have a regular expression that accepts a single alphanumeric
@@ -946,6 +946,7 @@ same principles.
 
 \section{Conclusion}
 
+% TODO
 
 \bibliography{paper}
 
