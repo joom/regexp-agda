@@ -8,6 +8,7 @@
 \usepackage{textgreek} % not reproducible without textgreek
 \usepackage{bussproofs}
 \usepackage{color}
+\usepackage{proof}
 
 % Editorial commands
 \newcommand{\Red}[1]{{\color{red} #1}}
@@ -174,24 +175,18 @@ expression matching as a special cases, we believe these variations on
 Harper's algorithm will be of interest to the dependent types and
 broader functional programming communities.  
 
-\section{Background}
+The remainder of this paper is organized as follows.  <TODO>
 
-%% \footnote{ Note that we use the terms ``string" and ``list of characters"
-%%   interchangeably.  |String| and |List Char| are different types in Agda and
-%%   even though converting between them is trivial, |List Char| allows direct
-%%   pattern matching.  Conceptually, the two represent the same data, so using
-%%   the term string is often more explanatory and less verbose. }
+\subsection{Agda Definitions}
 
-\subsection{Regular Expressions and Languages}
-
-We will not review regular expressions, but we should remember
-that the Kleene plus is defined as $\Sigma^+ = \Sigma \Sigma^* $, where
-$\Sigma^*$ is the Kleene star.
-
-\subsection{Monadic Functions}
-
-Before we move onto the definitions of the matchers, we should remember the
-definitions of the monadic functions we use in our code, for the |Maybe| type:
+We assume the reader is familiar with
+Agda~\cite{norell07thesis,dybjertutorial} and the notation from the Agda
+standard library~\cite{danielson}.  Though the Agda library
+differentiates between strings (|String|) and lists of characters (|List
+Char|), we will ignore this distinction in the paper.  Because the
+intrinsically verified matcher returns a |Maybe|/option type, it will be
+useful to use monadic notation for |Maybe| (in Haskell terminology,
+|_∣_| is |mplus| and |map| is |fmap|):
 
 \begin{code}
 return : ∀ {A} → A → Maybe A
@@ -213,17 +208,20 @@ map f (just x) = just (f x)
 map _ nothing  = nothing
 \end{code}
 
-With Haskell terminology, |_∣_| is |mplus| and |map| is |fmap|.
+\section{Syntactically standard regular expressions}
 
-\section{StdRegExp description}
+Rather than Harper's negative semantic criterion (no starred
+subexpression accepts the empty string), we use an inductive definition
+of standard regular expressions.  Compared with the standard grammar of
+the regexp matching the empty string (|ε|), the regexp matching the
+empty language (|∅|), character literals, concatenation (|r₁ · r₂|),
+alternation |(r₁ ⊕ˢ r₂)|, and Kleene star/repitition (|r⁺|), we omit ε,
+and replace Kleene star with Kleene plus, which represents repitition
+one or more times.  As an operator on regular languages, Kleene plus
+($\Sigma^+$) is equivalent to $\Sigma · \Sigma^* $, where $\Sigma^*$ is
+the Kleene star.
 
-The standard form regular expressions defined by Harper do not accept the empty
-string. Our new type for such regular expressions will closely resemble the
-usual regular expressions, however it will vary in the cases that accept the
-empty string. We will omit the $\varepsilon$ case in usual regular expressions,
-and replace Kleene star with Kleene plus.
-
-Let's define |StdRegExp| as follows:
+In Agda, we define a type of |StdRegExp| as follows:
 
 \begin{code}
 data StdRegExp : Set where
@@ -233,34 +231,39 @@ data StdRegExp : Set where
   _⊕ˢ_ : StdRegExp → StdRegExp → StdRegExp
   _⁺ˢ : StdRegExp → StdRegExp
 \end{code}
-
 |∅ˢ| is the empty set, |Litˢ| is the character literal, |_·ˢ_| is
-concatenation, |_⊕ˢ_| is alternation. Concatenation and alternation are closed
-in standard regular expressions. Lastly, |_⁺ˢ| is the Kleene plus case.
+concatenation, |_⊕ˢ_| is alternation, and |_⁺ˢ| is Kleene plus.  We use
+the |ˢ| superscript to differentiate standard regular expressions from
+the the full language, which is defined in
+Section~\ref{sec:standardization}.
 
-We can define the rules for a string to be in the language of Kleene plus as
-such:
+Informally, Kleene plus is defined as the least language closed under
+the following rules:
 
-\begin{prooftree}
-  \AxiomC{$s \in L(|r|)$}
-  \UnaryInfC{$s \in L(|r ⁺ˢ|)$}
-\end{prooftree}
+\[
+\infer{s \in L(|r ⁺ˢ|)}
+      {s \in L(|r|)}
+\qquad
+\infer{s \in L(|r ⁺ˢ|)}
+      {s_1 s_2 = s &
+        s_1 \in L(|r|) &
+        s_2 \in L(|r ⁺ˢ|)}
+\]
 
-\begin{prooftree}
-  \AxiomC{$s_1 s_2 = s$}
-  \AxiomC{$s_1 \in L(|r|)$}
-  \AxiomC{$s_2 \in L(|r ⁺ˢ|)$}
-
-  \TrinaryInfC{$s \in L(|r ⁺ˢ|)$}
-\end{prooftree}
-
-We encode these languages and the others in Agda in the following way:
+In Agda, we represent sets of strings by something analogous to their
+membership predicates.  For standard regular expressions, we define a
+binary relation |s ∈Lˢ r|, which means |s| is in the language of |r|, by
+recursion on |r|, illustrating how it is possible to compute types based
+on values in a dependently typed language.  This uses an auxilary,
+inductively definition relation |s ∈L⁺ r|, represented by an Agda
+inductively defined datatype family, which corresponds to the inference
+rules above.
 
 \begin{code}
 mutual
   _∈Lˢ_ : List Char → StdRegExp → Set
   _ ∈Lˢ ∅ˢ = ⊥
-  s ∈Lˢ (Litˢ c) = s ≡ c ∷ []
+  s ∈Lˢ (Litˢ c) = s ≡ [ c ]
   s ∈Lˢ (r₁ ⊕ˢ r₂) = (s ∈Lˢ r₁) ⊎ (s ∈Lˢ r₂)
   s ∈Lˢ (r₁ ·ˢ r₂) =
     Σ (List Char × List Char) (λ { (p , q)  → (p ++ q ≡ s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
@@ -271,15 +274,29 @@ mutual
       C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
 \end{code}
 
-Note that, if we are given a list of characters $x$ and two derivations of
-the type |x ∈Lˢ r|, the derivations are not necessarily the same.  An example
-of this is the following:
+Here, |⊥| is the empty Agda type and |⊎| is disjoint union (|Either|),
+and × is the pair type.  |Σ A (λ x → B)| is an existential/dependent
+pair, where the type of the second component depends on the value of the
+first---because this is not built in in Agda, it takes a type |A| and a
+function from |A| to |Set| as arguments.  The notation |λ {p → e}|
+allows a pattern-matching anonymous function.  
+The function |++| appends lists, and |≡ is| Agda's
+propositional equality.  Thus, in full, the clause for alternation means
+``there exist strings |p| and |q| such that appending |p| and |q| gives
+|s|, where |p| is in the language of |r₁| and |q| is in the language of
+|r₂|.
 
-% write them as derivation trees with inference rules
+However, is is important to note that these membership ``predicates''
+land in |Set|, the Agda type of types, and thus may have computational
+content.  For example, a witness that |s ∈Lˢ (r₁ ⊕ r₂)| includes a bit
+(|Inl|) or (|Inr|) that tells which possibility was taken, and 
+a witness |s ∈L⁺ r| is a non-empty list of strings matching |r|, which
+concatentate to |s|.  Thus, there can be different witnesses that the
+a string matches a regular expression, such as 
 
 \begin{prooftree}
     \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
-\LeftLabel{Derivation A}
+\LeftLabel{Derivation A $:=$}
   \UnaryInfC{$``a" \in L(|Litˢ 'a' ⁺ˢ|)$}
 \end{prooftree}
 
@@ -287,7 +304,7 @@ of this is the following:
     \AxiomC{$``a" \plus ``a" = ``aaa"$}
     \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
     \AxiomC{Derivation A}
-\LeftLabel{Derivation B}
+\LeftLabel{Derivation B $:=$}
   \TrinaryInfC{$``aa" \in L(|Litˢ 'a' ⁺ˢ|)$}
 \end{prooftree}
 
@@ -295,7 +312,7 @@ of this is the following:
   \AxiomC{$``a" \plus ``aa" = ``aaa"$}
   \AxiomC{Derivation A}
   \AxiomC{Derivation B}
-\LeftLabel{Derivation C}
+\LeftLabel{Derivation C $:=$}
   \TrinaryInfC{$``aaa" \in L(|(Litˢ 'a' ⁺ˢ) ·ˢ (Litˢ 'a' ⁺ˢ)|)$}
 \end{prooftree}
 
@@ -303,13 +320,12 @@ of this is the following:
   \AxiomC{$``aa" \plus ``a" = ``aaa"$}
   \AxiomC{Derivation B}
   \AxiomC{Derivation A}
-\LeftLabel{Derivation D}
+\LeftLabel{Derivation D $:=$}
   \TrinaryInfC{$``aaa" \in L(|(Litˢ 'a' ⁺ˢ) ·ˢ (Litˢ 'a' ⁺ˢ)|)$}
 \end{prooftree}
 
-As you can see in derivations C and D, the same string can have different
-derivations for the same regular expression.  The same argument can be made for
-derivations of non-standard regular expressions.
+We will exploit this in Section~\ref{sec:groups} to extract the strings
+matching subexpressions.
 
 % two different values in the same type written in Agda
 
@@ -320,36 +336,30 @@ derivations of non-standard regular expressions.
 % ex₂ = ('a' ∷ 'a' ∷ [] , 'a' ∷ []) , refl , C+ refl refl (S+ refl) , S+ refl
 % \end{code}
 
-We will now define the matcher functions using only standard regular expressions.
-
 \section{Defunctionalized intrinsic matcher}
 
-Harper's solution of the regular expression matching problem uses higher-order
-functions to manage the continuation-passing. Since proving the termination of
-higher-order continuations in Agda is a more difficult task, we decided
-to first defunctionalize the algorithm described by Harper and use list based
-continuations instead.
-
-Before we start the |match| function, we should define a type for a string to
-be in the language of a list of regular expressions:
-
+In this section, we define a first-order matcher for standard regular
+expressions.  This is a defunctionalization of Harper's algorithm,
+though we will describe it from first principles.  The idea is to
+generalize from matching a string |s| against a regular expression |r|
+by adding an additional stack of regular expressions |k| that need to be
+matched against the suffix |s| if some prefix matches |r|.  We represent
+the stack by a list, and say that a string is in the language of a stack
+if it splits into strings in the language of each stack element:
 \begin{code}
 _∈Lᵏ_ : List Char → List StdRegExp → Set
 s ∈Lᵏ [] = s ≡ []
 s ∈Lᵏ (r ∷ rs) =
   Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ∈Lᵏ rs) })
 \end{code}
-
-There are two possibilities for a string to be in the language of a list of
-regular expressions. If the list is empty, the string also has to be empty.
-If the list has a head, then a prefix of the string should match the head of
-the list and the rest of the string should match with the rest of the list.
+If the stack is empty, the string also has to be empty.  If the stack
+has a head, then a prefix of the string should match the head of the
+list and the rest of the string should match with the rest of the list.  
 
 \subsection{Definition}
 
-Now that we know how to handle the continuation list, we can define the main
-function for the defunctionalized intrinsic matcher case by case as following:
-
+The soundness part of informal description of the matcher given above
+translates into the following dependent type/specification:
 \begin{code}
 match : (r : StdRegExp)
       → (s : List Char)
@@ -357,15 +367,22 @@ match : (r : StdRegExp)
       → Maybe (Σ (List Char × List Char)
               (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
 \end{code}
+This says that the matcher takes a regular expression |r|, a string |s|
+and a stack |k|, and creates a splitting of the original list |s| into
+lists |p| and |s'| and, if matching succeeds, returns a splitting |(p ++
+s' ≡ s)|, a derivation that |p| is in the language of |r| and a
+derivation that |s'| is in the language of the stack |k|.  This
+specifies the soundness of successful matching, and has computational
+content that will let us extract matching strings, but leaves open the
+possiblity that the matcher fails incorrectly (for example, the
+constantly |nothing| function has this type)---this will be addressed in
+the completeness proof below.
 
-This is the type of our defunctionalized intrinsic matcher.
-It takes a regular expression |r|, a list of characters |s| and
-a list of StdRegExps |k|, and creates a splitting of the original list
-|s| into lists |p| and |s'| and returns an equality |(p ++ s' ≡ s)|,
-a derivation that |p| is in the language of |r| and a derivation
-that |s' ∈Lᵏ k|, which is defined to mean that if |k| is empty,
-then |s'| has to be empty as well, otherwise |k = r'::rs| and there is
-a splitting of |s'|, |s' ≡ p' ++ s''|, such that |p' ∈Lˢ r'| and |s'' ∈Lᵏ rs|.
+The complete code is in
+Figure~\ref{fig:intrinsic-defunctionalized-matcher}.  Agda can verify
+that this function terminates by induction on first the string |s|, and
+then the regular expression |r|.  \ToDo{FIXME is this what we said?}.
+We now discuss the code case by case.
 
 \subsubsection{Base cases}
 
@@ -382,23 +399,38 @@ match (Litˢ c) (x ∷ xs) k =
                (match-helper k xs))
 \end{code}
 
-If we are trying to match an empty list with a regular expression that requires
-a character, the matcher fails.  If not, we try to match the first character of
-the string to |c| and then match the continuation using the function
-|match-helper| which is mutually recursive with our matcher and is defined as
-follows:
+The |isEqual x c| call has type |Maybe (x ≡ c)|---i.e. it optionally
+shows that |x| is equal to |c|.  Thus, by the monad bind, if we are
+trying to match an empty list with a regular expression that requires a
+character, the matcher fails.  If not, we try to match the first
+character of the string to |c| and then match the stack |k| against the
+suffix using |match-helper|.  
 
+The function |match-helper| is mutually recursive with our matcher and
+is defined as follows:
 \begin{code}
 match-helper : (k : List StdRegExp) → (s : List Char) → Maybe (s ∈Lᵏ k)
 match-helper [] [] = return refl
 match-helper [] (x ∷ s) = fail
 match-helper (r ∷ rs) s = match r s rs
 \end{code}
+It succeeds when matching the emptry string against the empty stack,
+fails when matching a non-empty string against the empty stack, and
+otherwise refers back to |match|.  Relative to Harper's algorithm, this
+is the application function for the defunctionalized continuation.  
 
-Now if the first character in our list matches the character literal |c|,
-then we call |match-helper| on the continuation and the rest of the list.
-Then from |match-helper| we will get a derivation of the type |s ∈Lᵏ k|
-if the rest of the list indeed matches the rest of the |StdRegExp|s in |k|.
+Returning to the character literal case, if the first character in our
+list matches the character literal |c|, then we call |match-helper| on
+the continuation and the rest of the list, which will produce a
+derivation of |s ∈Lᵏ k| if the rest of the list indeed matches the rest
+of the |StdRegExp|s in |k|.  The remainder of the code packages this as
+a pair showing that therefore the list |x :: s| splits as |[ x ] ∈Lˢ
+(Lit c)| and |s ∈Lᵏ k|.
+
+Agda's termination checker is able to verify that, for the call from
+|match| to |match-helper| and back to |match|, the string |x ∷ xs|
+becomes |xs|, and is therefore smaller, which justifies termination in
+this case.  
 
 \subsubsection{Concatenation}
 
@@ -408,17 +440,17 @@ match (r₁ ·ˢ r₂) s k =
     (match r₁ s (r₂ ∷ k))
 \end{code}
 
-If we have one |StdRegExp| to match to the beginning of the string and another
-one to match to the rest of the string, we try to match the first one first,
-and add the second one to the continuation list of regular expressions |k|. Now
-calling match on |r₁ s (r₂ ∷ k)| will give us a split |xs ++ ys ≡ s| and
-derivations of the type |xs ∈Lˢ r₁| and |ys ∈Lᵏ (r₂ ∷ k)|. If we unpack the
-second derivation (provided by our definition of |∈Lᵏ| and the fact that our
-continuation list contains at least one element, |r₂|), we will have another
-split |as ++ bs ≡ ys| and derivations |as ∈Lˢ r₂| and |bs ∈Lᵏ k|. Our helper
-function |reassociate-left| states that if we have such a situation, we should
-be able to state that |xs ++ as| matches the entire regular expression, in
-this case, |r₁ ·ˢ r₂|.
+In the case for concatenation |r₁ ·ˢ r₂|, match against |r₁| first, and
+add |r₂| to the stack |k|.  Calling |match r₁ s (r₂ ∷ k)| will give us a
+split |xs ++ ys ≡ s| and derivations of |xs ∈Lˢ r₁| and |ys ∈Lᵏ (r₂ ∷
+k)|. If we unpack the second derivation (using the definition of |∈Lᵏ|
+and the fact that our continuation list contains at least one element,
+|r₂|), we will have another split |as ++ bs ≡ ys| and derivations |as
+∈Lˢ r₂| and |bs ∈Lᵏ k|.  The helper function |reassociate-left| states
+that if we have such a situation, we can reassociate it to show that |xs
+++ as| matching the entire regular expression |r₁ ·ˢ r₂|.
+
+FIXME show type of |reassociate-left|
 
 \subsubsection{Alternation}
 
@@ -428,15 +460,14 @@ match (r₁ ⊕ˢ r₂) s k =
   (map (change-∈L inj₂) (match r₂ s k))
 \end{code}
 
-We define the alternation case by trying to match the string with the first
-part of the alternation, and if that fails we try to match with the second
-part.
-
-Notice that if the call |match r₁ s k| does not fail, it will contain a
-derivation of type |s ∈Lˢ r₁|. However the return type for the alternation case
-should contain a derivation of type |s ∈Lˢ (r₁ ⊕ˢ r₂)|. Our helper function
-|change-∈L| allows us to do that.
-
+In the alternation case, we match the string with the first part of the
+alternation, and if that fails we try to match with the second part.  If
+the call |match r₁ s k| succeeds, it will contain a triple splitting |s|
+as |p ++ s'|, with a derivation of |p ∈Lˢ r₁| and |s' ∈Lᵏ s'|.  However
+the return type for the alternation case should contain a derivation of
+type |p ∈Lˢ (r₁ ⊕ˢ r₂)|, so we use the helper function |change-∈L|,
+which applies a function to this position of the result triple, to make
+the appropriate modification:
 \begin{code}
 change-∈L : {a b d : List Char → Set} {c : List Char → List Char → Set}
           → (∀ {s} → a s → b s)
@@ -444,7 +475,6 @@ change-∈L : {a b d : List Char → Set} {c : List Char → List Char → Set}
           → (Σ _ (λ {(p , s') → (c p s') × (b p) × (d s')}))
 change-∈L f (x , eq , inL , rest) = (x , eq , f inL , rest)
 \end{code}
-
 We use |change-∈L| to apply |inj₁| or |inj₂| to the derivation, depending on
 which part of the alternation successfully matched the string.
 
@@ -457,7 +487,7 @@ match (r ⁺ˢ) s k =
     (match r s ((r ⁺ˢ) ∷ k)))
 \end{code}
 
-In the Kleene plus case, we first try to match |s| with just |r| and if that
+In the Kleene plus case, we first try to match |s| with just |r|, and if that
 succeeds we apply |change-∈L S+| to the derivation since we matched from the
 single |r| case. If this fails, then similar to the |·ˢ| case, we try to match
 a prefix of the string to |r| and then the suffix that follows with the
@@ -491,6 +521,7 @@ match (r ⁺ˢ) s k =
 \end{code}
 \caption{Complete definition of the |match| function for
   the defunctionalized intrinsic matcher.}
+\label{fig:intrinsic-defunctionalized-matcher}
 \figrule
 \end{figure}
 
@@ -955,6 +986,7 @@ decidability : (r : RegExp)
 \end{code}
 
 \subsection{Capturing groups}
+\label{sec:groups}
 
 Capturing groups tell us which substring matches which part of the regular
 expressions. For example, if our regular expression checks if a string is a
