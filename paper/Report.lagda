@@ -26,7 +26,7 @@
 \DeclareUnicodeCharacter{739}{$^\text{x}$}
 \DeclareUnicodeCharacter{8709}{$\varnothing$} % overwriting \emptyset
 
-\title{Regular Expression Matching \break with Dependent Types}
+\title{Functional Pearl: Intrinsic Verification \break of a Regular Expression Matcher}
 \author[Joomy Korkut, Maksim Trifunovski, Daniel R. Licata]
        {JOOMY KORKUT, MAKSIM TRIFUNOVSKI, DANIEL R. LICATA\\
         Wesleyan University}
@@ -55,75 +55,132 @@ proven the correctness of both.
 
 \section{Introduction}
 
-Robert Harper's paper ``Proof-Directed Debugging" presents a simple
-implementation of a regular expression matching algorithm that has a flaw which
-is revealed during its correctness proof; it turns out that the algorithm does
-not terminate for all regular expressions. Harper fixes this flaw by changing
-the specification and allowing only the standard form regular expressions as an
-argument to the matching function. The paper also proves that the new
-specification suffices to cover all regular expressions and hence solve the
-original problem. \cite{harper}
+Regular expression matching is a venerable problem, studied in many
+programming and theory of computation courses.  Harper~\cite{harper}
+presents a higher-order algorithm for regular expression matching, using
+continuation-passing to store the remainder of a matching problem when a
+concatenation is encountered, while using the host-language's control
+stack to represent the branching when an alternation or Kleene star is
+encoutered.  The code for the matcher is quite short, but also quite
+subtle; the emphasis of Harper's paper is on how the correctness proof
+for the matcher informs the reader's understanding of the code.  For
+example, the first matcher presented has a termination bug, which is
+revealed when the induction in the correctness proof breaks down.  The
+problem can be fixed by restricting the domain of the function to
+\emph{standard} regular expressions, which have no Kleene-stared
+subexpressions that accept the empty string, and using a preprocessor
+translation to cover all regular expressions and hence solve the
+original problem.  Harper's algorithm has been used in first- and
+second-year functional programming courses at Carnegie Mellon for more
+than 20 years, as a high-water example of integrating programming and
+program verification.  A later paper by Yi~\cite{Yi06regexp} revisits
+the example, motivated by the author's sense that the higher-order
+matcher is too difficult for students in their introductory programming
+course, and gives a first-order matcher based on compilation to a state
+machine.
 
-The algorithm described by Harper is simple, however its termination depends on
-preconditions about its arguments, not its type. Therefore, in a total language
-like Agda, proving the termination of the algorithm becomes a problem. We have
-to define a new type to encode the precondition of regular expressions we want
-as an argument and then handle the type conversions to show that our program
-manages to solve the original problem. We use Agda as a proof checker to prove
-this.
+Because of this algorithm's strong interplay between program and proof
+and its pedagogical usefulness, we set out to formalize the algorithm
+using the Agda proof assistant~\cite{norell07thesis}, believing that it
+could be a pedagogically useful example of dependently typed
+programming.  The process of mechanizing the algorithm led us to a few
+new observations that streamline the presentation of the
+algorithm---which was quite surprising to the third author, who has
+previously taught this material several times and thought hard about how
+to present it.  Our goal in this pearl paper is to document these
+variations on the matching algorithm, and how the process of programming
+it in Agda led us to them.
 
-The matcher functions described by Harper have the type signatures:
+In partciular, we make three new observations.  First, because Agda is a
+total language, we must make the termination of the matcher evident in
+the code itself.  Harper's original algorithm can be shown to terminate
+using lexicographic induction on first the regular expression and second
+well-founded induction on the string being matched, but in Agda the
+latter requires passing an explicit termination measure.  In an attempt
+to avoid this, we discovered that
+\emph{defunctionalizing}~\cite{danvyetc} the matcher avoids the explicit
+termination argument, because the problematic recursive call is moved
+from the Kleene star case to the character literal base case, where it
+is clear that the string is getting smaller.  The defunctionalized
+matcher is of interest not only because programming it in Agda is
+simpler: it also achieves Yi's goal of a first-order matcher in a simple
+way, which has a clear relationship to the higher-order matcher.
+Pedagogically, it could be used at a point in a course before
+higher-order functions have been introduced, and it could be used as a
+stepping stone to the more sophisticated higher-order matcher.
 
-\vspace{4mm}
-|match: RegExp → List Char → (List Char → Bool) → Bool|
+Second, the matcher discussed in Harper's paper, whose Agda type is
+\begin{code}
+_accepts_ : RegExp → String → Bool
+\end{code}
+determines whether or not a string is accepted by a regular expression.
+However, for most applications of regexp matching (and for making
+compelling homework assignments), it is useful to allow a ``brakcet'' or
+``grouping'' construct that allows the user to specify
+sub-regular-expressions whose matching strings should be reported---
+e.g. |ACG[.*]TAC[(G⊕C)*]GA| for extracting the parts of a DNA string
+surrounded by certain signal codes.  When coding a program/proof in a
+dependently typed language, there is a choice between ``extrinsic''
+verification (write the simply-typed code, and then prove it correct)
+and ``intrinsic verification'' (fuse the program and proof into one
+function, with a dependent type).  We have formalized both a
+straightforward extrinsic verification, and an intrinsically
+\emph{sound} verification, which has the dependent type
+\begin{code}
+_FIXMEWHATISTHISCALLEDINTHECODE?_ : (r : RegExp) (s : String) → Maybe (s ∈L r)
+\end{code}
+All formalizations are availabe online~\footnote{FIXME URL for repo}.  That is, when
+the matcher succeeds, it returns the derivation that the string is in
+the language of the regexp (completeness, which says that the matcher
+does not improperly reject strings, is still proved separately).  The
+reason for this choice is that the \emph{computational content} of the
+soundness proof is relevant to the above problem: the derivation gives a
+parse tree, which allows reporting the matching strings for each
+specified sub-expression.  Indeed, we first realized this for the
+extrinsic matcher, running the separate soundness proof to produce the
+matching strings.  However, running the matcher and then its soundness
+proof (which has success of the matcher as a precondition) duplicates
+work, so we present the intrinsic version in the paper.  
 
-|_accepts_ : RegExp → String → Bool|
-\vspace{4mm}
+A third observation, is that, while Harper uses a negative semantic
+definition of standard regular expressions (``no subexpression of the
+form $r^*$ accepts the empty string''), it is often more convenient in
+Agda to use positive/inductive criteria.  While formalizing the notion
+of stadard, we realized that it is possible to instead use a syntactic
+criterion, generating standard regular expressions by literals,
+concatenation, alternation, and Kleene \emph{plus} (one or more
+occurences) instead of Kleene \emph{star} (zero or more occurences), and
+omitting the empty string regexp |ε|.  While the syntactic criterion
+omits some semantically valid expression (e.g. |(ε · r)*|, where |r|
+does not accept the empty string), it still suffices to define a matcher
+for all regular expression by translation.  In addition to simplifying
+the Agda formalization, this observation has the pedagogical benefit of
+allowing a self-contained treatment of these syntactically standard
+regular expressions.
 
-Obviously, |_accepts_| takes a regular expression and a string, and returns
-|true| if the regular expression accepts the string and returns |false|
-otherwise.  The other function |match| takes a regular expression, a list of
-characters and a continuation as arguments. It returns |true| if a prefix of
-the list of characters matches the given regular expression and the
-continuation called with the the rest of the string
-\footnote{ Note that we use the terms ``string" and ``list of characters"
-  interchangeably.  |String| and |List Char| are different types in Agda and
-  even though converting between them is trivial, |List Char| allows direct
-  pattern matching.  Conceptually, the two represent the same data, so using
-  the term string is often more explanatory and less verbose. }
-returns |true|. It returns |false| otherwise. In our implementation of these
-functions in Agda, we will keep the type signature of |_accepts_| as it is, but
-we will have to modify the type of |match| to be able to show Agda that it
-definitely terminates.
-
-When we prove the soundness of our matcher function, we will have to create a
-proof that the given string is in the language of the given regular expression.
-There is a value we can get out of our soundness proof; we can have capture
-groups in our regular expressions and extract which part of the string matched
-which part of our regular expression.
-
-Yet this would not be an efficient implementation of grouping in regular
-expressions, because we would have to run the matcher twice in this case: once
-to check if the regular expression matches the string, and once again to get
-the soundness proof.
-
-However, if we decide to verify our matcher intrinsically, rather than
-extrinsically, we can get away with running the matcher only once. Our matcher
-in this case would return the proof of the string being in the language of the
-regular expression, in an option type (|Maybe| in Haskell and Agda). This would
-mean defining the matcher function and the soundness proof at the same time.
-
-If our matcher function is going to return a derivation that proves that a
-string is in the language of a regular expression, then we cannot simply have a
-continuation function |List Char → Bool| anymore; we have to enhance the
-continuation so that it returns a part of the derivation that we can use to
-construct the entire derivation.  This turns out to be a complex task, so we
-tried defunctionalizing the matcher and using list based continuations instead
-of higher-order functions.  For comparison, we will present both the
-defunctionalized and higher-order continuation versions of the matcher in this
-paper.
+Though dependently typed programming led us to these new insights into a
+problem that has been very throughly studied from a very similar point
+of view, they can all be ported back to simply-typed languages.  Thus,
+in addition to being a strong pedagogical example of dependently typed
+programming, these variations on regular expression matching could be
+used in introductory programming courses to offer a streamlined
+unit---e.g. using the defunctionalized matcher for only standard regular
+expressions, which still captures the basic interplay between
+programming and proof---which scales to higher-order matching and more
+interesting homework assignments---e.g. by computing matching strings.
+Therefore, even though there is existing work on parsing in a total
+programming language~\cite{danielsson}, which includes regular
+expression matching as a special cases, we believe these variations on
+Harper's algorithm will be of interest to the dependent types and
+broader functional programming communities.  
 
 \section{Background}
+
+%% \footnote{ Note that we use the terms ``string" and ``list of characters"
+%%   interchangeably.  |String| and |List Char| are different types in Agda and
+%%   even though converting between them is trivial, |List Char| allows direct
+%%   pattern matching.  Conceptually, the two represent the same data, so using
+%%   the term string is often more explanatory and less verbose. }
 
 \subsection{Regular Expressions and Languages}
 
