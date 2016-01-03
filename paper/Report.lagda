@@ -557,7 +557,7 @@ Though the above matcher is intrinsically sound, it is not necessarily
 complete (for example, it could always fail).  One way to resolve this
 would be to write a matcher that is intrinsically both sound and
 complete --- overall (ignoring the stack), given |s| and |r|, we would
-like to know |(s ∈Lˢ r) ⨄ ¬ (s ∈Lˢ r)|, a type that expresses
+like to know |(s ∈Lˢ r) ⊎ ¬ (s ∈Lˢ r)|, a type that expresses
 decidability of matching.  However, while there is an efficiency reason
 to instrinsically compute the the derivation of |s ∈Lˢ r|---we will use
 it to extract matching strings---there is no computational content to |¬
