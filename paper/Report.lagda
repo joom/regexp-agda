@@ -128,11 +128,11 @@ function, with a dependent type).  We have formalized both a
 straightforward extrinsic verification, and an intrinsically
 \emph{sound} verification, which has the dependent type
 \begin{code}
-_FIXMEWHATISTHISCALLEDINTHECODE?_ : (r : RegExp) (s : String) → Maybe (s ∈L r)
+inL-intrinsic : (r : RegExp) (s : List Char) → Maybe (s ∈L r)
 \end{code}
-All formalizations are availabe online~\footnote{FIXME URL for repo}.  That is, when
-the matcher succeeds, it returns the derivation that the string is in
-the language of the regexp (completeness, which says that the matcher
+All formalizations are availabe online~\footnote{https://github.com/joom/regexp-agda}.
+That is, when the matcher succeeds, it returns the derivation that the string is
+in the language of the regexp (completeness, which says that the matcher
 does not improperly reject strings, is still proved separately).  The
 reason for this choice is that the \emph{computational content} of the
 soundness proof is relevant to the above problem: the derivation gives a
@@ -141,7 +141,7 @@ specified sub-expression.  Indeed, we first realized this for the
 extrinsic matcher, running the separate soundness proof to produce the
 matching strings.  However, running the matcher and then its soundness
 proof (which has success of the matcher as a precondition) duplicates
-work, so we present the intrinsic version in the paper.  
+work, so we present the intrinsic version in the paper.
 
 A third observation, is that, while Harper uses a negative semantic
 definition of standard regular expressions (``no subexpression of the
@@ -173,7 +173,7 @@ Therefore, even though there is existing work on parsing in a total
 programming language~\cite{danielsson}, which includes regular
 expression matching as a special cases, we believe these variations on
 Harper's algorithm will be of interest to the dependent types and
-broader functional programming communities.  
+broader functional programming communities.
 
 The remainder of this paper is organized as follows.  <TODO>
 
@@ -279,7 +279,7 @@ and × is the pair type.  |Σ A (λ x → B)| is an existential/dependent
 pair, where the type of the second component depends on the value of the
 first---because this is not built in in Agda, it takes a type |A| and a
 function from |A| to |Set| as arguments.  The notation |λ {p → e}|
-allows a pattern-matching anonymous function.  
+allows a pattern-matching anonymous function.
 The function |++| appends lists, and |≡ is| Agda's
 propositional equality.  Thus, in full, the clause for alternation means
 ``there exist strings |p| and |q| such that appending |p| and |q| gives
@@ -289,10 +289,10 @@ propositional equality.  Thus, in full, the clause for alternation means
 However, is is important to note that these membership ``predicates''
 land in |Set|, the Agda type of types, and thus may have computational
 content.  For example, a witness that |s ∈Lˢ (r₁ ⊕ r₂)| includes a bit
-(|Inl|) or (|Inr|) that tells which possibility was taken, and 
+(|Inl|) or (|Inr|) that tells which possibility was taken, and
 a witness |s ∈L⁺ r| is a non-empty list of strings matching |r|, which
 concatentate to |s|.  Thus, there can be different witnesses that the
-a string matches a regular expression, such as 
+a string matches a regular expression, such as
 
 \begin{prooftree}
     \AxiomC{$``a" \in L(|Litˢ 'a'|)$}
@@ -354,7 +354,7 @@ s ∈Lᵏ (r ∷ rs) =
 \end{code}
 If the stack is empty, the string also has to be empty.  If the stack
 has a head, then a prefix of the string should match the head of the
-list and the rest of the string should match with the rest of the list.  
+list and the rest of the string should match with the rest of the list.
 
 \subsection{Definition}
 
@@ -404,7 +404,7 @@ shows that |x| is equal to |c|.  Thus, by the monad bind, if we are
 trying to match an empty list with a regular expression that requires a
 character, the matcher fails.  If not, we try to match the first
 character of the string to |c| and then match the stack |k| against the
-suffix using |match-helper|.  
+suffix using |match-helper|.
 
 The function |match-helper| is mutually recursive with our matcher and
 is defined as follows:
@@ -417,7 +417,7 @@ match-helper (r ∷ rs) s = match r s rs
 It succeeds when matching the emptry string against the empty stack,
 fails when matching a non-empty string against the empty stack, and
 otherwise refers back to |match|.  Relative to Harper's algorithm, this
-is the application function for the defunctionalized continuation.  
+is the application function for the defunctionalized continuation.
 
 Returning to the character literal case, if the first character in our
 list matches the character literal |c|, then we call |match-helper| on
@@ -430,7 +430,7 @@ a pair showing that therefore the list |x :: s| splits as |[ x ] ∈Lˢ
 Agda's termination checker is able to verify that, for the call from
 |match| to |match-helper| and back to |match|, the string |x ∷ xs|
 becomes |xs|, and is therefore smaller, which justifies termination in
-this case.  
+this case.
 
 \subsubsection{Concatenation}
 
@@ -450,7 +450,8 @@ and the fact that our continuation list contains at least one element,
 that if we have such a situation, we can reassociate it to show that |xs
 ++ as| matching the entire regular expression |r₁ ·ˢ r₂|.
 
-FIXME show type of |reassociate-left|
+FIXME show type of |reassociate-left| (type is disgusting, maybe just show the
+   1 line implementation ?)
 
 \subsubsection{Alternation}
 
