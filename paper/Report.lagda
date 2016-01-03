@@ -128,11 +128,11 @@ function, with a dependent type).  We have formalized both a
 straightforward extrinsic verification, and an intrinsically
 \emph{sound} verification, which has the dependent type
 \begin{code}
-inL-intrinsic : (r : RegExp) (s : List Char) → Maybe (s ∈L r)
+inL-intrinsic : (r : RegExp) → (s : List Char) → Maybe (s ∈L r)
 \end{code}
 All formalizations are available
-online.\footnote{\url{https://github.com/joom/regexp-agda}, use Agda
-  version FIXME with standard library version FIXME} When this matcher
+online.\footnote{\url{http://github.com/joom/regexp-agda}, use Agda
+  version 2.4.2.2 with standard library version 0.11} When this matcher
 succeeds, it returns the derivation that the string is in the language
 of the regexp (completeness, which says that the matcher does not
 improperly reject strings, is still proved separately).  The reason for
@@ -472,7 +472,7 @@ match (r₁ ⊕ˢ r₂) s k =
 \end{code}
 
 In the alternation case, we match the string with |r₁|, and if that
-fails match with |r₂| (recall that |∥| handles failure of its first
+fails match with |r₂| (recall that |∣∣| handles failure of its first
 disjunct by trying the second).  If the call |match r₁ s k| succeeds, it
 will produce a triple splitting |s| as |p ++ s'|, with a derivation of
 |p ∈Lˢ r₁| and |s' ∈Lᵏ k|.  However the return type for the alternation
@@ -528,7 +528,7 @@ mutual
     (map (change-∈L S+) (match r s k)) ∣∣
     (map (reassociate-left {R = λ r _ → r ⁺ˢ} (λ inL inL' → C+ refl inL inL'))
       (match r s ((r ⁺ˢ) ∷ k)))
-  
+
   match-helper : (k : List StdRegExp) → (s : List Char) → Maybe (s ∈Lᵏ k)
   match-helper [] [] = return refl
   match-helper [] (x ∷ s) = fail
@@ -545,11 +545,12 @@ From the outside, we can call the generalized matcher with the empty
 stack to check membership:
 
 \begin{code}
-_FIXME_ : (r : StdRegExp) (s : List Char) → Maybe (s ∈Lˢ r)
-r FIXME s = ... match r s [] ... and then some massaging
+acceptsˢ-intrinsic : (r : StdRegExp) → (s : List Char) → Maybe (s ∈Lˢ r)
+acceptsˢ-intrinsic r s with match r s []
+acceptsˢ-intrinsic r .(xs ++ []) | just ((xs , .[]) , refl , inL , refl) =
+  just (eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL)
+acceptsˢ-intrinsic r s | nothing = nothing
 \end{code}
-
-FIXME: what is this called in the code/add it if not
 
 \subsection{Completeness}
 
@@ -578,15 +579,15 @@ match-completeness : (r : StdRegExp)
 That is, when there is a way for the matcher to succeed, it does.  We
 cannot make a stronger claim and say that it returns the same derivation
 that is given as input, because as we showed before, there can be
-different derivations for the same string and regexp.  
+different derivations for the same string and regexp.
 
 The full proof is in the companion code.  The base cases |∅ˢ| and |Litˢ|
 are easy.  Since the Kleene plus case captures the essence of both
 concatenation and alternation cases, we will only explain the
 completeness proof of the Kleene plus case.
 
-There are two cases, depending on how the given derivation 
-of |p ∈L (r ⁺)| was constructed.  For the first, 
+There are two cases, depending on how the given derivation
+of |p ∈L (r ⁺)| was constructed.  For the first,
 \begin{code}
 match-completeness (r ⁺ˢ) s k ((xs , ys) , eq , S+ inL , rest)
   with match r s k | match-completeness r s k ((xs , ys) , eq , inL , rest)
@@ -597,7 +598,7 @@ if the given derivation of |xs ∈L (r ⁺)| was by the constructor |S+|,
 then sitting under the constructor is a derivation of |inL : xs ∈Lˢ r|,
 and the result follows from the inductive hypothesis on |D|.
 
-For the second, where the derivation was constructed by |C+|, 
+For the second, where the derivation was constructed by |C+|,
 \begin{code}
 match-completeness (r ⁺ˢ) .((s₁ ++ s₂) ++ ys) k
     ((._ , ys) , refl , C+ {._}{s₁}{s₂} refl inL1 inL2 , rest)
@@ -624,7 +625,7 @@ then we obtain a contradiction by the inductive hypothesis, which shows
 that the recursive call should have succeeded because |s₁| matches |r|
 and |s₂ ++ ys| matches the continuation (using the associative property
 of appending lists to show that it is the same string).  If it succeeds,
-then the matcher succeeds, so we have the result.  
+then the matcher succeeds, so we have the result.
 
 \section{Higher-order intrinsic matcher}
 
@@ -640,7 +641,7 @@ an iterated inductive definition |RecursionPermission xs|.  Visually,
 you can think of |RecursionPermission xs| as a tree, where a node for
 |xs| has subtrees for each strict suffix of |xs|.  Each of these
 subtrees is judged smaller by the termination checker, and therefore we
-will be allowed to recur on any suffix of |xs|.  
+will be allowed to recur on any suffix of |xs|.
 
 \begin{code}
 data RecursionPermission {A : Set} : List A → Set where
@@ -686,17 +687,14 @@ match C ∅ˢ s k perm = fail
 The cases for character literals
 \begin{code}
 match C (Litˢ c) [] k perm = fail
-match C (Litˢ c) (x ∷ xs) k perm with x Data.Char.≟ c
-... | no _ = fail
-... | yes p = k {[ x ]} {xs} refl (cong (λ q → [ q ]) p)
+match C (Litˢ c) (x ∷ xs) k perm =
+  (isEqual x c) >>= (λ p → k {[ x ]} {xs} refl (cong (λ q → [ q ]) p))
 \end{code}
 are as above, except that where we called |match-helper| to activate the
 stack |k|, here we call |k| itself.  The packaging of the result of
 |match-helper| (the |map| in the above code) now happens as \emph{input}
 to |k|, because to call |k| we must show that |x ∷ xs| splits as
 something in the language of |Litˢ c| and some suffix.
-
-FIXME: can we use |isEqual| and |>>=| here to correspond to above?
 
 \subsubsection{Concatenation}
 
@@ -706,7 +704,7 @@ match C (r₁ ·ˢ r₂) s k (CanRec f) =
         (λ {p}{s'} eq inL →
           match C r₂ s' (λ {p'}{s''} eq' inL' →
                           k {p ++ p'}{s''} (replace-right p s' p' s'' s eq' eq) ((p , p') , refl , inL , inL'))
-                        (f s' (suffix-continuation eq inL))) (CanRec f)
+                        (f s' (suffix-after-∈Lˢ eq inL))) (CanRec f)
 \end{code}
 
 In the concatenation case of the defunctionalized version, we added |r₂|
@@ -725,9 +723,9 @@ because the regular expressions |r₁| and |r₂| get smaller in each case.
 To make the inner recursive call, it is necessary to supply a recursion
 permission for |s'|, i.e. to allow recursive calls on |s'|, and to do
 this it suffices to show that |s'| is a suffix of |s|.  The
-|suffix-continuation| lemma
+|suffix-after-∈Lˢ| lemma
 \begin{code}
-  suffix-continuation : ∀ {p s' s r} → (p ++ s' ≡ s) → (p ∈Lˢ r) → Suffix s' s
+  suffix-after-∈Lˢ : ∀ {p s' s r} → (p ++ s' ≡ s) → (p ∈Lˢ r) → Suffix s' s
 \end{code}
 does this: |s'| is a non-strict suffix of |s| by the equality, and
 because the prefix |p| is in the language of a \emph{standard} regular
@@ -736,9 +734,6 @@ this case, it would also be sufficient to observe that |s'| is a
 non-strict suffix of |s|, because we do not need the string and
 recursion permission to get smaller to justify termination, but the
 argument we just gave will also be used in the Kleene plus case.)
-
-FIXME rename suffix-continuation to ``suffix-of-standard'' or something
-like that here and in the code; it has nothing to do with continuations.
 
 \subsubsection{Alternation}
 
@@ -760,7 +755,7 @@ match C (r ⁺ˢ) s k (CanRec f) =
   match C r s (λ {p}{s'} eq inL →
                 match C (r ⁺ˢ) s' (λ {p'}{s''} eq' inL' →
                                     k (replace-right p s' p' s'' s eq' eq) (C+ refl inL inL') )
-                      (f s' (suffix-continuation eq inL))) (CanRec f)
+                      (f s' (suffix-after-∈Lˢ eq inL))) (CanRec f)
 \end{code}
 
 The structure of the Kleene plus case is similar to the defunctionalized
@@ -772,9 +767,9 @@ suffix of |s|, and that the recursion permission tree gets smaller.  As
 in the alternation case, |s'| is a non-strict suffix of |s| by the
 equality |eq : p ++ s' ≡ s|, and because the prefix |p| is in the language
 of a \emph{standard} regular expression |r| and therefore is not empty,
-|s'| is a strict suffix of |s| by the |suffix-continuation| lemma.
+|s'| is a strict suffix of |s| by the |suffix-after-∈Lˢ| lemma.
 Therefore, applying |f| to |s'| and this fact selects a smaller
-recursion permission subtree, justifying termination.  
+recursion permission subtree, justifying termination.
 
 Termination is trickier for the higher-order matcher than for the
 defunctionalized matcher becayse, here, we make the recursive call on |r
@@ -794,16 +789,15 @@ match :  (C : Set) (r : StdRegExp) (s : List Char)
          → RecursionPermission s
          → Maybe C
 match C ∅ˢ s k perm = fail
-match C (Litˢ x) [] k perm = fail
-match C (Litˢ x) (y ∷ ys) k perm with y Data.Char.≟ x
-... | no _ = fail
-... | yes p = k {[ y ]} {ys} refl (cong (λ q → [ q ]) p)
+match C (Litˢ c) [] k perm = fail
+match C (Litˢ c) (x ∷ xs) k perm =
+  (isEqual x c) >>= (λ p → k {[ x ]} {xs} refl (cong (λ q → [ q ]) p))
 match C (r₁ ·ˢ r₂) s k (CanRec f) =
   match C r₁ s
         (λ {p}{s'} eq inL →
           match C r₂ s' (λ {p'}{s''} eq' inL' →
                           k {p ++ p'}{s''} (replace-right p s' p' s'' s eq' eq) ((p , p') , refl , inL , inL'))
-                        (f _ (suffix-continuation eq inL))) (CanRec f)
+                        (f _ (suffix-after-∈Lˢ eq inL))) (CanRec f)
 match C (r₁ ⊕ˢ r₂) s k perm =
   match C r₁ s (λ eq inL → k eq (inj₁ inL)) perm ∣∣
   match C r₂ s (λ eq inL → k eq (inj₂ inL)) perm
@@ -812,7 +806,7 @@ match C (r ⁺ˢ) s k (CanRec f) =
   match C r s (λ {p}{s'} eq inL →
                 match C (r ⁺ˢ) s' (λ {p'}{s''} eq' inL' →
                                     k (replace-right p s' p' s'' s eq' eq) (C+ refl inL inL') )
-                      (f _ (suffix-continuation eq inL))) (CanRec f)
+                      (f _ (suffix-after-∈Lˢ eq inL))) (CanRec f)
 \end{code}
 \caption{Complete definition of the |match| function for
   the higher-order intrinsic matcher.}
@@ -822,12 +816,10 @@ match C (r ⁺ˢ) s k (CanRec f) =
 
 \subsubsection{Acceptance by StdRegExp}
 
-FIXME name?
-
 Overall, we can define
 \begin{code}
-_FIXME_ : (r : StdRegExp) (s : List Char) → Maybe (s ∈Lˢ r)
-r FIXME s = match _ r s empty-continuation (well-founded s)
+acceptsˢ-intrinsic : (r : StdRegExp) → (s : List Char) → Maybe (s ∈Lˢ r)
+acceptsˢ-intrinsic r s = match _ r s empty-continuation (well-founded s)
 \end{code}
 by choosing an appropriate initial continuation, and by constructing a
 recursion permission for |s| (which exists because string suffix is a
@@ -959,7 +951,6 @@ Harper's definition of |δ| returns either |∅| or |ε|, hence the type of |δ|
 
 If we try to directly follow Harper's standardization for concatenation, we
 would have to write
-% \ToDo{Harper's paper has a typo in that section, I don't know how to deal with that}
 \begin{code}
 standardize (r₁ · r₂) =
   ((δ r₁) ·ˢ (standardize r₂)) ⊕ˢ

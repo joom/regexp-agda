@@ -157,8 +157,8 @@ module Lemmas where
   empty-continuation {p'}{s'}{s'' = []}{r} eq inL =  just (eq-replace (cong₂ _∈Lˢ_ {_}{_}{r}{r} (trans (sym (append-rh-[] p')) eq) refl ) inL)
   empty-continuation {s'' = x ∷ s''} eq inL = nothing
 
-  suffix-continuation : ∀ {p s' s r} → (p ++ s' ≡ s) → (p ∈Lˢ r) → Suffix s' s
-  suffix-continuation {p}{s'}{s}{r} eq inL = eq-replace (cong₂ Suffix refl eq) (append-suffix2 {p}{s'}{r} inL)
+  suffix-after-∈Lˢ : ∀ {p s' s r} → (p ++ s' ≡ s) → (p ∈Lˢ r) → Suffix s' s
+  suffix-after-∈Lˢ {p}{s'}{s}{r} eq inL = eq-replace (cong₂ Suffix refl eq) (append-suffix2 {p}{s'}{r} inL)
 
   open RawMonadPlus {Agda.Primitive.lzero} Data.Maybe.monadPlus renaming (∅ to fail)
   or-just : ∀ {A} {a b : Maybe A} → (isJust a) ⊎ (isJust b) → isJust (a ∣ b)

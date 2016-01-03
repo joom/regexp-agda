@@ -117,6 +117,12 @@ module IntrinsicDefun where
   acceptsˢ-completeness : (r : StdRegExp) → (s : List Char) → s ∈Lˢ r → r acceptsˢ s ≡ true
   acceptsˢ-completeness r s inL = is-just-lemma (match-completeness r s [] ((s , []) , append-rh-[] s , inL , refl))
 
+  acceptsˢ-intrinsic : (r : StdRegExp) → (s : List Char) → Maybe (s ∈Lˢ r)
+  acceptsˢ-intrinsic r s with match r s []
+  acceptsˢ-intrinsic r .(xs ++ []) | just ((xs , .[]) , refl , inL , refl) =
+    just (eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL)
+  acceptsˢ-intrinsic r s | nothing = nothing
+
   {- Efficient overall matcher.
    These functions can be found in the OverallMatcher module
    but efficiency is sacrificed for generalization, because
