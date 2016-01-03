@@ -628,17 +628,19 @@ then the matcher succeeds, so we have the result.
 
 \section{Higher-order intrinsic matcher}
 
-The intrinsic matcher using list based continuation achieves what we want to
-achieve with our matcher, but our initial question was to reimagine Harper's
-continuation-passing style algorithm in Agda. Therefore we will also attempt
-to write an intrinsic matcher that has functions as continuations.
-
-A problem that arises with the function based continuations is regarding the
-totality checker. It is not evident to Agda that our |match| function
-terminates, because there is no obviously diminishing list of continuations
-like the defunctionalized matcher. This is why we have to show Agda that our
-recursive function really terminates, by providing an extra argument that is
-obviously diminishing. We define it as following:
+In this section, we show that the above intrinsic verifcation of the
+first-order matcher scales to a higher-order matcher, written using
+continuation-passing, which is more similar to Harper's original code.
+We will use this to explain why the above matcher is a
+defunctionalization, and why the termination reasoning is more difficult
+in the higher-order case.  To make termination evident to Agda, we will
+need to use an explicit termination metric that corresponds to
+well-founded induction on strings/lists.  This is represented in Agda by
+an iterated inductive definition |RecursionPermission xs|.  Visually,
+you can think of |RecursionPermission xs| as a tree, where a node for
+|xs| has subtrees for each strict suffix of |xs|.  Each of these
+subtrees is judged smaller by the termination checker, and therefore we
+will be allowed to recur on any suffix of |xs|.  
 
 \begin{code}
 data RecursionPermission {A : Set} : List A → Set where
@@ -649,50 +651,52 @@ data RecursionPermission {A : Set} : List A → Set where
 
 \subsection{Definition}
 
-The main function for the higher-order intrinsic matcher is defined case by case as following:
+The higher-order intrinsic matcher has the following specification:
 
 \begin{code}
-match : (C : Set)
-      → (r : StdRegExp)
-      → (s : List Char)
+match : (C : Set) (r : StdRegExp) (s : List Char)
       → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
       → RecursionPermission s
       → Maybe C
 \end{code}
 
-The |match| function is now taking an extra argument |C| that helps us define
-the continuation function and the return type.  The purpose for having |C| as
-an argument is to be able to refer to the top level of the recursive calls in
-every sub recursive call.
-
-Notice that the continuation |k| is a function, unlike the defunctionalized
-version, but similar to Harper's matcher. It is a function that possibly gives
-a derivation (hence the |Maybe| type) for the entire string given that there is
-a split of it such that the first part is in the language of |r|.
-
-We also need an extra argument of type |RecursionPermission s| to explicitly
-show Agda that the string |s| gets shorter in each recursive call. Remember
-that to get a new |RecursionPermission s'| depending on an existing
-|RecursionPermission s|, it has to be that |s'| is a strict suffix of |s|.
+The type variable |C| stands for the output derivation computed by the
+matcher on success.  Just as Harper's algorithm returns a |bool| and
+uses both the continuation and the host language's control stack
+(i.e. it is not fully in CPS), here both the continuation and the
+matcher return an option, but the success data can been chosen
+arbitrarily.  In Harper's algorithm, the continuation takes a string
+that corresponds to |s'| in the above type.  The additional arguments
+provided here, which are important for justifying termination, say that
+in a call to |match r s k|, the domain of the continuation is suffixes
+|s'| of |s| by a prefix that is in the language of |r|.  The final
+argument is of type |RecursionPermission s|, and allows recursive calls
+on strict suffixes of |s|.  The termination measure for this function is
+lexicographic in first the regular expression |r| and then the recursion
+permission tree.  The complete code is in
+Figure~\ref{fig:intrinsic-hof-matcher}.
 
 \subsubsection{Base cases}
 
+The case for the empty regexp fails:
 \begin{code}
 match C ∅ˢ s k perm = fail
 \end{code}
 
-Just like the defunctionalized version, the empty language does not accept any string.
-
+The cases for character literals
 \begin{code}
-match C (Litˢ x) [] k perm = fail
-match C (Litˢ x) (y ∷ ys) k perm with y Data.Char.≟ x
+match C (Litˢ c) [] k perm = fail
+match C (Litˢ c) (x ∷ xs) k perm with x Data.Char.≟ c
 ... | no _ = fail
-... | yes p = k {[ y ]} {ys} refl (cong (λ q → [ q ]) p)
+... | yes p = k {[ x ]} {xs} refl (cong (λ q → [ q ]) p)
 \end{code}
+are as above, except that where we called |match-helper| to activate the
+stack |k|, here we call |k| itself.  The packaging of the result of
+|match-helper| (the |map| in the above code) now happens as \emph{input}
+to |k|, because to call |k| we must show that |x ∷ xs| splits as
+something in the language of |Litˢ c| and some suffix.
 
-The character literal language should only accept the string if the
-first character is the same as the one required by |r| and the continuation
-returns a derivation for the rest of the string.
+FIXME: can we use |isEqual| and |>>=| here to correspond to above?
 
 \subsubsection{Concatenation}
 
@@ -702,19 +706,39 @@ match C (r₁ ·ˢ r₂) s k (CanRec f) =
         (λ {p}{s'} eq inL →
           match C r₂ s' (λ {p'}{s''} eq' inL' →
                           k {p ++ p'}{s''} (replace-right p s' p' s'' s eq' eq) ((p , p') , refl , inL , inL'))
-                        (f _ (suffix-continuation eq inL))) (CanRec f)
+                        (f s' (suffix-continuation eq inL))) (CanRec f)
 \end{code}
 
-In the concatenation case of the defunctionalized version, we could add |r₂| to
-the list of continuations to be matched later.  However, the higher-order
-matcher needs to construct a new continuation function. Once |r₁| was matched
-with the beginning of the string, the continuation would match the rest of the
-string with |r₂|.
+In the concatenation case of the defunctionalized version, we added |r₂|
+to the stack of continuations to be matched later.  In the higher-order
+version, extending the stack with |r₂| corresponds to constructing a new
+continuation function which matches |r₂| against the suffix that results
+from matching |r₁| against a prefix---which is exactly what ``applying''
+the stack in |match-helper| did in the defunctionalized version.  The
+massaging that happens after the recursive call above (the
+|reassociate-left|) here happens in the new continuation, which
+repackages the given derivations |inL : p ∈Lˢ r₁| and |inL' : p' ∈Lˢ r₂|
+and the given splittings |eq : p ++ s' ≡ s| and |eq' : p' ++ s'' ≡ s'|
+as a splitting |(p ++ p') ++ s'' ≡ s| and a derivation that |p ++ p' ∈
+∈Lˢ (r₁ ·ˢ r₂)|.  The two recursive calls pass the termination checker
+because the regular expressions |r₁| and |r₂| get smaller in each case.
+To make the inner recursive call, it is necessary to supply a recursion
+permission for |s'|, i.e. to allow recursive calls on |s'|, and to do
+this it suffices to show that |s'| is a suffix of |s|.  The
+|suffix-continuation| lemma
+\begin{code}
+  suffix-continuation : ∀ {p s' s r} → (p ++ s' ≡ s) → (p ∈Lˢ r) → Suffix s' s
+\end{code}
+does this: |s'| is a non-strict suffix of |s| by the equality, and
+because the prefix |p| is in the language of a \emph{standard} regular
+expression |r| and therefore is not empty, it is a strict suffix.  (In
+this case, it would also be sufficient to observe that |s'| is a
+non-strict suffix of |s|, because we do not need the string and
+recursion permission to get smaller to justify termination, but the
+argument we just gave will also be used in the Kleene plus case.)
 
-Notice that to be able to call |match| with |r₂|, you need to prove that the
-rest of the string is a strict suffix of the entire string so that you can get
-a |RecursionPermission| for the rest. The function |suffix-continuation| does
-exactly that.
+FIXME rename suffix-continuation to ``suffix-of-standard'' or something
+like that here and in the code; it has nothing to do with continuations.
 
 \subsubsection{Alternation}
 
@@ -724,9 +748,9 @@ match C (r₁ ⊕ˢ r₂) s k perm =
   match C r₂ s (λ eq inL → k eq (inj₂ inL)) perm
 \end{code}
 
-The alternation case is similar to the defunctionalized version except the
-continuations.  The matcher first tries to match |r₁| with |s| and tries to
-match |r₂| only if the first one does not match.
+The alternation case is similar to the defunctionalized version, except
+instead of massaging the derivations after the fact with |map
+change-∈L|, we modify them before passing them to the continuation.
 
 \subsubsection{Kleene plus}
 
@@ -736,23 +760,39 @@ match C (r ⁺ˢ) s k (CanRec f) =
   match C r s (λ {p}{s'} eq inL →
                 match C (r ⁺ˢ) s' (λ {p'}{s''} eq' inL' →
                                     k (replace-right p s' p' s'' s eq' eq) (C+ refl inL inL') )
-                      (f _ (suffix-continuation eq inL))) (CanRec f)
+                      (f s' (suffix-continuation eq inL))) (CanRec f)
 \end{code}
 
 The structure of the Kleene plus case is similar to the defunctionalized
-version except for the continuations.  The matcher first tries to match |r| with
-|s| and tries to match the concatenation of |r| and |r ⁺ˢ| only if the first
-try fails. Observe that the second try is similar to the |·ˢ| case.
+version, except the continuations are modified analogously to the
+concatenation and alternation cases.  The first recursive call
+terminates because |r| gets smaller.  For the second recursive call, |(r
+⁺ˢ)| stays the same, so it is essential that |s'| is a \emph{strict}
+suffix of |s|, and that the recursion permission tree gets smaller.  As
+in the alternation case, |s'| is a non-strict suffix of |s| by the
+equality |eq : p ++ s' ≡ s|, and because the prefix |p| is in the language
+of a \emph{standard} regular expression |r| and therefore is not empty,
+|s'| is a strict suffix of |s| by the |suffix-continuation| lemma.
+Therefore, applying |f| to |s'| and this fact selects a smaller
+recursion permission subtree, justifying termination.  
+
+Termination is trickier for the higher-order matcher than for the
+defunctionalized matcher becayse, here, we make the recursive call on |r
+⁺ˢ| in the continuation constructed in the |r ⁺ˢ| case, so we must argue
+that \emph{whenever this continuation is applied}, it will be applied to
+a smaller string.  In the defunctionalized matcher, this recursive call
+is made in |match-helper| (the apply function for the defunctionalized
+continuation), which is called from the character literal case, at which
+point it is syntactically clear that the recursive call \emph{is being
+  made} on a smaller string.
 
 \begin{figure}
 \figrule
 \begin{code}
-match : (C : Set)
-      → (r : StdRegExp)
-      → (s : List Char)
-      → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
-      → RecursionPermission s
-      → Maybe C
+match :  (C : Set) (r : StdRegExp) (s : List Char)
+         (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
+         → RecursionPermission s
+         → Maybe C
 match C ∅ˢ s k perm = fail
 match C (Litˢ x) [] k perm = fail
 match C (Litˢ x) (y ∷ ys) k perm with y Data.Char.≟ x
@@ -777,59 +817,57 @@ match C (r ⁺ˢ) s k (CanRec f) =
 \caption{Complete definition of the |match| function for
   the higher-order intrinsic matcher.}
 \figrule
+\label{fig:intrinsic-hof-matcher}
 \end{figure}
 
 \subsubsection{Acceptance by StdRegExp}
+
+FIXME name?
+
+Overall, we can define
 \begin{code}
-_acceptsˢ_ : StdRegExp → List Char → Bool
-r acceptsˢ s = is-just (match _ r s empty-continuation (well-founded s))
+_FIXME_ : (r : StdRegExp) (s : List Char) → Maybe (s ∈Lˢ r)
+r FIXME s = match _ r s empty-continuation (well-founded s)
 \end{code}
-
-We use the function |_acceptsˢ_| to see if a given standard regular expression
-accepts a list of characters by calling our matcher with a continuation base
-case as well as a |RecursionPermission| for the list of characters. We define
-the |empty-continuation| as a continuation base case and |well-founded| to
-obtain a |RecursionPermission| for the initial list of characters.
-
+by choosing an appropriate initial continuation, and by constructing a
+recursion permission for |s| (which exists because string suffix is a
+well-founded relation).  The initial continuation
 \begin{code}
-empty-continuation : ∀ {p' s' s'' r} → (p' ++ s'' ≡ s') → (p' ∈Lˢ r) → Maybe (s' ∈Lˢ r)
+empty-continuation : ∀ {p s' s r} → (p ++ s' ≡ s) → (p ∈Lˢ r) → Maybe (s ∈Lˢ r)
 \end{code}
-|empty-continuation| is our higher order function substitute of the empty list |[]| we used as an empty continuation in our defunctionalized version. This function takes a splitting of a string |s'| as well as a proof that its first part |p'|, is in the language of |r| and then returns either |nothing| if the second part of the string |s'|, |s''| is not empty, or |Just (s' ∈Lˢ r)| if |s''| is empty.
+corresponds to the logic for the empty stack |[]| in |match-helper| in
+the defunctionalized version.  This function takes a splitting of a
+string |s| as |p ++ s'|, as well as a proof that its first part |p| is
+in the language of |r|.  It returns either |nothing| if |s'| is not
+empty, or |just| a witness that |(s ∈Lˢ r)| if |s'| is empty, and
+therefore |s ≡ p'|.
 
+%% \begin{code}
+%% well-founded : {A : Set} (ys : List A) → RecursionPermission ys
+%% \end{code}
+%% |well-founded| just gives us a |RecursionPermission| for any given list.
+
+\subsection{Completeness}
+
+Completeness is similar to above, and says that the matcher succeeds
+whenever it should:
 \begin{code}
-well-founded : {A : Set} (ys : List A) → RecursionPermission ys
-\end{code}
-|well-founded| just gives us a |RecursionPermission| for any given list.
-
-
-\subsection{Verification}
-
-To verify that our matcher works correctly for a match that we have a proof for,
-we should write a completeness proof:
-
-\begin{code}
-match-completeness : (C : Set)
-                   → (r : StdRegExp)
-                   → (s : List Char)
+match-completeness : (C : Set) (r : StdRegExp) (s : List Char)
                    → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
                    → (perm : RecursionPermission s)
                    → Σ _ (λ { (p , s') → Σ _ (λ eq → Σ _ (λ inL → isJust (k {p}{s'} eq inL))) })
                    → isJust (match C r s k perm)
 \end{code}
-
-The type above translates to this: Suppose we have |C|, |r|, |s|, |k| and
-|perm|. Suppose there exists a split of |p ++ s' ≡ s| such that there exists a
-derivation of type |p ∈Lˢ r| such that the continuation called with those
-arguments does not return |nothing|. Then we have to show that the |match| function
-does not fail.
-
-Notice that we cannot make a stronger claim and say that the calls to the
-continuation and the |match| function return the same derivations, because as
-we showed before, derivations of the same type are not necessarily the same.
-
-The proof follows the same pattern as the proof of |match-completeness| for the
-defunctionalized version by basically using the inductive hypotheses in the same
-way. Refer to the supplement code.
+The type can be read as follows: Suppose we have |C|, |r|, |s|, |k| and
+|perm|. Suppose there exists a split of |p ++ s' ≡ s| such that there
+exists a derivation of type |p ∈Lˢ r| such that the continuation called
+with those arguments does not return |nothing|. Then we have to show
+that the |match| function does not fail.  Like above, we cannot make a
+stronger claim and say that the calls to the continuation and the
+|match| function return the same derivations, because there can be more
+than one derivation of a string matching a regexp.  The proof is in the
+companion code, and follows the same pattern as the proof of
+|match-completeness| for the defunctionalized version.
 
 \section{Overall matcher}
 
