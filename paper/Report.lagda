@@ -97,18 +97,18 @@ language, we must make the termination of the matcher evident in the
 code itself.  Harper's original algorithm can be shown to terminate
 using lexicographic induction on first the regular expression and second
 well-founded induction on the string being matched, but in Agda the
-latter requires passing an explicit termination measure.  In an attempt
-to avoid this, we discovered that
-\emph{defunctionalizing}~\cite{danvyetc} the matcher avoids the explicit
-termination measure, because the problematic recursive call is moved
-from the Kleene star case to the character literal base case, where it
-is clear that the string is getting smaller.  The defunctionalized
-matcher is of interest not only because programming it in Agda is
-simpler: it also achieves Yi's goal of a first-order matcher in a simple
-way, which has a clear relationship to the higher-order matcher.
-Pedagogically, it could be used at a point in a course before
-higher-order functions have been introduced, and it could be used as a
-stepping stone to the more sophisticated higher-order matcher.
+latter requires passing an explicit termination measure.  We discovered
+that \emph{defunctionalizing}~\cite{reynolds72definitional} the matcher
+avoids the explicit termination measure, because the problematic
+recursive call is moved from the Kleene star case to the character
+literal base case, where it is clear that the string is getting smaller.
+The defunctionalized matcher is of interest not only because programming
+it in Agda is simpler: it also achieves Yi's goal of a first-order
+matcher in a simple way, which has a clear relationship to the
+higher-order matcher.  Pedagogically, it could be used at a point in a
+course before higher-order functions have been introduced, and it could
+be used as a stepping stone to the more sophisticated higher-order
+matcher.
 
 Second, the matcher discussed in Harper's paper, whose Agda type is
 \begin{code}
@@ -140,10 +140,14 @@ this choice is that the \emph{computational content} of the soundness
 proof is relevant to the above problem: the derivation gives a parse
 tree, which allows reporting the matching strings for each specified
 sub-expression.  Indeed, even for the extrinsic matcher, one can run the
-separate soundness proof to produce the matching strings.  However,
-running the matcher and then its soundness proof (which has success of
-the matcher as a precondition) duplicates work, so we present the
-intrinsic version in the paper.
+separate soundness proof to produce the matching strings---but running
+the matcher and then its soundness proof (which has success of the
+matcher as a precondition) duplicates work, so we present the intrinsic
+version in the paper.  Though we were led to this variation by coding
+the soundness proof of the matcher using dependent types, analogous code
+could be used in a simply typed language, with the less informative
+result type |Maybe Derivation| which does not say what string and regexp
+it is a derivation for.
 
 A third variation, is that, while Harper uses a negative semantic
 definition of standard regular expressions (``no subexpression of the
@@ -167,23 +171,29 @@ of view, they can all be ported back to simply-typed languages.  Thus,
 in addition to being a strong pedagogical example of dependently typed
 programming, these variations on regular expression matching could be
 used in introductory programming courses to offer a streamlined
-treatment---e.g. using the defunctionalized matcher for only standard
-regular expressions, which still captures the basic interplay between
-programming and proof---which scales to higher-order matching and more
-interesting homework assignments---e.g. by computing matching strings.
-Therefore, even though there is existing work on parsing in a total
-programming language (such as \cite{danielsson}), which includes regular
-expression matching as a special cases, we believe these variations on
+treatment---e.g. using the defunctionalized matcher for only
+syntatically standard regular expressions, which still captures the
+basic interplay between programming and proof---which scales to
+higher-order matching and more interesting homework
+assignments---e.g. by computing matching strings.  Therefore, even
+though there is existing work on verified parsing in a dependently typed
+programming language (such as \cite{danielsson10totalparser}), which includes regular
+expression matching as a special case, we believe these variations on
 Harper's algorithm will be of interest to the dependent types and
 broader functional programming communities.
 
-The remainder of this paper is organized as follows.  <TODO>
+The remainder of this paper is organized as follows.  In
+Section~\ref{sec:standard}, we define syntactically standard regular
+expressions.  In Section~\ref{sec:defunc}, we give an intrinsically
+sound defunctionalized matcher, with no explicit termination measure.
+In Section~\ref{sec:hof}, we give an intrinsically sound higher-order
+matcher, which uses an explicit termination measure, and explain the
+correspondence with the defunctionalized matcher.  
 
 \subsection{Agda Definitions}
 
-We assume the reader is familiar with
-Agda~\cite{norell07thesis,dybjertutorial} and the notation from the Agda
-standard library~\cite{danielson}.  Though the Agda library
+We assume the reader is familiar with Agda~\cite{norell07thesis} and the
+notation from the Agda standard library.  Though the Agda library
 differentiates between strings (|String|) and lists of characters (|List
 Char|), we will ignore this distinction in the paper.  Because the
 intrinsically verified matcher returns a |Maybe|/option type, it will be
@@ -211,6 +221,7 @@ map _ nothing  = nothing
 \end{code}
 
 \section{Syntactically standard regular expressions}
+\label{sec:standard}
 
 Rather than Harper's negative semantic criterion (no starred
 subexpression accepts the empty string), we use an inductive definition
@@ -237,11 +248,10 @@ data StdRegExp : Set where
 character literal, |_·ˢ_| is concatenation, |_⊕ˢ_| is alternation, and
 |_⁺ˢ| is Kleene plus.  We use the |ˢ| superscript to differentiate
 standard regular expressions from the the full language, which is
-defined in Section~\ref{sec:standardization}.
+defined in Section~\ref{sec:nonstandard}.
 
 Informally, Kleene plus is defined as the least language closed under
 the following rules:
-
 \[
 \infer{s \in L(|r ⁺ˢ|)}
       {s \in L(|r|)}
@@ -251,8 +261,7 @@ the following rules:
         s_1 \in L(|r|) &
         s_2 \in L(|r ⁺ˢ|)}
 \]
-
-In Agda, we represent sets of strings by something analogous to their
+\noindent In Agda, we represent sets of strings by something analogous to their
 membership predicates.  For standard regular expressions, we define a
 binary relation |s ∈Lˢ r|, which means |s| is in the language of |r|, by
 recursion on |r|, illustrating how it is possible to compute types based
@@ -275,8 +284,7 @@ mutual
       S+ : ∀ {s r} → s ∈Lˢ r → s ∈L⁺ r
       C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
 \end{code}
-
-Here, |⊥| is the empty Agda type and |⊎| is disjoint union (|Either|),
+\noindent Here, |⊥| is the empty Agda type, |⊎| is disjoint union (|Either|),
 and |×| is the pair type.  |Σ A (λ x → B)| is an existential/dependent
 pair, where the type of the second component depends on the value of the
 first---because this is not built in in Agda, it takes a type |A| and a
@@ -326,8 +334,8 @@ a string matches a regular expression, such as
   \TrinaryInfC{$``aaa" \in L(|(Litˢ 'a' ⁺ˢ) ·ˢ (Litˢ 'a' ⁺ˢ)|)$}
 \end{prooftree}
 
-We will exploit this in Section~\ref{sec:groups} to extract the strings
-matching subexpressions.
+\noindent We will exploit this in Section~\ref{sec:groups} to extract matching
+strings from such derivations.
 
 % two different values in the same type written in Agda
 
@@ -339,6 +347,7 @@ matching subexpressions.
 % \end{code}
 
 \section{Defunctionalized intrinsic matcher}
+\label{sec:defunc}
 
 In this section, we define a first-order matcher for standard regular
 expressions.  This is a defunctionalization of Harper's algorithm,
@@ -363,15 +372,12 @@ list and the rest of the string should match with the rest of the list.
 The soundness part of informal description of the matcher given above
 translates into the following dependent type/specification:
 \begin{code}
-match : (r : StdRegExp)
-      → (s : List Char)
-      → (k : List StdRegExp)
-      → Maybe  (Σ (List Char × List Char)
-                (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
+match :  (r : StdRegExp) (s : List Char) (k : List StdRegExp)
+         → Maybe  (Σ  (List Char × List Char)
+                       (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
 \end{code}
 This says that the matcher takes a regular expression |r|, a string |s|
-and a stack |k|, and creates a splitting of the original list |s| into
-lists |p| and |s'| and, if matching succeeds, returns a splitting |(p ++
+and a stack |k|, and, if matching succeeds, returns a splitting |(p ++
 s' ≡ s)|, a derivation that |p| is in the language of |r| and a
 derivation that |s'| is in the language of the stack |k|.  This
 specifies the soundness of successful matching, and has computational
@@ -539,55 +545,56 @@ mutual
 \figrule
 \end{figure}
 
-\subsubsection{Acceptance by StdRegExp}
+\subsubsection{Acceptance}
 
 From the outside, we can call the generalized matcher with the empty
 stack to check membership:
 
 \begin{code}
 acceptsˢ-intrinsic : (r : StdRegExp) → (s : List Char) → Maybe (s ∈Lˢ r)
-acceptsˢ-intrinsic r s with match r s []
-acceptsˢ-intrinsic r .(xs ++ []) | just ((xs , .[]) , refl , inL , refl) =
-  just (eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL)
-acceptsˢ-intrinsic r s | nothing = nothing
+acceptsˢ-intrinsic r s = map ? (match r s [])
 \end{code}
+
+%% too heavy
+%% acceptsˢ-intrinsic r .(xs ++ []) | just ((xs , .[]) , refl , inL , refl) =
+%%   just (eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL)
+%% acceptsˢ-intrinsic r s | nothing = nothing
+
+FIXME: make a lemma for the munging and show its type
 
 \subsection{Completeness}
 
-Though the above matcher is intrinsically sound, it is not necessarily
-complete (for example, it could always fail).  One way to resolve this
-would be to write a matcher that is intrinsically both sound and
-complete --- overall (ignoring the stack), given |s| and |r|, we would
-like to know |(s ∈Lˢ r) ⊎ ¬ (s ∈Lˢ r)|, a type that expresses
-decidability of matching.  However, while there is an efficiency reason
-to instrinsically compute the the derivation of |s ∈Lˢ r|---we will use
-it to extract matching strings---there is no computational content to |¬
-(s ∈Lˢ r)|.  Because of this, and because it keeps the matcher code
-itself simpler, we choose to make completeness extrinsic.  In full,
-completeness says that if we have |r|, |s|, |k| and a split of |p ++ s'
-≡ s| such that there are derivations of type |p ∈Lˢ r| and |s' ∈Lᵏ k|,
-then we know that our |match| function does not fail:
+Though the above matcher is intrinsically sound, it is not intrinsically
+complete (for example, the function that always fails has the above
+type).  One way to resolve this would be to write a matcher that is
+intrinsically both sound and complete --- overall (ignoring the stack),
+given |s| and |r|, we would like to know |(s ∈Lˢ r) ⊎ ¬ (s ∈Lˢ r)|, a
+type that expresses decidability of matching.  However, while there is
+an efficiency reason to instrinsically compute the the derivation of |s
+∈Lˢ r|---we will use it to extract matching strings---there is no
+computational content to |¬ (s ∈Lˢ r)|.  Because of this, and because it
+keeps the matcher code itself simpler, we choose to make completeness
+extrinsic.  In full, completeness says that if we have |r|, |s|, |k| and
+a split of |p ++ s' ≡ s| such that there are derivations of type |p ∈Lˢ
+r| and |s' ∈Lᵏ k|, then we know that our |match| function does not fail:
 
 \begin{code}
-match-completeness : (r : StdRegExp)
-                   → (s : List Char)
-                   → (k : List StdRegExp)
-                   → Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ∈Lᵏ k)})
-                   → isJust (match r s k)
+match-completeness :  (r : StdRegExp) (s : List Char) (k : List StdRegExp)
+                      → Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ∈Lᵏ k)})
+                      → isJust (match r s k)
 \end{code}
 
 That is, when there is a way for the matcher to succeed, it does.  We
 cannot make a stronger claim and say that it returns the same derivation
 that is given as input, because as we showed before, there can be
-different derivations for the same string and regexp.
+different derivations for the same |s| and |r|, and the given one may
+not be the one the matcher finds.
 
 The full proof is in the companion code.  The base cases |∅ˢ| and |Litˢ|
 are easy.  Since the Kleene plus case captures the essence of both
-concatenation and alternation cases, we will only explain the
-completeness proof of the Kleene plus case.
-
-There are two cases, depending on how the given derivation
-of |p ∈L (r ⁺)| was constructed.  For the first,
+concatenation and alternation cases, we will explain only this case.
+The proof proceeds by cases, depending on how the given derivation of |p
+∈L (r ⁺)| was constructed.  For the first,
 \begin{code}
 match-completeness (r ⁺ˢ) s k ((xs , ys) , eq , S+ inL , rest)
   with match r s k | match-completeness r s k ((xs , ys) , eq , inL , rest)
@@ -628,6 +635,7 @@ of appending lists to show that it is the same string).  If it succeeds,
 then the matcher succeeds, so we have the result.
 
 \section{Higher-order intrinsic matcher}
+\label{sec:hof}
 
 In this section, we show that the above intrinsic verifcation of the
 first-order matcher scales to a higher-order matcher, written using
@@ -638,10 +646,12 @@ in the higher-order case.  To make termination evident to Agda, we will
 need to use an explicit termination metric that corresponds to
 well-founded induction on strings/lists.  This is represented in Agda by
 an iterated inductive definition |RecursionPermission xs|.  Visually,
-you can think of |RecursionPermission xs| as a tree, where a node for
-|xs| has subtrees for each strict suffix of |xs|.  Each of these
+you can think of |RecursionPermission ys| as a tree, where a node for
+|ys| has subtrees for each strict suffix of |ys|.  Each of these
 subtrees is judged smaller by the termination checker, and therefore we
-will be allowed to recur on any suffix of |xs|.
+will be allowed to recur on any suffix of |ys|.  Such a tree type is
+defined by the following datatype, which has a higher-order constructor
+argument:
 
 \begin{code}
 data RecursionPermission {A : Set} : List A → Set where
@@ -655,10 +665,10 @@ data RecursionPermission {A : Set} : List A → Set where
 The higher-order intrinsic matcher has the following specification:
 
 \begin{code}
-match : (C : Set) (r : StdRegExp) (s : List Char)
-      → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
-      → RecursionPermission s
-      → Maybe C
+match :  (C : Set) (r : StdRegExp) (s : List Char)
+         → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
+         → RecursionPermission s
+         → Maybe C
 \end{code}
 
 The type variable |C| stands for the output derivation computed by the
@@ -772,7 +782,7 @@ Therefore, applying |f| to |s'| and this fact selects a smaller
 recursion permission subtree, justifying termination.
 
 Termination is trickier for the higher-order matcher than for the
-defunctionalized matcher becayse, here, we make the recursive call on |r
+defunctionalized matcher because, here, we make the recursive call on |r
 ⁺ˢ| in the continuation constructed in the |r ⁺ˢ| case, so we must argue
 that \emph{whenever this continuation is applied}, it will be applied to
 a smaller string.  In the defunctionalized matcher, this recursive call
@@ -814,7 +824,7 @@ match C (r ⁺ˢ) s k (CanRec f) =
 \label{fig:intrinsic-hof-matcher}
 \end{figure}
 
-\subsubsection{Acceptance by StdRegExp}
+\subsubsection{Acceptance}
 
 Overall, we can define
 \begin{code}
@@ -861,16 +871,13 @@ than one derivation of a string matching a regexp.  The proof is in the
 companion code, and follows the same pattern as the proof of
 |match-completeness| for the defunctionalized version.
 
-\section{Overall matcher}
+\section{Matching non-standard regular expressions}
+\label{sec:nonstandard}
 
-\subsection{Conversion from RegExp to StdRegExp}
-
-\subsubsection{Definitions}
-
-Notice that we defined our |match| functions in terms of standard form regular
-expressions, in order to guarantee termination. What we want at the end is
-an |_accepts_| function in terms of |RegExp|, like Harper's. Therefore we should
-define a new type |RegExp| and a function to convert |RegExp| to |StdRegExp|.
+Both of the above matchers work on syntactically standard regular
+expressions, which is used to show termination.  We now show that this
+suffices to define a matcher for non-standard regular expressions, which
+we represent by a type |RegExp|:
 
 \begin{code}
 data RegExp : Set where
@@ -882,18 +889,9 @@ data RegExp : Set where
   _* : RegExp → RegExp
   G : RegExp → RegExp
 \end{code}
-
-|∅| is the empty set, |ε| is the empty string, |Lit| is the literal character,
-|_·_| is concatenation, |_⊕_| is alternation, |_*| is Kleene star and |G| is
-capturing group.
-
-Capturing groups are not included in Harper's paper, but it is an operation we
-often want to use with regular expressions and it is trivial to implement with
-our intrinsic matchers. We will elaborate on this in the next section.
-
-Similarly to |_∈Lˢ_|, we also define a notion of a string being in the language
-of a regular expression:
-
+|∅| matches the empty language, |ε| matches the empty string, |Lit| is
+character literals, |_·_| is concatenation, |_⊕_| is alternation,
+|_*_| is Kleene star, and |G| is for reporting matching strings.
 \begin{code}
 mutual
   _∈L_ : List Char → RegExp → Set
@@ -910,138 +908,110 @@ mutual
     Ex : ∀ {s r} → s ≡ [] → s ∈Lˣ r
     Cx : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈L r → s₂ ∈Lˣ r → s ∈Lˣ r
 \end{code}
+The definition of the language of these regular expressions is similar
+to above, but with an |ε| case that requires an empty string, and a base
+case for |s ∈Lˣ r| that allows the empty string; note that |G| does not
+change the language.
 
-The definition of |_∈L_| is the same as |_∈Lˢ_| except for three cases. We now have
-a case for |ε| that requires an empty string. The Kleene star case is very
-similar to the Kleene plus case. |Cx| and |C+| are very similarly defined, but
-|Ex| is requires an empty string, while |S+| does not.
-
-Before we define the conversion function, we need a helper function that checks
-if a regular expression accepts the empty string. Even though we can simply
-define this as a function |RegExp → Bool|, proving it will be helpful for the
-correctness of our overall program.
-
+Next, we define a translation from regexps to syntactically standard
+regexps.  The translation uses a helper function that checks if a
+regular expression accepts the empty string.  Instead of giving this
+function the type |RegExp → Bool|, we give it a more informative type
+stating that it decides whether the empty string is in the language of
+its input:
 \begin{code}
 δ' : (r : RegExp) → ([] ∈L r) ⊎ (¬ ([] ∈L r))
 \end{code}
+Using |δ'|, we can easily define |δ : RegExp → Bool| by forgetting the
+extra information.
 
-Using |δ'|, we can trivially define |δ : RegExp → Bool|.  We define a function
-$\standardize$ as follows:
+The specification for standardization, which we prove below, is that 
+\[ 
+(\forall s) \; \big[ s \in L(r) \Longleftrightarrow \left[ (\delta(r)
+    = true \land s = []) \lor s \in L( \standardize (r))\right] \big]
+\]
+That is, |s| is in the language of |r| if and only if either and $r$
+accepts the empty string and the string is empty , or |s| is in the
+language of the standardized version of |r|.
 
+We $\standardize$ as follows:
 \begin{code}
 standardize : RegExp → StdRegExp
 standardize ∅ = ∅ˢ
 standardize ε = ∅ˢ
 standardize (Lit x) = Litˢ x
 standardize (r₁ · r₂) with standardize r₁ | standardize r₂ | δ r₁ | δ r₂
-... | x₁ | x₂ | false | false = x₁ ·ˢ x₂
-... | x₁ | x₂ | false | true = x₁ ⊕ˢ (x₁ ·ˢ x₂)
-... | x₁ | x₂ | true | false = x₂ ⊕ˢ (x₁ ·ˢ x₂)
-... | x₁ | x₂ | true | true = x₁ ⊕ˢ x₂ ⊕ˢ (x₁ ·ˢ x₂)
+... | r₁' | r₂' | false | false = r₁' ·ˢ r₂'
+... | r₁' | r₂' | false | true = r₁' ⊕ˢ (r₁' ·ˢ r₂')
+... | r₁' | r₂' | true | false = r₂' ⊕ˢ (r₁' ·ˢ r₂')
+... | r₁' | r₂' | true | true = r₁' ⊕ˢ r₂' ⊕ˢ (r₁' ·ˢ r₂')
 standardize (r₁ ⊕ r₂) = standardize r₁ ⊕ˢ standardize r₂
 standardize (r *) = (standardize r) ⁺ˢ
 standardize (G r) = standardize r
 \end{code}
 
-Observe that the empty string language |ε| becomes the empty set |∅ˢ| and
-Kleene star becomes Kleene plus. This definition directly follows
-Harper's definition of standardization except the concatenation case.
+The empty string language |ε| becomes the empty set |∅ˢ| and Kleene star
+becomes Kleene plus, because the emptiness checking is performed outside
+matching the standardized regexp.  For the concatenation case, we write
+|r₁'| and |r₂'| for the standardizations of |r₁| and |r₂|.  Because
+|standardize r| will not accept the empty string even when |r| does, it
+is necessary to check |r₁'| and |r₂'| by themselves in the case where
+the other one accepts the empty string, because otherwise we would miss
+strings that rely on one component but not the other being empty.  
 
-Harper's definition of |δ| returns either |∅| or |ε|, hence the type of |δ| would be |RegExp → RegExp|.
-
-If we try to directly follow Harper's standardization for concatenation, we
-would have to write
+Our definition of the concatenation
+case is a bit different than Harper's, where |δ| returns not a boolean,
+but a regexp |∅| (if |r| does not accept the empty string) or |ε| (if it
+does), and the clause is as follows:
 \begin{code}
-standardize (r₁ · r₂) =
-  ((δ r₁) ·ˢ (standardize r₂)) ⊕ˢ
-  ((standardize r₁) ·ˢ (δ r₂)) ⊕ˢ
-  ((standardize r₁) ·ˢ (standardize r₂))
+standardize (r₁ · r₂) =  ((δ r₁) ·ˢ (standardize r₂)) ⊕ˢ
+                         ((standardize r₁) ·ˢ (δ r₂)) ⊕ˢ 
+                         ((standardize r₁) ·ˢ (standardize r₂))
 \end{code}
+This definition is equivalent to above, using the fact that for any |r|,
+|∅ ·ˢ r = ∅ = r ·ˢ ∅| and |ε ·ˢ r = r = r ·ˢ ε|.  For example, when 
+|δ r₁| is true, Harper's translation gives a |ε ·ˢ (standardize r₂)|
+summand, which is standard but \emph{not} syntactically standard, but we
+can simplify it to |standardize r₂|.  When |δ r₁| is false, Harper's
+translation gives an |∅ ·ˢ (standardize r₂)| summand, which drops out.
 
-Observe that this does not type check, because |_·ˢ_| requires two
-|StdRegExp|s, yet Harper's definition of |δ| returns a |RegExp|.
-Also observe that, if it did type check, for any |r|, both |∅ ·ˢ r| and
-|r ·ˢ ∅| would effectively be equal to |∅|. Likewise, for any |r|, both
-|ε ·ˢ r| and |r ·ˢ ε| would effectively be equal to |r|. Hence we can
-simplify the parts of the alternation in Harper's concatenation standardization
-process. In fact, if a given part is equal to |∅|, we do not have to include it
-in the alternation at all.
-
-If |r₁| accepts the empty string but |r₂| does not, using Harper's
-standardization that does not type check in Agda, we would have
+This definition of standardization satisfies the above correctness
+theorem; we have proved
 \begin{code}
-(ε ·ˢ (standardize r₂)) ⊕ˢ ((standardize r₁) ·ˢ ∅) ⊕ˢ ((standardize r₁) ·ˢ (standardize r₂))
+∈L-soundness  : (s : List Char) (r : RegExp)
+              → ((δ r ≡ true) × (s ≡ [])) ⊎ (s ∈Lˢ (standardize r))
+              → s ∈L r
+
+∈L-completeness  : (s : List Char) (r : RegExp)
+                 → s ∈L r
+                 → ((δ r ≡ true) × (s ≡ [])) ⊎ (s ∈Lˢ (standardize r))
 \end{code}
-Using the observations we made above, we can simplify this to
-\begin{code}
-(standardize r₂) ⊕ˢ ((standardize r₁) ·ˢ (standardize r₂))
-\end{code}
-The simple version does type check, and it is how we define the
-concatenation case of |standardize|, where |δ r₁| is |true| but |δ r₂| is
-|false|. The other cases are defined using the same observation.
+Now that we have a verified |standardize| function, we can define
+|_accepts_| as follows, where |acceptsˢ-intrinsic| can be either of the
+above matchers:
 
-Now that we have a complete |standardize| function, we can define |_accepts_| as follows:
-
+FIXME make this intrinsic so that we can hook it up with extraction!
 \begin{code}
-_accepts_ : RegExp → String → Bool
-r accepts s with δ r | standardize r | String.toList s
-... | true  | r' | xs = (null xs) ∨ (r' acceptsˢ xs)
-... | false | r' | xs = r' acceptsˢ xs
+_accepts-intrinsic_ : (r : RegExp) (s : List Char) → Maybe (s ∈L r)
+r accepts-intrinsic s with δ r | standardize r | String.toList s
+... | true  | r' | xs = ? -- (null xs) ∨ (r' acceptsˢ xs)
+... | false | r' | xs = ? -- r' acceptsˢ xs
 \end{code}
 
 If |r| accepts the empty string, we return |true| if |xs| is empty or the
 standardization of |r| accepts |xs|. If |r| does not accept the empty string,
-then we only have the latter option.
+then we only have the latter option.  FIXME: describe necessary massaging.
 
-Note that we use |_acceptsˢ_| in this definition. Our definitions of it in
-the defunctionalized and higher-order matchers are different, but they have
-the same type, therefore the definition of |_accepts_| is independent of
-which matcher we choose to use.
-
-\subsubsection{Verification}
-
-Now we want to prove the relationship between |RegExp|s and |StdRegExp|s. We want to prove that a string |s| is in the language of a regular
-expression |r| if and only if, either the string is empty, or |s| is in the language of the standardized version of |r|.
-
-$$(\forall s) \; \big[ s \in L(r) \Longleftrightarrow \left[ (\delta(r) = true \land s = []) \lor s \in L( \standardize (r))\right] \big]$$
-
-We are going to prove the above theorem in Agda.
-
+As usual, we have proved completeness extrinsically:
 \begin{code}
-∈L-soundness : (s : List Char)
-             → (r : RegExp)
-             → ((δ r ≡ true) × (s ≡ [])) ⊎ (s ∈Lˢ (standardize r))
-             → s ∈L r
-
-∈L-completeness : (s : List Char)
-                → (r : RegExp)
-                → s ∈L r
-                → ((δ r ≡ true) × (s ≡ [])) ⊎ (s ∈Lˢ (standardize r))
+correct-completeness : (r : RegExp) (s : List Char)
+                     → s ∈L r
+                     → isJust (r accepts s)
 \end{code}
 
-Once we prove this theorem, we can present the overall theorem:
-
-$$(\forall r)(\forall s) \; \big[ r \; |accepts| \;  s = |true| \Longleftrightarrow s \in L(r) \big]$$
-
-The Agda representation of this theorem would correspond to the following types:
-
+We can also package soundness and completeness together as decidability:
 \begin{code}
-correct-soundness : (r : RegExp)
-                  → (s : String)
-                  → r accepts s ≡ true
-                  → (String.toList s) ∈L r
-correct-completeness : (r : RegExp)
-                     → (s : String)
-                     → (String.toList s) ∈L r
-                     → r accepts s ≡ true
-\end{code}
-
-We also want to prove decidability:
-
-\begin{code}
-decidability : (r : RegExp)
-             → (s : String)
-             → ((String.toList s) ∈L r) ⊎ (¬ ((String.toList s) ∈L r))
+decidability : (r : RegExp) (s : List Char) → (s ∈L r) ⊎ (¬ (s ∈L r))
 \end{code}
 
 \subsection{Capturing groups}
