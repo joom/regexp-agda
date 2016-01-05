@@ -39,6 +39,8 @@
 \maketitle[f]
 
 \begin{abstract}
+TODO: revise after the rest is finished.  
+
 The matching algorithm described by Harper requires the input regular
 expressions to be in standard form to guarantee the termination of the
 algorithm. In this paper, we use Agda, a total programming language, to prove
@@ -73,12 +75,12 @@ regular expressions, which have no Kleene-stared subexpressions that
 accept the empty string, and using a preprocessor translation to cover
 all regular expressions and hence solve the original problem.  Harper's
 algorithm has been used in first- and second-year functional programming
-courses at Carnegie Mellon for more than 20 years, as a high-water
-example of integrating programming and program verification.  A later
-paper by Yi~\cite{Yi06regexp} revisits the example, motivated by the
-author's sense that the higher-order matcher is too difficult for
-students in their introductory programming course, and gives a
-first-order matcher based on compilation to a state machine.
+courses at Carnegie Mellon for around 20 years, as a high-water example
+of integrating programming and program verification.  A later paper by
+Yi~\cite{Yi06regexp} revisits the example, motivated by the author's
+sense that the higher-order matcher is too difficult for students in
+their introductory programming course, and gives a first-order matcher
+based on compilation to a state machine.
 
 Because of this algorithm's strong interplay between program and proof
 and its pedagogical usefulness, we set out to formalize the algorithm
@@ -1024,26 +1026,28 @@ decidability : (r : RegExp) (s : List Char) → (s ∈L r) ⊎ (¬ (s ∈L r))
 \subsection{Capturing groups}
 \label{sec:groups}
 
-Capturing groups tell us which substring matches which part of the regular
-expressions. For example, if our regular expression checks if a string is a
-valid e-mail address, we might want to extract parts before and after the |@|
-sign. Suppose we have a regular expression that accepts a single alphanumeric
-character, namely |alphanumeric : RegExp|. Now we can define a very simple
-regular expression for e-mail addresses, such as
-
+The ``capturing group'' constructor |G| is intended to allow the user to
+specify parts of a regular expression whose matching strings should be
+extracted and reported.  For example, if our regular expression checks
+if a string is a valid e-mail address, we might want to extract parts
+before and after the |@| and |.|, to parse the username and domains.  If
+we have a regular expression |alphanumeric : RegExp| that accepts a
+single alphanumeric character (this can be defined in the above language
+as a big |⊕| of character literals), we can define a (na\"ive) regular
+expression for e-mail addresses such as
 \begin{code}
 e-mail : RegExp
 e-mail = G (alphanumeric *) · Lit '@' · G (alphanumeric *) · Lit '.' · G (alphanumeric *)
 \end{code}
+Now, if we match the string ``jdoe|@|wesleyan.edu" with |e-mail|, we
+should extract and report ``jdoe", ``wesleyan" and ``edu", because each
+of those substrings matched a sub-regexp that was marked with |G|.
 
-Now, if we match the string ``jdoe|@|wesleyan.edu" with |e-mail|, we want to be
-able to extract ``jdoe", ``wesleyan" and ``edu".
-
-One of the advantages of generating a derivation of type |xs ∈L r| for some
-|xs| and |r| is that the derivation directly tells you which substring of |xs|
-is matched by which part of |r|. All we have to do is to traverse the
-derivation tree and add the ones matched by a capturing group to a list. We
-want to obtain a list of strings at the end. The function to do this can be
+This extraction can be computed from the derivation of |s ∈L r|, which
+provides a parse tree that says which substring of |xs| is matched by
+which part of |r|.  Thus, to report the groups, we do an in-order
+traversal of the regexp and derivation tree, and collect the strings
+matching a capturing group to a list.  The function to do this can be
 defined as follows:
 
 \begin{code}
@@ -1059,19 +1063,38 @@ extract {r *} (Cx {s}{s₁}{s₂} x x₁ inL) = extract {r} x₁ ++ extract {r *
 extract {G r}{xs} inL = xs ∷ extract {r} inL
 \end{code}
 
-To collect all the strings matched by capturing groups, we traverse the entire
-derivation. Base cases |∅|, |ε|, |Lit| will return an empty list because if
-they are captured by a group, the substring is already added to the list
-in the previous recursive calls to |extract|. In concatenation, we make
-two recursive calls and append the results because |r₁| and |r₂| match
-different substrings and they may have different capturing groups inside
-them. In alternation, the entire string matches either |r₁| or |r₂|, so we
-make one recursive call to the one it matches. Kleene star case follows the
-same principles.
+Base cases |∅|, |ε|, |Lit| will return an empty list because if they are
+captured by a group, the substring is already added to the list in the
+previous calls to |extract|.  In concatenation, we make two recursive
+calls and append the results because |r₁| and |r₂| match different
+substrings and they may have different capturing groups inside them.  In
+alternation, the entire string matches either |r₁| or |r₂|, so we make
+one recursive call to the one it matches.  The Kleene star case follows
+the same principles.  
+
+Combining this with our intrinsic matcher, we can define an overall function
+\begin{code}
+groups : (r : RegExp) (s : List Char) → Maybe (List (List Char))
+groups r s = map extract (accepts-intrinsic r s)
+\end{code}
+
+FIXME check this/ rename if it's already in the code
 
 \section{Conclusion}
 
-% TODO
+We have studied three variations on Harper's algorithm for regular
+expression matching, which were inspired by programming and verifying
+this algorithm using dependent types: defunctionalizing the matcher
+allows Agda to see termination without an explicit metric, and provides
+an alternative to Yi's first-order matcher based on state machines;
+intrinsically verifying soundness allows extracting matching strings;
+and a syntactic definition of standard regular expressions simplifies
+the staging of the development.  We believe that these variations
+provide a nice illustration of the benefits of thinking in a dependently
+typed language, and that they have some pedagogical value for teaching
+this material in courses on dependently typed programming---or, by
+porting the observations back to simply-typed languages, on introductory
+programming.
 
 \bibliography{paper}
 
