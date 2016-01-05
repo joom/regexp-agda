@@ -634,6 +634,9 @@ and |s₂ ++ ys| matches the continuation (using the associative property
 of appending lists to show that it is the same string).  If it succeeds,
 then the matcher succeeds, so we have the result.
 
+As a corollary, we get completeness of |acceptsˢ-intrinsic|:
+FIXME show statement
+
 \section{Higher-order intrinsic matcher}
 \label{sec:hof}
 
@@ -991,6 +994,10 @@ Now that we have a verified |standardize| function, we can define
 above matchers:
 
 FIXME make this intrinsic so that we can hook it up with extraction!
+also don't bring up |String|s.  I know why we had it extrinsic before
+(to unify the code with the extrinsic version), but for the paper story
+it's weird to suddenly go extrinsic here.  
+
 \begin{code}
 _accepts-intrinsic_ : (r : RegExp) (s : List Char) → Maybe (s ∈L r)
 r accepts-intrinsic s with δ r | standardize r | String.toList s
@@ -1004,12 +1011,12 @@ then we only have the latter option.  FIXME: describe necessary massaging.
 
 As usual, we have proved completeness extrinsically:
 \begin{code}
-correct-completeness : (r : RegExp) (s : List Char)
-                     → s ∈L r
-                     → isJust (r accepts s)
+correct-completeness  : (r : RegExp) (s : List Char)
+                      → s ∈L r
+                      → isJust (r accepts s)
 \end{code}
 
-We can also package soundness and completeness together as decidability:
+As corollary of soundness and completeness, we have proved decidability of matching:
 \begin{code}
 decidability : (r : RegExp) (s : List Char) → (s ∈L r) ⊎ (¬ (s ∈L r))
 \end{code}
