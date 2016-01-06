@@ -1007,11 +1007,6 @@ Now that we have a verified |standardize| function, we can define
 |_accepts_| as follows, where |acceptsˢ-intrinsic| can be either of the
 above matchers:
 
-FIXME make this intrinsic so that we can hook it up with extraction!
-also don't bring up |String|s.  I know why we had it extrinsic before
-(to unify the code with the extrinsic version), but for the paper story
-it's weird to suddenly go extrinsic here.
-
 \begin{code}
 accepts-intrinsic : (r : RegExp) → (s : List Char) → Maybe (s ∈L r)
 accepts-intrinsic r s with δ' r
@@ -1021,7 +1016,9 @@ accepts-intrinsic r s | _ = map (∈L-soundness s r ∘ inj₂) (acceptsˢ-intri
 
 If |r| accepts the empty string, we return |true| if |xs| is empty or the
 standardization of |r| accepts |xs|. If |r| does not accept the empty string,
-then we only have the latter option.  FIXME: describe necessary massaging.
+then we only have the latter option. In that case, we call |acceptsˢ-intrinsic|
+to get an optional derivation of the type |s ∈Lˢ (standardize r)| and use that
+on |∈L-soundness| to get an optional derivation of the type |s ∈L r|.
 
 As usual, we have proved completeness extrinsically:
 \begin{code}
