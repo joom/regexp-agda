@@ -98,9 +98,6 @@ module OverallMatcher where
   -- Standardization proofs
   -- Overall, we are to prove that ∀ (r : RegExp) L(r) = L(standardize(r)) ∪ δ (if δ r then ε else ∅)
 
-  -- ∈L-soundness-rev : (s : List Char) → (r : RegExp)
-  --                  → (¬ (s ≡ []))
-
   ∈L-soundness : (s : List Char)
                → (r : RegExp)
                → ((δ r ≡ true) × (s ≡ [])) ⊎ (s ∈Lˢ (standardize r))
@@ -201,17 +198,17 @@ module Matcher {_acceptsˢ_ : StdRegExp → List Char → Bool}
   ... | true  | r' | xs = (null xs) ∨ (r' acceptsˢ xs)
   ... | false | r' | xs = r' acceptsˢ xs
 
-  inL-intrinsic : (r : RegExp)
+  accepts-intrinsic : (r : RegExp)
                 → (s : List Char)
                 → Maybe (s ∈L r)
-  inL-intrinsic r xs with δ' r
-  inL-intrinsic r [] | inj₁ x = just x
-  inL-intrinsic r xs | d with bool-eq ((standardize r) acceptsˢ xs)
+  accepts-intrinsic r xs with δ' r
+  accepts-intrinsic r [] | inj₁ x = just x
+  accepts-intrinsic r xs | d with bool-eq ((standardize r) acceptsˢ xs)
   ... | inj₂ q = nothing
   ... | inj₁ p = just (∈L-soundness xs r (inj₂ (acceptsˢ-soundness (standardize r) xs p)))
 
   exec : RegExp → String.String → Maybe (List String.String)
-  exec r s = Data.Maybe.map (λ inL → Data.List.map String.fromList (extract {r}{xs} inL)) (inL-intrinsic r xs)
+  exec r s = Data.Maybe.map (λ inL → Data.List.map String.fromList (extract {r}{xs} inL)) (accepts-intrinsic r xs)
     where xs = String.toList s
 
   -- Overall correctness

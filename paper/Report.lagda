@@ -130,7 +130,7 @@ function, with a dependent type).  We have formalized both a
 straightforward extrinsic verification, and an intrinsically
 \emph{sound} verification, which has the dependent type
 \begin{code}
-inL-intrinsic : (r : RegExp) → (s : List Char) → Maybe (s ∈L r)
+accepts-intrinsic : (r : RegExp) → (s : List Char) → Maybe (s ∈L r)
 \end{code}
 All formalizations are available
 online.\footnote{\url{http://github.com/joom/regexp-agda}, use Agda
@@ -554,18 +554,18 @@ stack to check membership:
 
 \begin{code}
 acceptsˢ-intrinsic : (r : StdRegExp) → (s : List Char) → Maybe (s ∈Lˢ r)
-acceptsˢ-intrinsic r s = map inL-empty-continuation (match r s [])
+acceptsˢ-intrinsic r s = map ∈L-empty-continuation (match r s [])
 \end{code}
 
 
 When the |match| function succeeds, we know we have an empty stack. The
 condition to be in the language of an empty stack is to be an empty string. We
-a lemma with the following type to |inL-empty-continuation| to change the
+a lemma with the following type to |∈L-empty-continuation| to change the
 result of the function call |match r s []| into a derivation over the entire
 string |s|.
 
 \begin{code}
-inL-empty-continuation : {r : StdRegExp} {s : List Char}
+∈L-empty-continuation : {r : StdRegExp} {s : List Char}
                         → Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ≡ []) })
                         → s ∈Lˢ r
 \end{code}
@@ -644,7 +644,12 @@ of appending lists to show that it is the same string).  If it succeeds,
 then the matcher succeeds, so we have the result.
 
 As a corollary, we get completeness of |acceptsˢ-intrinsic|:
-FIXME show statement
+\begin{code}
+acceptsˢ-intrinsic-completeness : (r : StdRegExp)
+  → (s : List Char)
+  → s ∈Lˢ r
+  → isJust (acceptsˢ-intrinsic r s)
+\end{code}
 
 \section{Higher-order intrinsic matcher}
 \label{sec:hof}
@@ -1008,10 +1013,10 @@ also don't bring up |String|s.  I know why we had it extrinsic before
 it's weird to suddenly go extrinsic here.
 
 \begin{code}
-_accepts-intrinsic_ : (r : RegExp) (s : List Char) → Maybe (s ∈L r)
-r accepts-intrinsic s with δ r | standardize r | String.toList s
-... | true  | r' | xs = ? -- (null xs) ∨ (r' acceptsˢ xs)
-... | false | r' | xs = ? -- r' acceptsˢ xs
+accepts-intrinsic : (r : RegExp) → (s : List Char) → Maybe (s ∈L r)
+accepts-intrinsic r s with δ' r
+accepts-intrinsic r [] | inj₁ x = just x
+accepts-intrinsic r s | _ = map (∈L-soundness s r ∘ inj₂) (acceptsˢ-intrinsic (standardize r) s)
 \end{code}
 
 If |r| accepts the empty string, we return |true| if |xs| is empty or the
@@ -1084,8 +1089,6 @@ Combining this with our intrinsic matcher, we can define an overall function
 groups : (r : RegExp) (s : List Char) → Maybe (List (List Char))
 groups r s = map extract (accepts-intrinsic r s)
 \end{code}
-
-FIXME check this/ rename if it's already in the code
 
 \section{Conclusion}
 

@@ -149,14 +149,18 @@ module Lemmas where
   replace-right : (xs ys as bs s : List Char) → as ++ bs ≡ ys → xs ++ ys ≡ s → (xs ++ as) ++ bs ≡ s
   replace-right xs .(as ++ bs) as bs .(xs ++ as ++ bs) refl refl = sym (append-assoc xs as bs)
 
-  is-just-lemma : ∀ {l} → {x : Maybe l} → isJust x → is-just x ≡ true
+  is-just-lemma : ∀ {A} → {x : Maybe A} → isJust x → is-just x ≡ true
   is-just-lemma {x = just x} m = refl
   is-just-lemma {x = nothing} ()
 
-  inL-empty-continuation : {r : StdRegExp} {s : List Char}
-                         → Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ≡ [])})
-                         → s ∈Lˢ r
-  inL-empty-continuation {r} ((xs , []) , eq , inL , refl) = eq-replace (cong₂ _∈Lˢ_ {_}{_}{r}{r} (trans (sym (append-rh-[] xs)) eq) refl) inL
+  is-just-preserve : ∀ {A B} → {x : Maybe A} → {f : A → B} → isJust x → isJust (Data.Maybe.map f x)
+  is-just-preserve {x = just _} m = tt
+  is-just-preserve {x = nothing} ()
+
+  ∈Lˢ-empty-continuation : {r : StdRegExp} {s : List Char}
+                        → Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ≡ [])})
+                        → s ∈Lˢ r
+  ∈Lˢ-empty-continuation {r} ((xs , []) , eq , inL , refl) = eq-replace (cong₂ _∈Lˢ_ {_}{_}{r}{r} (trans (sym (append-rh-[] xs)) eq) refl) inL
 
   empty-continuation : ∀ {p' s' s'' r} → (p' ++ s'' ≡ s') → (p' ∈Lˢ r) → Maybe (s' ∈Lˢ r)
   empty-continuation {p'}{s'}{s'' = []}{r} eq inL =  just (eq-replace (cong₂ _∈Lˢ_ {_}{_}{r}{r} (trans (sym (append-rh-[] p')) eq) refl ) inL)
