@@ -118,10 +118,7 @@ module IntrinsicDefun where
   acceptsˢ-completeness r s inL = is-just-lemma (match-completeness r s [] ((s , []) , append-rh-[] s , inL , refl))
 
   acceptsˢ-intrinsic : (r : StdRegExp) → (s : List Char) → Maybe (s ∈Lˢ r)
-  acceptsˢ-intrinsic r s with match r s []
-  acceptsˢ-intrinsic r .(xs ++ []) | just ((xs , .[]) , refl , inL , refl) =
-    just (eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL)
-  acceptsˢ-intrinsic r s | nothing = nothing
+  acceptsˢ-intrinsic r s = Data.Maybe.map inL-empty-continuation (match r s [])
 
   {- Efficient overall matcher.
    These functions can be found in the OverallMatcher module

@@ -153,6 +153,11 @@ module Lemmas where
   is-just-lemma {x = just x} m = refl
   is-just-lemma {x = nothing} ()
 
+  inL-empty-continuation : {r : StdRegExp} {s : List Char}
+                         → Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ≡ [])})
+                         → s ∈Lˢ r
+  inL-empty-continuation {r} ((xs , []) , eq , inL , refl) = eq-replace (cong₂ _∈Lˢ_ {_}{_}{r}{r} (trans (sym (append-rh-[] xs)) eq) refl) inL
+
   empty-continuation : ∀ {p' s' s'' r} → (p' ++ s'' ≡ s') → (p' ∈Lˢ r) → Maybe (s' ∈Lˢ r)
   empty-continuation {p'}{s'}{s'' = []}{r} eq inL =  just (eq-replace (cong₂ _∈Lˢ_ {_}{_}{r}{r} (trans (sym (append-rh-[] p')) eq) refl ) inL)
   empty-continuation {s'' = x ∷ s''} eq inL = nothing
