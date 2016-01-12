@@ -39,23 +39,28 @@
 \maketitle[f]
 
 \begin{abstract}
-TODO: revise after the rest is finished.  
-
-The matching algorithm described by Harper requires the input regular
-expressions to be in standard form to guarantee the termination of the
-algorithm. In this paper, we use Agda, a total programming language, to prove
-termination.  Harper's algorithm just checks if the regex matches the string
-but in practice, one often needs to know how the regex matches the string to
-extract parts of the string.  For that purpose, we wrote an intrinsic version
-of the algorithm that also returns which part of the string matched which part
-of the regex.  We created two different types of matchers which are explained
-in more detail in this paper.  One uses higher-order functions to pass the
-continuation, while the other one is a defunctionalized version which uses
-lists of standard form regular expressions instead.  In conclusion, we have
-proven the correctness of both.
+Harper's 1999 Functional Pearl on regular expression matching is a
+strong example of the interplay between programming and proof, and has
+been used for many years in introductory functional programming classes.
+In this paper, we revisit this algorithm from the point of view of
+dependently typed programming.  In the process of formalizing the
+algorithm and its correctness using the Agda proof assistant, we found
+three interesting variations.  First, defunctionalizing the matcher
+allows Agda to see termination without an explicit metric, and provides
+a simple first-order matcher with a clear relationship to the original,
+giving an alternative to a later Educational Pearl by Yi.  Second,
+intrinsically verifying the soundness of the algorithm has useful
+computational content, allowing the extraction of matching strings from
+the parse tree.  Third, while Harper uses a negative definition of
+\emph{standard} regular expressions (no starred subexpression accepts
+the empty string), using a syntactic definition of standardness
+simplifies the staging of the development.  These variations provide a
+nice illustration of the benefits of thinking in a dependently typed
+language, and have some pedagogical value for streamlining and extending
+the presentation of this material.
 \end{abstract}
 
-%% \tableofcontents
+\tableofcontents
 
 \section{Introduction}
 
@@ -64,7 +69,7 @@ programming and theory of computation courses.  Harper~\cite{harper}
 presents a higher-order algorithm for regular expression matching, using
 continuation-passing to store the remainder of a matching problem when a
 concatenation is encountered, while using the ordinary control stack to
-represent the branching when an alternation is encoutered.  The code for
+represent the branching when an alternation is encountered.  The code for
 the matcher is quite short, but also quite subtle; the emphasis of
 Harper's paper is on how the correctness proof for the matcher informs
 the reader's understanding of the code.  For example, the first matcher
@@ -81,16 +86,16 @@ example, motivated by the author's sense that the higher-order matcher
 is too difficult for students in their introductory programming course,
 and gives a first-order matcher based on compilation to a state machine.
 
-Motivated by the strong interplay between programming and proof, and the
-pedagogical usefulness, of Harper's algorithm, we set out to formalize
-it using the Agda proof assistant~\cite{norell07thesis}, believing that
-it could be a pedagogically useful example of dependently typed
-programming.  The process of mechanizing the algorithm led us to a few
-new observations that streamline its presentation---which was quite
-surprising to the third author, who has previously taught this material
-several times.  Our goal in this paper is to document these variations
-on the matching algorithm, and how the process of programming it in Agda
-led us to them.
+Motivated by its strong interplay between programming and proof and its
+pedagogical usefulness, we set out to formalize Harper's algorithm using
+the Agda proof assistant~\cite{norell07thesis}, believing that it could
+be a pedagogically useful example of dependently typed programming.  The
+process of mechanizing the algorithm led us to a few new observations
+that streamline and extend its presentation---which was quite surprising
+to the third author, who has previously taught this material several
+times.  Our goal in this paper is to document these variations on the
+matching algorithm, and how the process of programming it in Agda led us
+to them.
 
 The three variations are as follows.  First, because Agda is a total
 language, we must make the termination of the matcher evident in the
@@ -132,23 +137,21 @@ straightforward extrinsic verification, and an intrinsically
 \begin{code}
 accepts-intrinsic : (r : RegExp) → (s : List Char) → Maybe (s ∈L r)
 \end{code}
-All formalizations are available
-online. When this matcher
-succeeds, it returns the derivation that the string is in the language
-of the regexp (completeness, which says that the matcher does not
-improperly reject strings, is still proved separately).  The reason for
-this choice is that the \emph{computational content} of the soundness
-proof is relevant to the above problem: the derivation gives a parse
-tree, which allows reporting the matching strings for each specified
-sub-expression.  Indeed, even for the extrinsic matcher, one can run the
-separate soundness proof to produce the matching strings---but running
-the matcher and then its soundness proof (which has success of the
-matcher as a precondition) duplicates work, so we present the intrinsic
-version in the paper.  Though we were led to this variation by coding
-the soundness proof of the matcher using dependent types, analogous code
-could be used in a simply typed language, with the less informative
-result type |Maybe Derivation| which does not say what string and regexp
-it is a derivation for.
+When this matcher succeeds, it returns the derivation that the string is
+in the language of the regexp; completeness, which says that the matcher
+does not improperly reject strings, is still proved separately.  The
+reason for this choice is that the \emph{computational content} of the
+soundness proof is relevant to the above problem: the derivation gives a
+parse tree, which allows reporting the matching strings for each
+specified sub-expression.  Indeed, even for the extrinsic matcher, one
+can run the separate soundness proof to produce the matching
+strings---but running the matcher and then its soundness proof (which
+has success of the matcher as a precondition) duplicates work, so we
+present the intrinsic version in the paper.  Though we were led to this
+variation by coding the soundness proof of the matcher using dependent
+types, analogous code could be used in a simply typed language, with the
+less informative result type |Maybe Derivation| which does not say what
+string and regexp it is a derivation for.
 
 A third variation is that, while Harper uses a negative semantic
 definition of standard regular expressions (``no subexpression of the
@@ -157,9 +160,9 @@ Agda to use positive/inductive criteria.  While formalizing the notion
 of standard, we realized that it is possible to instead use a syntactic
 criterion, generating standard regular expressions by literals,
 concatenation, alternation, and Kleene \emph{plus} (one or more
-occurences) instead of Kleene \emph{star} (zero or more occurences), and
+occurrences) instead of Kleene \emph{star} (zero or more occurrences), and
 omitting the empty string regexp |ε|.  While the syntactic criterion
-omits some semantically standard expression (e.g. |(ε · r)*|, where |r|
+omits some semantically standard expression (such as |(ε · r)*|, where |r|
 does not accept the empty string), it still suffices to define a matcher
 for all regular expression.  In addition to simplifying the Agda
 formalization, this observation has the pedagogical benefit of allowing
@@ -173,25 +176,21 @@ in addition to being a strong pedagogical example of dependently typed
 programming, these variations on regular expression matching could be
 used in introductory programming courses to offer a streamlined
 treatment---e.g. using the defunctionalized matcher for only
-syntatically standard regular expressions, which still captures the
+syntactically standard regular expressions, which still captures the
 basic interplay between programming and proof---which scales to
 higher-order matching and more interesting homework
 assignments---e.g. by computing matching strings.  Therefore, even
-though there is existing work on verified parsing in a dependently typed
-programming language (such as \cite{danielsson10totalparser}), which includes regular
-expression matching as a special case, we believe these variations on
-Harper's algorithm will be of interest to the dependent types and
-broader functional programming communities.
-%% FIXME: others
+though there is existing work on verified parsing of regular expressions
+and context-free grammars in a dependently typed programming language
+(such as \cite{danielsson10totalparser,ridge11cfg,firsov+13parsing}), we
+believe these new variations on Harper's algorithm will be of interest
+to the dependent types and broader functional programming communities.
 
 The remainder of this paper is organized as follows.  In
 Section~\ref{sec:standard}, we define syntactically standard regular
 expressions.  In Section~\ref{sec:defunc}, we give an intrinsically
 sound defunctionalized matcher, with no explicit termination measure.
 In Section~\ref{sec:hof}, we give an intrinsically sound higher-order
-matcher, which uses an explicit termination measure, and explain the
-correspondence with the defunctionalized matcher.  In
-Section~\ref{sec:hof}, we give an intrinsically sound higher-order
 matcher, which uses an explicit termination measure, and explain the
 correspondence with the defunctionalized matcher.  In
 Section~\ref{sec:nonstandard}, we show that these matchers suffice to
@@ -273,7 +272,7 @@ the following rules:
 membership predicates.  For standard regular expressions, we define a
 binary relation |s ∈Lˢ r|, which means |s| is in the language of |r|, by
 recursion on |r|, illustrating how it is possible to compute types based
-on values in a dependently typed language.  This uses an auxilary,
+on values in a dependently typed language.  This uses an auxiliary,
 inductively definition relation |s ∈L⁺ r|, represented by an Agda
 inductively defined datatype family, which corresponds to the inference
 rules above.
@@ -309,7 +308,7 @@ land in |Set|, the Agda type of types, and thus may have computational
 content.  For example, a witness that |s ∈Lˢ (r₁ ⊕ r₂)| includes a bit
 (|inj₁| or |inj₂|) that tells which possibility was taken, and
 a witness |s ∈L⁺ r| is a non-empty list of strings matching |r|, which
-concatentate to |s|.  Thus, there can be different witnesses that the
+concatenate to |s|.  Thus, there can be different witnesses that 
 a string matches a regular expression, such as
 
 \begin{prooftree}
@@ -560,33 +559,30 @@ stack to check membership:
 
 \begin{code}
 acceptsˢ-intrinsic : (r : StdRegExp) → (s : List Char) → Maybe (s ∈Lˢ r)
-acceptsˢ-intrinsic r s = map ∈L-empty-continuation (match r s [])
+acceptsˢ-intrinsic r s = map ∈L-empty-stack (match r s [])
 \end{code}
-
-
-When the |match| function succeeds, we know we have an empty stack. The
-condition to be in the language of an empty stack is to be an empty string. We
-a lemma with the following type to |∈L-empty-continuation| to change the
-result of the function call |match r s []| into a derivation over the entire
-string |s|.
-
+%
+When the |match| function succeeds on an empty stack, the suffix is in
+the language of an empty stack and is therefore an empty string, so we
+use the following lemma to change the result of the function call
+|match r s []| into a derivation over the entire string |s|.
 \begin{code}
-∈L-empty-continuation : {r : StdRegExp} {s : List Char}
-                        → Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ≡ []) })
-                        → s ∈Lˢ r
+∈L-empty-stack : {r : StdRegExp} {s : List Char}
+                → Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ≡ []) })
+                → s ∈Lˢ r
 \end{code}
 
 
 \subsection{Completeness}
 
 Though the above matcher is intrinsically sound, it is not intrinsically
-complete (for example, the function that always fails has the above
-type).  One way to resolve this would be to write a matcher that is
-intrinsically both sound and complete --- overall (ignoring the stack),
+complete---for example, the function that always fails has the above
+type.  One way to resolve this would be to write a matcher that is
+intrinsically both sound and complete --- ignoring the stack,
 given |s| and |r|, we would like to know |(s ∈Lˢ r) ⊎ ¬ (s ∈Lˢ r)|, a
 type that expresses decidability of matching.  However, while there is
-an efficiency reason to instrinsically compute the the derivation of |s
-∈Lˢ r|---we will use it to extract matching strings---there is no
+an efficiency reason to intrinsically compute the the derivation of |s
+∈Lˢ r|---we will use it to extract matching strings in Section~\ref{sec:groups}---there is no
 computational content to |¬ (s ∈Lˢ r)|.  Because of this, and because it
 keeps the matcher code itself simpler, we choose to make completeness
 extrinsic.  In full, completeness says that if we have |r|, |s|, |k| and
@@ -598,7 +594,6 @@ match-completeness :  (r : StdRegExp) (s : List Char) (k : List StdRegExp)
                       → Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ∈Lᵏ k)})
                       → isJust (match r s k)
 \end{code}
-
 That is, when there is a way for the matcher to succeed, it does.  We
 cannot make a stronger claim and say that it returns the same derivation
 that is given as input, because as we showed before, there can be
@@ -651,16 +646,15 @@ then the matcher succeeds, so we have the result.
 
 As a corollary, we get completeness of |acceptsˢ-intrinsic|:
 \begin{code}
-acceptsˢ-intrinsic-completeness : (r : StdRegExp)
-  → (s : List Char)
-  → s ∈Lˢ r
-  → isJust (acceptsˢ-intrinsic r s)
+acceptsˢ-intrinsic-completeness :  (r : StdRegExp) (s : List Char)
+                                   → s ∈Lˢ r
+                                   → isJust (acceptsˢ-intrinsic r s)
 \end{code}
 
 \section{Higher-order intrinsic matcher}
 \label{sec:hof}
 
-In this section, we show that the above intrinsic verifcation of the
+In this section, we show that the above intrinsic verification of the
 first-order matcher scales to a higher-order matcher, written using
 continuation-passing, which is more similar to Harper's original code.
 We will use this to explain why the above matcher is a
@@ -696,7 +690,7 @@ match :  (C : Set) (r : StdRegExp) (s : List Char)
 
 The type variable |C| stands for the output derivation computed by the
 matcher on success.  Just as Harper's algorithm returns a |bool| and
-uses both the continuation and the host language's control stack
+uses both the continuation and the language's control stack
 (i.e. it is not fully in CPS), here both the continuation and the
 matcher return an option, but the success data can been chosen
 arbitrarily.  In Harper's algorithm, the continuation takes a string
@@ -991,7 +985,7 @@ standardize (r₁ · r₂) =  ((δ r₁) ·ˢ (standardize r₂)) ⊕ˢ
                          ((standardize r₁) ·ˢ (δ r₂)) ⊕ˢ
                          ((standardize r₁) ·ˢ (standardize r₂))
 \end{code}
-This definition is equivalent to above, using the fact that for any |r|,
+This definition is equivalent to above, using the equivalences that for any |r|,
 |∅ ·ˢ r = ∅ = r ·ˢ ∅| and |ε ·ˢ r = r = r ·ˢ ε|.  For example, when
 |δ r₁| is true, Harper's translation gives a |ε ·ˢ (standardize r₂)|
 summand, which is standard but \emph{not} syntactically standard, but we
@@ -1033,7 +1027,8 @@ correct-completeness  : (r : RegExp) (s : List Char)
                       → isJust (r accepts s)
 \end{code}
 
-As corollary of soundness and completeness, we have proved decidability of matching:
+Finally, we have proved decidability of matching as a corollary of
+soundness and completeness:
 \begin{code}
 decidability : (r : RegExp) (s : List Char) → (s ∈L r) ⊎ (¬ (s ∈L r))
 \end{code}
@@ -1044,12 +1039,11 @@ decidability : (r : RegExp) (s : List Char) → (s ∈L r) ⊎ (¬ (s ∈L r))
 The ``capturing group'' constructor |G| is intended to allow the user to
 specify parts of a regular expression whose matching strings should be
 extracted and reported.  For example, if our regular expression checks
-if a string is a valid e-mail address, we might want to extract parts
-before and after the |@| and |.|, to parse the username and domains.  If
-we have a regular expression |alphanumeric : RegExp| that accepts a
-single alphanumeric character (this can be defined in the above language
-as a big |⊕| of character literals), we can define a (na\"ive) regular
-expression for e-mail addresses such as
+if a string is a valid e-mail address, we might use this to parse the
+username and domains.  If we have a regular expression |alphanumeric :
+RegExp| that accepts a single alphanumeric character (this can be
+defined in the above language as a big |⊕| of character literals), we
+can define a (na\"ive) regular expression for e-mail addresses such as
 \begin{code}
 e-mail : RegExp
 e-mail = G (alphanumeric *) · Lit '@' · G (alphanumeric *) · Lit '.' · G (alphanumeric *)
