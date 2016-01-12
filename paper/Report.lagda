@@ -1,20 +1,24 @@
 \RequirePackage{amsmath}
-\documentclass{jfp1}
+\documentclass{article}
 \bibliographystyle{jfp}
 
 \def\textmu{}
 
 %include agda.fmt
+\usepackage{fullpage}
 \usepackage{textgreek} % not reproducible without textgreek
 \usepackage{bussproofs}
 \usepackage{color}
 \usepackage{proof}
 \usepackage{url}
+\usepackage{authordate1-4}
+\newcommand{\figrule}{\begin{center}\hrule\end{center}}
 
 % Editorial commands
 \newcommand{\Red}[1]{{\color{red} #1}}
 \newcommand{\ToDo}[1]{{\color{blue} ToDo: #1}}
 \newcommand{\tocite}[0]{{\color{red} [cite]}\xspace}
+
 
 % Math and code commands
 \newcommand{\set}[1]{\left\{#1\right\}}
@@ -29,10 +33,9 @@
 \DeclareUnicodeCharacter{8709}{$\varnothing$} % overwriting \emptyset
 
 \title{Intrinsic Verification \break of a Regular Expression Matcher}
-\author[Joomy Korkut, Maksim Trifunovski, Daniel R. Licata]
-       {JOOMY KORKUT, MAKSIM TRIFUNOVSKI, DANIEL R. LICATA\thanks{
-This material is based on research sponsored in part by 
-by The United States Air Force Research Laboratory under agreement number FA9550-15-1-0053. %% DRL 
+\author{Joomy Korkut, Maksim Trifunovski, Daniel R. Licata\thanks{
+This material is based on research sponsored in part by
+by The United States Air Force Research Laboratory under agreement number FA9550-15-1-0053. %% DRL
 The
 U.S. Government is authorized to reproduce and distribute reprints for
 Governmental purposes notwithstanding any copyright notation thereon.
@@ -45,7 +48,7 @@ Mellon University.}\\
 
 \begin{document}
 
-\maketitle[f]
+\maketitle
 
 \begin{abstract}
 Harper's 1999 Functional Pearl on regular expression matching is a
@@ -320,7 +323,7 @@ land in |Set|, the Agda type of types, and thus may have computational
 content.  For example, a witness that |s ∈Lˢ (r₁ ⊕ r₂)| includes a bit
 (|inj₁| or |inj₂|) that tells which possibility was taken, and
 a witness |s ∈L⁺ r| is a non-empty list of strings matching |r|, which
-concatenate to |s|.  Thus, there can be different witnesses that 
+concatenate to |s|.  Thus, there can be different witnesses that
 a string matches a regular expression, such as
 
 \begin{prooftree}
