@@ -39,6 +39,8 @@
 \maketitle[f]
 
 \begin{abstract}
+
+
 TODO: revise after the rest is finished.  
 
 The matching algorithm described by Harper requires the input regular
@@ -55,7 +57,7 @@ lists of standard form regular expressions instead.  In conclusion, we have
 proven the correctness of both.
 \end{abstract}
 
-\tableofcontents
+%% \tableofcontents
 
 \section{Introduction}
 
@@ -63,34 +65,32 @@ Regular expression matching is a venerable problem, studied in many
 programming and theory of computation courses.  Harper~\cite{harper}
 presents a higher-order algorithm for regular expression matching, using
 continuation-passing to store the remainder of a matching problem when a
-concatenation is encountered, while using the host-language's control
-stack to represent the branching when an alternation is encoutered.  The
-code for the matcher is quite short, but also quite subtle; the emphasis
-of Harper's paper is on how the correctness proof for the matcher
-informs the reader's understanding of the code.  For example, the first
-matcher presented has a termination bug, which is revealed when the
-induction in the correctness proof breaks down.  The problem can be
-fixed by restricting the domain of the function to \emph{standard}
-regular expressions, which have no Kleene-stared subexpressions that
-accept the empty string, and using a preprocessor translation to cover
-all regular expressions and hence solve the original problem.  Harper's
-algorithm has been used in first- and second-year functional programming
-courses at Carnegie Mellon for around 20 years, as a high-water example
-of integrating programming and program verification.  A later paper by
-Yi~\cite{Yi06regexp} revisits the example, motivated by the author's
-sense that the higher-order matcher is too difficult for students in
-their introductory programming course, and gives a first-order matcher
-based on compilation to a state machine.
+concatenation is encountered, while using the ordinary control stack to
+represent the branching when an alternation is encoutered.  The code for
+the matcher is quite short, but also quite subtle; the emphasis of
+Harper's paper is on how the correctness proof for the matcher informs
+the reader's understanding of the code.  For example, the first matcher
+presented has a termination bug, which is revealed when the induction in
+the correctness proof breaks down.  The problem can be fixed by
+restricting the domain of the function to \emph{standard} regular
+expressions, which have no Kleene-stared subexpressions that accept the
+empty string, and then using a preprocessor translation to solve the
+original problem.  Harper's algorithm has been used in first- and
+second-year functional programming courses at Carnegie Mellon for around
+20 years, as a high-water example of integrating programming and program
+verification.  A later paper by Yi~\cite{Yi06regexp} revisits the
+example, motivated by the author's sense that the higher-order matcher
+is too difficult for students in their introductory programming course,
+and gives a first-order matcher based on compilation to a state machine.
 
-Because of this algorithm's strong interplay between program and proof
-and its pedagogical usefulness, we set out to formalize the algorithm
-using the Agda proof assistant~\cite{norell07thesis}, believing that it
-could be a pedagogically useful example of dependently typed
+Motivated by the strong interplay between programming and proof, and the
+pedagogical usefulness, of Harper's algorithm, we set out to formalize
+it using the Agda proof assistant~\cite{norell07thesis}, believing that
+it could be a pedagogically useful example of dependently typed
 programming.  The process of mechanizing the algorithm led us to a few
-new observations that streamline the presentation of the
-algorithm---which was quite surprising to the third author, who has
-previously taught this material several times and thought hard about how
-to present it.  Our goal in this paper is to document these variations
+new observations that streamline its presentation---which was quite
+surprising to the third author, who has previously taught this material
+several times.  Our goal in this paper is to document these variations
 on the matching algorithm, and how the process of programming it in Agda
 led us to them.
 
@@ -120,21 +120,22 @@ determines whether or not a string is accepted by a regular expression.
 However, for most applications of regexp matching (and for making
 compelling homework assignments), it is useful to allow a ``bracket'' or
 ``grouping'' construct that allows the user to specify
-sub-regular-expressions whose matching strings should be reported---
-for example, |AG[.*]TC[(G⊕C)*]GA| for extracting the parts of a DNA string
+sub-regular-expressions whose matching strings should be reported--- for
+example, |AG[.*]TC[(G⊕C)*]GA| for extracting the parts of a DNA string
 surrounded by certain signal codes.  When coding a program/proof in a
 dependently typed language, there is a choice between ``extrinsic''
 verification (write the simply-typed code, and then prove it correct)
 and ``intrinsic verification'' (fuse the program and proof into one
 function, with a dependent type).  We have formalized both a
 straightforward extrinsic verification, and an intrinsically
-\emph{sound} verification, which has the dependent type
+\emph{sound} verification\footnote{All formalizations are available from
+  \url{http://github.com/joom/regexp-agda}. Use Agda version 2.4.2.2
+  with standard library version 0.11}, which has the dependent type
 \begin{code}
 inL-intrinsic : (r : RegExp) → (s : List Char) → Maybe (s ∈L r)
 \end{code}
 All formalizations are available
-online.\footnote{\url{http://github.com/joom/regexp-agda}, use Agda
-  version 2.4.2.2 with standard library version 0.11} When this matcher
+online. When this matcher
 succeeds, it returns the derivation that the string is in the language
 of the regexp (completeness, which says that the matcher does not
 improperly reject strings, is still proved separately).  The reason for
@@ -151,7 +152,7 @@ could be used in a simply typed language, with the less informative
 result type |Maybe Derivation| which does not say what string and regexp
 it is a derivation for.
 
-A third variation, is that, while Harper uses a negative semantic
+A third variation is that, while Harper uses a negative semantic
 definition of standard regular expressions (``no subexpression of the
 form $r^*$ accepts the empty string''), it is often more convenient in
 Agda to use positive/inductive criteria.  While formalizing the notion
@@ -183,6 +184,7 @@ programming language (such as \cite{danielsson10totalparser}), which includes re
 expression matching as a special case, we believe these variations on
 Harper's algorithm will be of interest to the dependent types and
 broader functional programming communities.
+%% FIXME: others
 
 The remainder of this paper is organized as follows.  In
 Section~\ref{sec:standard}, we define syntactically standard regular
@@ -190,7 +192,13 @@ expressions.  In Section~\ref{sec:defunc}, we give an intrinsically
 sound defunctionalized matcher, with no explicit termination measure.
 In Section~\ref{sec:hof}, we give an intrinsically sound higher-order
 matcher, which uses an explicit termination measure, and explain the
-correspondence with the defunctionalized matcher.  
+correspondence with the defunctionalized matcher.  In
+Section~\ref{sec:hof}, we give an intrinsically sound higher-order
+matcher, which uses an explicit termination measure, and explain the
+correspondence with the defunctionalized matcher.  In
+Section~\ref{sec:nonstandard}, we show that these matchers suffice to
+match all regular expressions by translation.  In
+Section~\ref{sec:groups} we discuss how to extract matching strings.
 
 \subsection{Agda Definitions}
 
