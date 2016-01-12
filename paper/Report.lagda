@@ -39,8 +39,6 @@
 \maketitle[f]
 
 \begin{abstract}
-
-
 TODO: revise after the rest is finished.  
 
 The matching algorithm described by Harper requires the input regular
@@ -132,7 +130,7 @@ straightforward extrinsic verification, and an intrinsically
   \url{http://github.com/joom/regexp-agda}. Use Agda version 2.4.2.2
   with standard library version 0.11}, which has the dependent type
 \begin{code}
-inL-intrinsic : (r : RegExp) → (s : List Char) → Maybe (s ∈L r)
+accepts-intrinsic : (r : RegExp) → (s : List Char) → Maybe (s ∈L r)
 \end{code}
 All formalizations are available
 online. When this matcher
@@ -562,15 +560,22 @@ stack to check membership:
 
 \begin{code}
 acceptsˢ-intrinsic : (r : StdRegExp) → (s : List Char) → Maybe (s ∈Lˢ r)
-acceptsˢ-intrinsic r s = map ? (match r s [])
+acceptsˢ-intrinsic r s = map ∈L-empty-continuation (match r s [])
 \end{code}
 
-%% too heavy
-%% acceptsˢ-intrinsic r .(xs ++ []) | just ((xs , .[]) , refl , inL , refl) =
-%%   just (eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL)
-%% acceptsˢ-intrinsic r s | nothing = nothing
 
-FIXME: make a lemma for the munging and show its type
+When the |match| function succeeds, we know we have an empty stack. The
+condition to be in the language of an empty stack is to be an empty string. We
+a lemma with the following type to |∈L-empty-continuation| to change the
+result of the function call |match r s []| into a derivation over the entire
+string |s|.
+
+\begin{code}
+∈L-empty-continuation : {r : StdRegExp} {s : List Char}
+                        → Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ≡ []) })
+                        → s ∈Lˢ r
+\end{code}
+
 
 \subsection{Completeness}
 
@@ -645,7 +650,12 @@ of appending lists to show that it is the same string).  If it succeeds,
 then the matcher succeeds, so we have the result.
 
 As a corollary, we get completeness of |acceptsˢ-intrinsic|:
-FIXME show statement
+\begin{code}
+acceptsˢ-intrinsic-completeness : (r : StdRegExp)
+  → (s : List Char)
+  → s ∈Lˢ r
+  → isJust (acceptsˢ-intrinsic r s)
+\end{code}
 
 \section{Higher-order intrinsic matcher}
 \label{sec:hof}
@@ -938,8 +948,8 @@ its input:
 Using |δ'|, we can easily define |δ : RegExp → Bool| by forgetting the
 extra information.
 
-The specification for standardization, which we prove below, is that 
-\[ 
+The specification for standardization, which we prove below, is that
+\[
 (\forall s) \; \big[ s \in L(r) \Longleftrightarrow \left[ (\delta(r)
     = true \land s = []) \lor s \in L( \standardize (r))\right] \big]
 \]
@@ -970,7 +980,7 @@ matching the standardized regexp.  For the concatenation case, we write
 |standardize r| will not accept the empty string even when |r| does, it
 is necessary to check |r₁'| and |r₂'| by themselves in the case where
 the other one accepts the empty string, because otherwise we would miss
-strings that rely on one component but not the other being empty.  
+strings that rely on one component but not the other being empty.
 
 Our definition of the concatenation
 case is a bit different than Harper's, where |δ| returns not a boolean,
@@ -978,11 +988,11 @@ but a regexp |∅| (if |r| does not accept the empty string) or |ε| (if it
 does), and the clause is as follows:
 \begin{code}
 standardize (r₁ · r₂) =  ((δ r₁) ·ˢ (standardize r₂)) ⊕ˢ
-                         ((standardize r₁) ·ˢ (δ r₂)) ⊕ˢ 
+                         ((standardize r₁) ·ˢ (δ r₂)) ⊕ˢ
                          ((standardize r₁) ·ˢ (standardize r₂))
 \end{code}
 This definition is equivalent to above, using the fact that for any |r|,
-|∅ ·ˢ r = ∅ = r ·ˢ ∅| and |ε ·ˢ r = r = r ·ˢ ε|.  For example, when 
+|∅ ·ˢ r = ∅ = r ·ˢ ∅| and |ε ·ˢ r = r = r ·ˢ ε|.  For example, when
 |δ r₁| is true, Harper's translation gives a |ε ·ˢ (standardize r₂)|
 summand, which is standard but \emph{not} syntactically standard, but we
 can simplify it to |standardize r₂|.  When |δ r₁| is false, Harper's
@@ -1003,21 +1013,18 @@ Now that we have a verified |standardize| function, we can define
 |_accepts_| as follows, where |acceptsˢ-intrinsic| can be either of the
 above matchers:
 
-FIXME make this intrinsic so that we can hook it up with extraction!
-also don't bring up |String|s.  I know why we had it extrinsic before
-(to unify the code with the extrinsic version), but for the paper story
-it's weird to suddenly go extrinsic here.  
-
 \begin{code}
-_accepts-intrinsic_ : (r : RegExp) (s : List Char) → Maybe (s ∈L r)
-r accepts-intrinsic s with δ r | standardize r | String.toList s
-... | true  | r' | xs = ? -- (null xs) ∨ (r' acceptsˢ xs)
-... | false | r' | xs = ? -- r' acceptsˢ xs
+accepts-intrinsic : (r : RegExp) → (s : List Char) → Maybe (s ∈L r)
+accepts-intrinsic r s with δ' r
+accepts-intrinsic r [] | inj₁ x = just x
+accepts-intrinsic r s | _ = map (∈L-soundness s r ∘ inj₂) (acceptsˢ-intrinsic (standardize r) s)
 \end{code}
 
 If |r| accepts the empty string, we return |true| if |xs| is empty or the
 standardization of |r| accepts |xs|. If |r| does not accept the empty string,
-then we only have the latter option.  FIXME: describe necessary massaging.
+then we only have the latter option. In that case, we call |acceptsˢ-intrinsic|
+to get an optional derivation of the type |s ∈Lˢ (standardize r)| and use that
+on |∈L-soundness| to get an optional derivation of the type |s ∈L r|.
 
 As usual, we have proved completeness extrinsically:
 \begin{code}
@@ -1078,15 +1085,13 @@ calls and append the results because |r₁| and |r₂| match different
 substrings and they may have different capturing groups inside them.  In
 alternation, the entire string matches either |r₁| or |r₂|, so we make
 one recursive call to the one it matches.  The Kleene star case follows
-the same principles.  
+the same principles.
 
 Combining this with our intrinsic matcher, we can define an overall function
 \begin{code}
 groups : (r : RegExp) (s : List Char) → Maybe (List (List Char))
 groups r s = map extract (accepts-intrinsic r s)
 \end{code}
-
-FIXME check this/ rename if it's already in the code
 
 \section{Conclusion}
 

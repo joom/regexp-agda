@@ -5,6 +5,7 @@ open import OverallMatcher
 module IntrinsicDefun where
 
   open import Category.Monad
+  open import Function
   open import Data.Bool
   open import Data.Char
   open import Data.Empty
@@ -71,7 +72,7 @@ module IntrinsicDefun where
                        → (s : List Char)
                        → (k : List StdRegExp)
                        → Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k})
-                       → isJust (match r s k )
+                       → isJust (match r s k)
     match-completeness ∅ˢ _ _ (_ , _ , () , _)
     match-completeness (Litˢ x) .(x ∷ xs) k ((.(x ∷ []) , xs) , refl , refl , rest) with x Data.Char.≟ x
     ... | no q = ⊥-elim (q refl)
@@ -118,10 +119,10 @@ module IntrinsicDefun where
   acceptsˢ-completeness r s inL = is-just-lemma (match-completeness r s [] ((s , []) , append-rh-[] s , inL , refl))
 
   acceptsˢ-intrinsic : (r : StdRegExp) → (s : List Char) → Maybe (s ∈Lˢ r)
-  acceptsˢ-intrinsic r s with match r s []
-  acceptsˢ-intrinsic r .(xs ++ []) | just ((xs , .[]) , refl , inL , refl) =
-    just (eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL)
-  acceptsˢ-intrinsic r s | nothing = nothing
+  acceptsˢ-intrinsic r s = Data.Maybe.map ∈Lˢ-empty-continuation (match r s [])
+
+  acceptsˢ-intrinsic-completeness : (r : StdRegExp) → (s : List Char) → s ∈Lˢ r → isJust (acceptsˢ-intrinsic r s)
+  acceptsˢ-intrinsic-completeness r s inL = is-just-preserve (match-completeness r s [] ((s , []) , append-rh-[] s , inL , refl))
 
   {- Efficient overall matcher.
    These functions can be found in the OverallMatcher module
@@ -131,15 +132,11 @@ module IntrinsicDefun where
    Hence, we should run it only once. The functions below are efficient.
   -}
 
-  inL-intrinsic : (r : RegExp)
-                → (s : String.String)
-                → Maybe ((String.toList s) ∈L r)
-  inL-intrinsic r s with String.toList s | δ' r
-  ... | [] | inj₁ x = just x
-  ... | l | d with match (standardize r) l []
-  ...            | nothing = nothing
-  inL-intrinsic r s | .(xs ++ []) | d | just ((xs , .[]) , refl , inL , refl) =
-    just ( eq-replace (sym (cong₂ _∈L_ {_}{_}{r}{r} (append-rh-[] xs) refl)) (∈L-soundness xs r (inj₂ inL)))
+  accepts-intrinsic : (r : RegExp) → (s : List Char) → Maybe (s ∈L r)
+  accepts-intrinsic r s with δ' r
+  accepts-intrinsic r [] | inj₁ x = just x
+  accepts-intrinsic r s | _ = Data.Maybe.map (∈L-soundness s r ∘ inj₂) (acceptsˢ-intrinsic (standardize r) s)
 
   exec : RegExp → String.String → Maybe (List String.String)
-  exec r s = Data.Maybe.map (λ inL → Data.List.map String.fromList (extract {r}{String.toList s} inL)) (inL-intrinsic r s)
+  exec r s = Data.Maybe.map (λ inL → Data.List.map String.fromList (extract {r}{xs} inL)) (accepts-intrinsic r xs)
+    where xs = String.toList s
