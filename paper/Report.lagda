@@ -30,9 +30,18 @@
 
 \title{Intrinsic Verification \break of a Regular Expression Matcher}
 \author[Joomy Korkut, Maksim Trifunovski, Daniel R. Licata]
-       {JOOMY KORKUT, MAKSIM TRIFUNOVSKI, DANIEL R. LICATA\\
+       {JOOMY KORKUT, MAKSIM TRIFUNOVSKI, DANIEL R. LICATA\thanks{
+This material is based on research sponsored in part by 
+by The United States Air Force Research Laboratory under agreement number FA9550-15-1-0053. %% DRL 
+The
+U.S. Government is authorized to reproduce and distribute reprints for
+Governmental purposes notwithstanding any copyright notation thereon.
+The views and conclusions contained herein are those of the authors and
+should not be interpreted as necessarily representing the official
+policies or endorsements, either expressed or implied, of the United
+States Air Force Research Laboratory, the U.S. Government or Carnegie
+Mellon University.}\\
         Wesleyan University}
-
 
 \begin{document}
 
@@ -181,10 +190,13 @@ basic interplay between programming and proof---which scales to
 higher-order matching and more interesting homework
 assignments---e.g. by computing matching strings.  Therefore, even
 though there is existing work on verified parsing of regular expressions
-and context-free grammars in a dependently typed programming language
-(such as \cite{danielsson10totalparser,ridge11cfg,firsov+13parsing}), we
-believe these new variations on Harper's algorithm will be of interest
-to the dependent types and broader functional programming communities.
+and context-free grammars (see
+\cite{danielsson10totalparser,ridge11cfg,firsov+13parsing} for work
+using other algorithms; Wouter Swierstra and collaborators also worked
+on formalizing Harper's algorithm, but had unresolved termination
+issues\footnote{personal communication}), we believe these new
+variations on Harper's algorithm will be of interest to the dependent
+types and broader functional programming communities.
 
 The remainder of this paper is organized as follows.  In
 Section~\ref{sec:standard}, we define syntactically standard regular
