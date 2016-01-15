@@ -1,11 +1,10 @@
 \RequirePackage{amsmath}
-\documentclass{article}
+\documentclass[11pt]{article}
 \bibliographystyle{jfp}
 
 \def\textmu{}
 
 %include agda.fmt
-\usepackage{fullpage}
 \usepackage{textgreek} % not reproducible without textgreek
 \usepackage{bussproofs}
 \usepackage{color}
@@ -32,7 +31,7 @@
 \DeclareUnicodeCharacter{739}{$^\text{x}$}
 \DeclareUnicodeCharacter{8709}{$\varnothing$} % overwriting \emptyset
 
-\title{Intrinsic Verification \break of a Regular Expression Matcher}
+\title{Intrinsic Verification of a \break Regular Expression Matcher}
 \author{Joomy Korkut, Maksim Trifunovski, Daniel R. Licata\thanks{
 This material is based on research sponsored in part by
 by The United States Air Force Research Laboratory under agreement number FA9550-15-1-0053. %% DRL
@@ -383,7 +382,8 @@ if it splits into strings in the language of each stack element:
 _∈Lᵏ_ : List Char → List StdRegExp → Set
 s ∈Lᵏ [] = s ≡ []
 s ∈Lᵏ (r ∷ rs) =
-  Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ∈Lᵏ rs) })
+  Σ  (List Char × List Char) 
+     (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ∈Lᵏ rs) })
 \end{code}
 If the stack is empty, the string also has to be empty.  If the stack
 has a head, then a prefix of the string should match the head of the
@@ -539,7 +539,8 @@ starting |r|.
 \begin{code}
 mutual
   match : (r : StdRegExp) (s : List Char) (k : List StdRegExp)
-        → Maybe (Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
+        → Maybe (Σ  (List Char × List Char) 
+                    (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
   match ∅ˢ s k = fail
   match (Litˢ c) [] k = fail
   match (Litˢ c) (x ∷ xs) k =
