@@ -1,6 +1,6 @@
 open import Definitions
 open import Lemmas
-open import OverallMatcher
+open import RegExpDefinitions
 
 module IntrinsicDefun where
 

@@ -1,6 +1,5 @@
 open import Definitions
 open import Lemmas
-import OverallMatcher
 
 module IntrinsicHOF where
 
@@ -88,4 +87,4 @@ module IntrinsicHOF where
   ... | just pf = just pf
   acceptsˢ-intrinsic r s | nothing = nothing
 
-  open OverallMatcher.Matcher {_acceptsˢ_}{acceptsˢ-soundness}{acceptsˢ-completeness}
+  open import Matcher {_acceptsˢ_}{acceptsˢ-soundness}{acceptsˢ-completeness}

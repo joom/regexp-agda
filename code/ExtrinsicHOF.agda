@@ -1,6 +1,5 @@
 open import Definitions
 open import Lemmas
-import OverallMatcher
 
 module ExtrinsicHOF where
 
@@ -101,4 +100,4 @@ module ExtrinsicHOF where
   acceptsˢ-completeness r [] inL = ⊥-elim (non-empty inL)
   acceptsˢ-completeness r (x ∷ s) inL = match-completeness r (x ∷ s) (λ { (s , sf) → null s }) (well-founded (x ∷ s)) ((x ∷ s , [] , suffix-[]-cons) , append-rh-[] (x ∷ s) , inL , refl)
 
-  open OverallMatcher.Matcher {_acceptsˢ_}{acceptsˢ-soundness}{acceptsˢ-completeness}
+  open import Matcher {_acceptsˢ_}{acceptsˢ-soundness}{acceptsˢ-completeness}
