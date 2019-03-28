@@ -46,7 +46,7 @@
 \maketitle[F]
 
 \begin{abstract}
-Harper's 1999 Functional Pearl on regular expression matching is a
+Robert Harper's 1999 Functional Pearl on regular expression matching is a
 strong example of the interplay between programming and proof, and has
 been used for many years in introductory functional programming classes.
 In this paper, we revisit this algorithm from the point of view of
@@ -72,7 +72,7 @@ the presentation of this material.
 \section{Introduction}
 
 Regular expression matching is a venerable problem, studied in many
-programming and theory of computation courses.  Harper~\cite{harper}
+programming and theory of computation courses.  Harper~\shortcite{harper}
 presents a higher-order algorithm for regular expression matching, using
 continuation-passing to store the remainder of a matching problem when a
 concatenation is encountered, while using the ordinary control stack to
@@ -83,12 +83,12 @@ the reader's understanding of the code.  For example, the first matcher
 presented has a termination bug, which is revealed when the induction in
 the correctness proof breaks down.  The problem can be fixed by
 restricting the domain of the function to \emph{standard} regular
-expressions, which have no Kleene-stared subexpressions that accept the
+expressions, which have no Kleene-starred subexpressions that accept the
 empty string, and then using a preprocessor translation to solve the
 original problem.  Harper's algorithm has been used in first- and
 second-year functional programming courses at Carnegie Mellon for around
 20 years, as a high-water example of integrating programming and program
-verification.  A later paper by Yi~\cite{Yi06regexp} revisits the
+verification.  A later paper by Yi~\shortcite{Yi06regexp} revisits the
 example, motivated by the author's sense that the higher-order matcher
 is too difficult for students in their introductory programming course,
 and gives a first-order matcher based on compilation to a state machine.
@@ -1113,9 +1113,9 @@ this material in courses on dependently typed programming---or, by
 porting the observations back to simply-typed languages, on introductory
 programming.
 
-\section{Acknowledgments}
+\section*{Acknowledgments}
 
-This material is based on research sponsored in part by by The United States
+This material is based on research sponsored in part by The United States
 Air Force Research Laboratory under agreement number FA9550-15-1-0053. %% DRL
 The U.S. Government is authorized to reproduce and distribute reprints for
 Governmental purposes notwithstanding any copyright notation thereon.
