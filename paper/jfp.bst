@@ -1,5 +1,5 @@
-%  CUP Journal of Functional Programming bibliography style
-%  v1.0, released 22nd May 1995
+%  CUP Journal of Functional Programming bibliography style 
+%  v1.0, released 22nd May 1995 
 %  Copyright 1994,1995 Cambridge University Press
 
 %  This BibTeX 0.99 style file is intended for documents that use the
@@ -266,7 +266,7 @@ FUNCTION {format.names}
   s num.names$ 'numnames :=
   numnames 'namesleft :=
     { namesleft #0 > }
-    { s nameptr "{vv~}{ll}{, jj}{, ff}" format.name$ 't :=
+    { s nameptr "{vv~}{ll}{, jj}{, ff}" format.name$ 't :=  
       nameptr #1 >
         { namesleft #1 >
             { ", " * t * }
@@ -553,10 +553,10 @@ FUNCTION {format.in.ed.booktitle}                           %  Achieves effect
     { "" }                                                  %  of Chicago, at
     { editor empty$                                         %  expense of not
         { format.chapter.pages.incoll                       %  achieving effects
-          booktitle "t" change.case$ emphasize * }          %  shown in 16.50
+          booktitle emphasize * }          %  shown in 16.50
         { format.chapter.pages.incoll                       %  of Chicago, on
           format.editors * ", " *                           %  page 189 of
-          booktitle "t" change.case$ emphasize * }          %  Butcher and in
+          booktitle emphasize * }          %  Butcher and in
       if$                                                   %  4.4 of BS 1629.
     }
   if$
