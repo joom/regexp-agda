@@ -1,4 +1,5 @@
 \RequirePackage{amsmath}
+\NeedsTeXFormat{LaTeX2e}
 \documentclass{jfp1}
 \bibliographystyle{jfp}
 
@@ -29,23 +30,20 @@
 \DeclareUnicodeCharacter{8709}{$\varnothing$} % overwriting \emptyset
 
 \title{Intrinsic Verification \break of a Regular Expression Matcher}
-\author[Joomy Korkut, Maksim Trifunovski, Daniel R. Licata]
-       {JOOMY KORKUT, MAKSIM TRIFUNOVSKI, DANIEL R. LICATA\thanks{
-This material is based on research sponsored in part by 
-by The United States Air Force Research Laboratory under agreement number FA9550-15-1-0053. %% DRL 
-The
-U.S. Government is authorized to reproduce and distribute reprints for
-Governmental purposes notwithstanding any copyright notation thereon.
-The views and conclusions contained herein are those of the authors and
-should not be interpreted as necessarily representing the official
-policies or endorsements, either expressed or implied, of the United
-States Air Force Research Laboratory, the U.S. Government or Carnegie
-Mellon University.}\\
-        Wesleyan University}
+
+\author[Joomy Korkut, Maksim Trifunovski and Daniel R. Licata]
+       {JOOMY KORKUT\\
+         Princeton University, Princeton, NJ, USA.\\
+        MAKSIM TRIFUNOVSKI\\
+          Google Inc., Mountain View, CA, USA.\\
+        DANIEL R. LICATA\\
+          Wesleyan University, Middletown, CT, USA.\\
+       \email{joomy@@cs.princeton.edu, mtrifunovski@@wesleyan.edu, dlicata@@wesleyan.edu}
+       }
 
 \begin{document}
 
-\maketitle[f]
+\maketitle[F]
 
 \begin{abstract}
 Harper's 1999 Functional Pearl on regular expression matching is a
@@ -320,7 +318,7 @@ land in |Set|, the Agda type of types, and thus may have computational
 content.  For example, a witness that |s ∈Lˢ (r₁ ⊕ r₂)| includes a bit
 (|inj₁| or |inj₂|) that tells which possibility was taken, and
 a witness |s ∈L⁺ r| is a non-empty list of strings matching |r|, which
-concatenate to |s|.  Thus, there can be different witnesses that 
+concatenate to |s|.  Thus, there can be different witnesses that
 a string matches a regular expression, such as
 
 \begin{prooftree}
@@ -1060,7 +1058,7 @@ can define a (na\"ive) regular expression for e-mail addresses such as
 e-mail : RegExp
 e-mail = G (alphanumeric *) · Lit '@' · G (alphanumeric *) · Lit '.' · G (alphanumeric *)
 \end{code}
-Now, if we match the string ``jdoe|@|wesleyan.edu" with |e-mail|, we
+Now, if we match the string ``jdoe@@wesleyan.edu" with |e-mail|, we
 should extract and report ``jdoe", ``wesleyan" and ``edu", because each
 of those substrings matched a sub-regexp that was marked with |G|.
 
@@ -1114,6 +1112,18 @@ typed language, and that they have some pedagogical value for teaching
 this material in courses on dependently typed programming---or, by
 porting the observations back to simply-typed languages, on introductory
 programming.
+
+\section{Acknowledgments}
+
+This material is based on research sponsored in part by by The United States
+Air Force Research Laboratory under agreement number FA9550-15-1-0053. %% DRL
+The U.S. Government is authorized to reproduce and distribute reprints for
+Governmental purposes notwithstanding any copyright notation thereon.
+The views and conclusions contained herein are those of the authors and
+should not be interpreted as necessarily representing the official
+policies or endorsements, either expressed or implied, of the United
+States Air Force Research Laboratory, the U.S. Government or Carnegie
+Mellon University.
 
 \bibliography{paper}
 
