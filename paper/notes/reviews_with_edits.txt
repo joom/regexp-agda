@@ -1,0 +1,247 @@
+> Referees' Comments to Author:
+> Referee: 1
+>
+> Comments to the Author
+> The paper contains two implementations of regular expression matching,
+> along with correctness proofs, all in Agda. The implementations are
+> based on one presented by Harper. One implementation is higher-order,
+> and closer to Harper's, and one is a first-order, defunctionalised
+> variant. The authors observe that it is easier to get Agda to see that
+> the defunctionalised variant is terminating.
+>
+> The paper is advertised as a functional pearl. However, in my opinion
+> it is not written as a pearl. Gibbons writes that a pearl should be
+> "brisk, engaging, accessible, surprising"
+> (http://www.cs.ox.ac.uk/people/jeremy.gibbons/pearls/), and I don't
+> think any of those words describe this paper.
+>
+> The paper follows two other papers describing variants of the same
+> matching algorithm, one by Harper and one by Yi. This paper uses
+> dependent types to implement and verify some variants of the
+> algorithm, but I don't see much novelty in this use of dependent
+> types.
+>
+> The main technical contribution of the paper is perhaps the
+> observation that one can (sometimes) make a program structurally
+> recursive by defunctionalising it. I'm not sure if this observation
+> has been published before. However, if the goal of the paper was to
+> describe this observation, then I think the paper should have been
+> written in a different way, with a smaller example that highlights
+> this observation. There are also examples of structurally recursive
+> programs that are no longer structurally recursive after
+> defunctionalisation; this is not mentioned in the paper.
+>
+> The paper contains quite a few details (proof code) that I found
+> technical and boring. However, the paper does not contain /all/
+> details. Perhaps the code could have been made more elegant using
+> slightly different definitions and different combinators.
+>
+> I'm not quite sure who the intended audience is. I don't think there's
+> a lot to learn in the paper for people intimately familiar with
+> dependently typed programming, and people without a background in
+> dependently typed programming may have a hard time following the text.
+> Perhaps the idea is that the paper should be read by experts, who
+> should then teach the material to non-experts.
+>
+> Overall I don't see much value in publishing this paper. However, I
+> didn't find any major bugs in the paper, and if others do see value in
+> publishing this text, then I don't object to that.
+>
+> Details
+> =======
+>
+> Page 4:
+>
+> "We assume the reader is familiar with [...] the notation from the
+> Agda standard library." I think you should explain some of the
+> notation that you use, including inj₁/inj₂, cong, sym, refl, isJust
+> and tt.
+>
+> The type signatures on Page 4 are not valid Agda code (if the Maybe
+> type is defined as in the standard library), because Agda cannot infer
+> the universe levels of the types A and B.
+>
+> You use two different symbols for the bind operator.
+>
+> You use two different symbols for the mplus operator.
+>
+> Page 5:
+>
+> "This uses an auxiliary, inductively definition relation": Inductively
+> /defined/ relation.
+>
+> "represented by an Agda inductively defined datatype family": Drop
+> "Agda".
+>
+> Page 8:
+>
+> I don't see the point of making the R argument to reassociate-left
+> implicit.
+>
+> Why didn't you give the code of reassociate-left?
+>
+> Page 9:
+>
+> "in order to get that our splitting of s matches the entire starting
+> r": I don't understand what you mean by "starting r".
+>
+> Page 10:
+>
+> The code in Figure 1 is not identical to the code in the text. One of
+> the literal cases seems to be missing a closing parenthesis.
+>
+> "The full proof is in the companion code.": Please include the code in
+> the paper, or on the publisher's web site, not on some external site
+> like GitHub.
+>
+> Page 11:
+>
+> "the result follows from the inductive hypothesis on D": What is D?
+>
+> One of the dot patterns is formatted strangely, using the \comp
+> symbol.
+>
+> Perhaps you should explain what a dot pattern is.
+>
+> Page 12:
+>
+> Include the definition of the "Suffix" type.
+>
+> I don't see the point of making the p and s' arguments to the
+> continuation implicit.
+>
+> Page 13:
+>
+> "\in \in{}L^s"
+>
+> "In this case, it would also be sufficient to observe that s' is a
+> non-strict suffix of s": How would you make use of this observation in
+> Agda? Using sized types?
+>
+> Page 15:
+>
+> "does not return nothing": Returns just something.
+>
+> "does not fail": Succeeds.
+>
+> Page 17:
+>
+> "we can define _accepts_ as follows": But then you define
+> accepts-intrinsic. Later you mention _accepts_, without first defining
+> it.
+>
+> Some code is too wide.
+>
+> Page 18:
+>
+> Why don't you specify a correctness property for extract?
+>
+> Some code is too wide.
+>
+>
+> Referee: 2
+>
+> Comments to the Author
+> I have some general comments first:
+>
+> I was intrigued about what it would be like, and found it to contain a useful development of an algorithm within a dependently-typed setting. What was less clear was the intended readership for the paper. While it could be used as a - relatively advanced - illustration of dependently-typed programming (in Agda), it is certainly not written to be such an introduction. Instead, it depends on
+>
+> - a prior understanding of Agda (which is fine, it can't be an introduction to everything)
+> - some knowledge of the Harper paper, and
+> - acquaintance with Reynolds' notion of defunctionalisation.
+>
+> These latter two areas would not be obvious to a learner, but it is difficult to read the paper without knowing at least something about them. While making these comparisons is useful, they are more in the form of a commentary, which would stand alongside a separate pedagogical development of the algorithms. In particular, it would have been interesting to see how the higher-order version, that requires an explicit termination counter, could be seen to come from a transformation of the defunctionalised, first-order version. (What is surprising about the transformation being this way around is that in the original work of Reynolds, it is of course in the other direction: the higher-order version is more intuitive, and the defunctionalised an optimisation of this).
+>
+> Still, a teacher will be able to extract such a presentation from what is here, and I believe that it is fine to accept this paper.
+>
+> More specific comments
+>
+> - would be good to reference the Stump text on Agda as a tutorial reference
+> - is there a particular reason for stressing the first version is "defunctionalised"? why not just call it the first-order version?
+> - you give very specific version numbers for Agda and the library: could you possibly give ranges of version numbers instead?
+> - p2, line -3: it is simpler than what?
+> - p3, top: I thought at first that you were introducing regular definitions here, but I realised when you discussed at the end of the paper that you were talking about something different: maybe you could clarify this
+> - p3 line -1: change "ported" to "transferred"
+> - p4 lines8-10: remove the long (..) and make it a subordinate clause instead.
+> - p4 middle: "match all regular expressions by translation" should explain the "translation" in more detail
+> - p4 start of section 1.1: just to be clear, you treat Strings as lists of Char.
+> - p5 mid "the the"
+> - p8 top - it seems perverse to talk about the "continuation" here … it is around this point that the paper would be improved, I think, by separating the content from the commentary, as it were
+> - p 8 mid "to show that xs++as matching" …?
+> - Section 3 in general: can you give any reflection on the pragmatics of building an algorithm / function like this in Agda? False starts and difficulties?
+> - p 11, near foot: "Visually"?
+> - p12, again, are there any general reflections on the process (if any) of transforming the first-order version into the higher-order version presented here? That would be particularly interesting as you have had to add a termination argument here: can you explain how that has come about?
+> -p12 line -4: where before we called …
+>
+> Referee: 3
+>
+> Comments to the Author
+>
+> The paper describes the verification of a regular expression matcher. The
+> content of the paper starts by defining the type for regular expressions without
+> empty word and a Kleene star. Then authors define the parse trees and provide a
+> derivation example. Next, the defunctionalized matcher is implemented in a
+> case-by-case fashion. The implementation is clean and the explanations are
+> satisfactory. However, the description of completeness proof of the matcher
+> provides the code, but almost no insight.
+>
+> Next, the higher-order matcher is implemented and proved correct. And again, by
+> thinking of your target audience (these are students according to your claims)
+> you give no insight in what CPS is, how it works, why is it relevant, and how
+> the previous version is a defunctionalized one of this version. The
+> implementation is done in couple of pages with minor comments and remarks. The
+> completeness of higher-order matcher is not explained, but merely stated.
+>
+> Next, the canonical regular expressions are addressed (in paper they are called
+> "non-standard") together with their parse "predicates". After this, authors
+> implement the "standardize" function for converting between standard and
+> non-standard versions of regular expressions. The implementation uses the \delta
+> function (it checks if the \epsilon is a part of the language of a regexp). The
+> implementation of \delta function is not explained. Overall, I find this section
+> very unpedagogical, because of complete absence of useful and insightful
+> details.
+>
+> I think that in the current shape it is complicated to qualify that paper as a
+> "functional pearl" unless more concise and elegant implementation details are
+> provided in sections 3.2 and 4. Also the related work section is missing.
+>
+> I suggest another review round for this paper.
+>
+> ------------------------
+>
+> p.4, The threshold for understanding your paper is way above the Maybe monad, so
+> it seems unnecessary to explain what Maybe is and how it is a monad.
+>
+> p.6, "The notation allows a pattern matching anonymous function" rephrase.
+>
+> p.6, It is not clear what you mean by saying: "thus predicates land in Set,
+> [...] , and thus have computation content".
+>
+> p.6, names Derivation C and D are never used.
+>
+> p.7, consider using the Agda's standard notation "\Sigma[ t : Type ]" instead of
+> "\Sigma Type (\ t -> f)".
+>
+> p.7, "constantly nothing function has this type" -- it is clear what you mean,
+> but could be made more precise.
+>
+> p.9, You say that "there is an efficiency reason to intrinsically compute the
+> derivation". However, this is true only for the case when you need the parse
+> tree. I would say that in most of the cases the recognizer is sufficient for
+> regexps and in this case computing "Maybe (s \in L(re))" is less efficient that
+> to just return a Bool.
+>
+> p.12, If  the main reader of your article is a student then it makes sense
+> to explain why RecursionPermission is a valid definition of inductive type and
+> where is the base case (how could you construct a single instance of
+> RecursionPermission). Expanding on that topic will also force you to say that
+> suffix must be nonempty.
+>
+> p.12, "bool" -> "Bool" or "Boolean"
+>
+> p.16, the "G" constructor is explained much later.
+>
+> p.16, it does not seem like a good idea to change the style of a code for one
+> single specification of standardization.
+>
+> p.18, is it possible to sensibly specify and verify the "groups" function?

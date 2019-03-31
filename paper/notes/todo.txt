@@ -1,5 +1,6 @@
 [ ] Go through all of the reviews
 [ ] Write more introduction to Agda and dependent types
+    Maybe start from very beginnings: from the Maybe type?
 [ ] Cite more related work?
   [ ] Brzozowski's regular expression matching with derivatives
       "Derivatives of regular expressions", by Brzozowski
@@ -7,3 +8,8 @@
       verified version by Mathias Vorreiter Pedersen: https://github.com/MathiasVP/idris-regex
   [ ] Maybe more about verified/validated parsing in general?
       "Validating LR(1) Parsers" by Jourdan, Pottier and Leroy
+[ ] Emphasize the novelty of the paper?
+    The review says "one can (sometimes) make a program structurally recursive by defunctionalising it"
+[ ] Make sure the code works with the latest Agda version, there are some modules not compiling
+[ ] Change the code to work with do-notation instead of binds!
+    Binds are introducing unnecessary lambdas in the artifact, cluttering the code.
