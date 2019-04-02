@@ -70,7 +70,7 @@ language, and have some pedagogical value for streamlining and extending
 the presentation of this material.
 \end{abstract}
 
-\tableofcontents
+% \tableofcontents
 
 \section{Introduction}
 
@@ -133,17 +133,20 @@ determines whether or not a string is accepted by a regular expression.
 However, for most applications of regular expression matching (and for making
 compelling homework assignments), it is useful to allow a ``bracket'' or
 ``grouping'' construct that allows the user to specify
-sub-regular-expressions whose matching strings should be reported--- for
+regular subexpressions whose matching strings should be reported--- for
 example, |AG[.*]TC[(G⊕C)*]GA| for extracting the parts of a DNA string
-surrounded by certain signal codes.  When coding a program/proof in a
+surrounded by certain signal codes. Yet the |_accepts_| function would not be
+enough to extract these parts since it merely returns a Boolean value. An
+extra mile to obtain the derivation is necessary, unless we change the way we write the matcher.
+When coding a program/proof in a
 dependently typed language, there is a choice between ``extrinsic''
 verification (write the simply-typed code, and then prove it correct)
 and ``intrinsic verification'' (fuse the program and proof into one
 function, with a dependent type).  We have formalized both a
 straightforward extrinsic verification, and an intrinsically
 \emph{sound} verification\footnote{All formalizations are available from
-  \url{http://github.com/joom/regexp-agda}. Use Agda version 2.4.2.2
-  with standard library version 0.11}, which has the dependent type
+  \url{http://github.com/joom/regexp-agda}. We compiled it under Agda version 2.5.4.1
+  with standard library version 0.16.}, which has the dependent type
 \begin{code}
 accepts-intrinsic : (r : RegExp) → (s : List Char) → Maybe (s ∈L r)
 \end{code}
@@ -546,7 +549,7 @@ mutual
   match (Litˢ c) (x ∷ xs) k =
     (isEqual x c) >>=
       (λ p → map (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf)))
-                 (match-helper k xs)
+                 (match-helper k xs))
   match (r₁ ·ˢ r₂) s k =
     map (reassociate-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL'))
       (match r₁ s (r₂ ∷ k))
@@ -705,7 +708,7 @@ match :  (C : Set) (r : StdRegExp) (s : List Char)
 \end{code}
 
 The type variable |C| stands for the output derivation computed by the
-matcher on success.  Just as Harper's algorithm returns a |bool| and
+matcher on success.  Just as Harper's algorithm returns a Boolean value and
 uses both the continuation and the language's control stack
 (i.e. it is not fully in CPS), here both the continuation and the
 matcher return an option, but the success data can be chosen

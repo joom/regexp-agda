@@ -65,14 +65,6 @@
 >
 > You use two different symbols for the mplus operator.
 >
-> Page 5:
->
-> "This uses an auxiliary, inductively definition relation": Inductively
-> /defined/ relation.
->
-> "represented by an Agda inductively defined datatype family": Drop
-> "Agda".
->
 > Page 8:
 >
 > I don't see the point of making the R argument to reassociate-left
@@ -112,8 +104,6 @@
 >
 > Page 13:
 >
-> "\in \in{}L^s"
->
 > "In this case, it would also be sufficient to observe that s' is a
 > non-strict suffix of s": How would you make use of this observation in
 > Agda? Using sized types?
@@ -130,13 +120,9 @@
 > accepts-intrinsic. Later you mention _accepts_, without first defining
 > it.
 >
-> Some code is too wide.
->
 > Page 18:
 >
 > Why don't you specify a correctness property for extract?
->
-> Some code is too wide.
 >
 >
 > Referee: 2
@@ -165,9 +151,7 @@
 > - p4 lines8-10: remove the long (..) and make it a subordinate clause instead.
 > - p4 middle: "match all regular expressions by translation" should explain the "translation" in more detail
 > - p4 start of section 1.1: just to be clear, you treat Strings as lists of Char.
-> - p5 mid "the the"
 > - p8 top - it seems perverse to talk about the "continuation" here … it is around this point that the paper would be improved, I think, by separating the content from the commentary, as it were
-> - p 8 mid "to show that xs++as matching" …?
 > - Section 3 in general: can you give any reflection on the pragmatics of building an algorithm / function like this in Agda? False starts and difficulties?
 > - p 11, near foot: "Visually"?
 > - p12, again, are there any general reflections on the process (if any) of transforming the first-order version into the higher-order version presented here? That would be particularly interesting as you have had to add a termination argument here: can you explain how that has come about?
@@ -219,9 +203,6 @@
 >
 > p.6, names Derivation C and D are never used.
 >
-> p.7, consider using the Agda's standard notation "\Sigma[ t : Type ]" instead of
-> "\Sigma Type (\ t -> f)".
->
 > p.7, "constantly nothing function has this type" -- it is clear what you mean,
 > but could be made more precise.
 >
@@ -236,8 +217,6 @@
 > where is the base case (how could you construct a single instance of
 > RecursionPermission). Expanding on that topic will also force you to say that
 > suffix must be nonempty.
->
-> p.12, "bool" -> "Bool" or "Boolean"
 >
 > p.16, the "G" constructor is explained much later.
 >

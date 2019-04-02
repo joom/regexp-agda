@@ -8,6 +8,10 @@
       verified version by Mathias Vorreiter Pedersen: https://github.com/MathiasVP/idris-regex
   [ ] Maybe more about verified/validated parsing in general?
       "Validating LR(1) Parsers" by Jourdan, Pottier and Leroy
+  [ ] CPS in parsing?
+      CPS Recursive Ascent Parsing, by Nunes-Harwitt
+      Memoization of Top-down Parsing, by Mark Johnson, https://arxiv.org/pdf/cmp-lg/9504016.pdf
+      Memoized parsing in continuation-passing style, by Ömer Sinan Ağacan. https://osa1.net/posts/2013-10-21-memoized-parsing-cps.html
 [ ] Emphasize the novelty of the paper?
     The review says "one can (sometimes) make a program structurally recursive by defunctionalising it"
 [ ] Make sure the code works with the latest Agda version, there are some modules not compiling
