@@ -28,14 +28,14 @@ module IntrinsicDefun where
 
   change-∈L : {a b d : List Char → Set} {c : List Char → List Char → Set}
             → (∀ {s} → a s → b s)
-            → (Σ _ (λ {(p , s') → (c p s') × (a p) × (d s')}))
-            → (Σ _ (λ {(p , s') → (c p s') × (b p) × (d s')}))
+            → (Σ (List Char × List Char) (λ {(p , s') → (c p s') × (a p) × (d s')}))
+            → (Σ (List Char × List Char) (λ {(p , s') → (c p s') × (b p) × (d s')}))
   change-∈L f (x , eq , inL , rest) = (x , eq , f inL , rest)
 
   reassociate-left : ∀ {r₁ r₂ s k} {R : StdRegExp → StdRegExp → StdRegExp}
                → (f : ∀ {xs as} → xs ∈Lˢ r₁ → as ∈Lˢ r₂ → ((xs ++ as) ∈Lˢ R r₁ r₂))
-               → Σ _ (λ { (xs , ys) → (xs ++ ys ≡ s) × xs ∈Lˢ r₁ × Σ _ (λ {(as , bs) → (as ++ bs ≡ ys) × as ∈Lˢ r₂ × bs ∈Lᵏ k})})
-               → (Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ R r₁ r₂) × s' ∈Lᵏ k}))
+               → Σ (List Char × List Char) (λ { (xs , ys) → (xs ++ ys ≡ s) × xs ∈Lˢ r₁ × Σ (List Char × List Char) (λ {(as , bs) → (as ++ bs ≡ ys) × as ∈Lˢ r₂ × bs ∈Lᵏ k})})
+               → (Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ R r₁ r₂) × s' ∈Lᵏ k}))
   reassociate-left {_}{_}{s} f ((xs , ys) , eq , inL , (as , bs) , eq' , inL' , rest) =
     ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , f inL inL' , rest )
 
@@ -53,7 +53,9 @@ module IntrinsicDefun where
     match ∅ˢ s k = fail
     match (Litˢ c) [] k = fail
     match (Litˢ c) (x ∷ xs) k =
-      (isEqual x c) >>= (λ p → Data.Maybe.map (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))) (match-helper k xs))
+      do p ← isEqual x c
+         Data.Maybe.map (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))) (match-helper k xs)
+      -- (isEqual x c) >>= (λ p → Data.Maybe.map (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))) (match-helper k xs))
     match (r₁ ·ˢ r₂) s k =
       Data.Maybe.map (reassociate-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL')) (match r₁ s (r₂ ∷ k))
     match (r₁ ⊕ˢ r₂) s k =

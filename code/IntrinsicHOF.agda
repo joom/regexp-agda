@@ -45,7 +45,7 @@ module IntrinsicHOF where
                      → (s : List Char)
                      → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
                      → (perm : RecursionPermission s)
-                     → Σ _ (λ { (p , s') → Σ _ (λ eq → Σ _ (λ inL → isJust (k {p}{s'} eq inL))) })
+                     → Σ (List Char × List Char) (λ { (p , s') → Σ _ (λ eq → Σ _ (λ inL → isJust (k {p}{s'} eq inL))) })
                      → isJust (match C r s k perm)
   match-completeness _ ∅ˢ _ _ _ (_ , _ , () , _)
   match-completeness C (Litˢ x) .(x ∷ ys) k perm ((.(x ∷ []) , ys) , refl , refl , m) with x Data.Char.≟ x

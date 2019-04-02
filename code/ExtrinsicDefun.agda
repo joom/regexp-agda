@@ -27,7 +27,7 @@ module ExtrinsicDefun where
   match (r ⁺ˢ) s k = (match r s k) ∨ (match r s ((r ⁺ˢ) ∷ k))
 
   -- Proofs
-  match-soundness : (r : StdRegExp) → (s : List Char) → (k : List StdRegExp) → match r s k ≡ true → (Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
+  match-soundness : (r : StdRegExp) → (s : List Char) → (k : List StdRegExp) → match r s k ≡ true → (Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
   match-soundness ∅ˢ s k ()
   match-soundness (Litˢ x) [] k ()
   match-soundness (Litˢ x) (y ∷ ys) k m with x Data.Char.≟ y
@@ -48,7 +48,7 @@ module ExtrinsicDefun where
   match-soundness (r ⁺ˢ) s k m | inj₂ y with match-soundness r s ((r ⁺ˢ) ∷ k) y
   match-soundness (r ⁺ˢ) s k m | inj₂ y | (xs , ys) , eq , inL , ((as , bs) , eq' , inL' , rest) = (xs ++ as , bs) , (replace-right xs ys as bs s eq' eq , (C+ {xs ++ as} {xs} {as} refl inL inL' , rest))
 
-  match-completeness : (r : StdRegExp) → (s : List Char) → (k : List StdRegExp) → (Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k})) → match r s k ≡ true
+  match-completeness : (r : StdRegExp) → (s : List Char) → (k : List StdRegExp) → (Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k})) → match r s k ≡ true
   match-completeness ∅ˢ _ _ (_ , _ , c , _) = ⊥-elim c
   match-completeness (Litˢ _) [] _ ((.(_ ∷ []) , _) , () , refl , _)
   match-completeness (Litˢ x) .(x ∷ xs) k ((.(x ∷ []) , xs) , refl , refl , rest) with x Data.Char.≟ x
