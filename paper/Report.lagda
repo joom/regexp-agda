@@ -1,3 +1,4 @@
+% Preamble, title, abstract etc {{{
 \RequirePackage{amsmath}
 \NeedsTeXFormat{LaTeX2e}
 \documentclass{jfp1}
@@ -72,8 +73,9 @@ language, and have some pedagogical value for streamlining and extending
 the presentation of this material.
 \end{abstract}
 
-% \tableofcontents
-
+\tableofcontents
+% }}}
+% Introduction {{{
 \section{Introduction}
 
 Regular expression matching is a venerable problem, studied in many
@@ -215,9 +217,17 @@ Section~\ref{sec:nonstandard}, we show that these matchers suffice to
 match all regular expressions by translation.  In
 Section~\ref{sec:groups} we discuss how to extract matching strings.
 
+% endsection }}}
+% Background {{{
 \subsection{The Agda programming language and dependent types}
 \todo{Write an introduction to Agda.}
 \todo{Explain inj₁/inj₂, cong, sym, refl, isJust and tt.}
+
+\begin{code}
+data Suffix {A : Set} : List A → List A → Set where
+  Stop : ∀ {x xs} → Suffix xs (x ∷ xs)
+  Drop : ∀ {y xs ys} → Suffix xs ys → Suffix xs (y ∷ ys)
+\end{code}
 
 \subsection{Agda definitions}
 
@@ -239,6 +249,8 @@ map f (just x) = just (f x)
 map _ nothing  = nothing
 \end{code}
 
+% endsection }}}
+% Syntactically standard regular expressions {{{
 \section{Syntactically standard regular expressions}
 \label{sec:standard}
 
@@ -364,6 +376,8 @@ strings from such derivations.
 % ex₂ = ('a' ∷ 'a' ∷ [] , 'a' ∷ []) , refl , C+ refl refl (S+ refl) , S+ refl
 % \end{code}
 
+% endsection }}}
+% Defunctionalized intrinsic matcher {{{
 \section{Defunctionalized intrinsic matcher}
 \label{sec:defunc}
 
@@ -665,6 +679,8 @@ acceptsˢ-intrinsic-completeness :  (r : StdRegExp) (s : List Char)
                                    → isJust (acceptsˢ-intrinsic r s)
 \end{code}
 
+% endsection }}}
+% Higher-order intrinsic matcher {{{
 \section{Higher-order intrinsic matcher}
 \label{sec:hof}
 
@@ -903,6 +919,8 @@ than one derivation of a string matching a regexp.  The proof is in the
 companion code, and follows the same pattern as the proof of
 |match-completeness| for the defunctionalized version.
 
+% endsection }}}
+% Matching non-standard regular expressions {{{
 \section{Matching non-standard regular expressions}
 \label{sec:nonstandard}
 
@@ -1103,6 +1121,8 @@ groups : (r : RegExp) (s : List Char) → Maybe (List (List Char))
 groups r s = map extract (accepts-intrinsic r s)
 \end{code}
 
+% endsection }}}
+% Conclusion {{{
 \section{Conclusion}
 
 We have studied three variations on Harper's algorithm for regular
@@ -1119,6 +1139,13 @@ this material in courses on dependently typed programming---or, by
 porting the observations back to simply-typed languages, on introductory
 programming.
 
+\todo{Itemized list of the concepts this paper illustrates, maybe in contrast to Harper's?}
+\begin{enumerate}
+  \item \emph{}:
+  \item \emph{}:
+  \item \emph{}:
+\end{enumerate}
+
 \section*{Acknowledgments}
 
 This material is based on research sponsored in part by The United States
@@ -1134,3 +1161,5 @@ Mellon University.
 \bibliography{paper}
 
 \end{document}
+
+% }}}
