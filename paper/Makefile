@@ -6,7 +6,7 @@ LATEX=pdflatex
 default: preview
 
 lagda:
-	lhs2TeX -o $(FILENAME).tex $(SOURCENAME).lagda --agda
+	lhs2TeX --poly -o $(FILENAME).tex $(SOURCENAME).lagda --agda
 
 compile:
 	@$(LATEX) $(FILENAME).tex

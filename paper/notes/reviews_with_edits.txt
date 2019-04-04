@@ -193,8 +193,7 @@
 >
 > ------------------------
 >
-> p.4, The threshold for understanding your paper is way above the Maybe monad, so
-> it seems unnecessary to explain what Maybe is and how it is a monad.
+> p.4, The threshold for understanding your paper is way above the Maybe monad, so it seems unnecessary to explain what Maybe is and how it is a monad.
 >
 > p.6, "The notation allows a pattern matching anonymous function" rephrase.
 >

@@ -6,6 +6,7 @@
 \def\textmu{}
 
 %include agda.fmt
+%include jfpcompat.fmt
 \usepackage{textgreek} % not reproducible without textgreek
 \usepackage{bussproofs}
 \usepackage{color}
@@ -44,9 +45,10 @@
        }
 
 \begin{document}
-\renewcommand\otherpearl{\ \\P\ls R\ls O\ls O\ls F\ns P\ls E\ls A\ls R\ls L\\}
-\maketitle[o]
-\shorttitle{Proof Pearl: Intrinsic Verification of a Regular Expression Matcher}
+% \renewcommand\otherpearl{\ \\P\ls R\ls O\ls O\ls F\ns P\ls E\ls A\ls R\ls L\\}
+% \maketitle[o]
+\maketitle[E]
+\shorttitle{Educational Pearl: Intrinsic Verification of a Regular Expression Matcher}
 
 \begin{abstract}
 Robert Harper's 1999 functional pearl on regular expression matching is a
@@ -228,16 +230,6 @@ useful to use monadic notation for |Maybe| (in Haskell terminology,
 |_∣∣_| is |mplus| and |map| is |fmap|):
 
 \begin{code}
-return : ∀ {A} → A → Maybe A
-return = just
-
-fail : ∀ {A} → Maybe A
-fail = nothing
-
-_>>=_ : ∀ {A B} → Maybe A → (A → Maybe B) → Maybe B
-just x >>= f = f x
-nothing >>= f = nothing
-
 _∣∣_ : ∀ {A} → Maybe A → Maybe A → Maybe A
 just x | _ = just x
 nothing | y = y
@@ -400,7 +392,7 @@ translates into the following dependent type/specification:
 \begin{code}
 match :  (r : StdRegExp) (s : List Char) (k : List StdRegExp)
          → Maybe  (Σ  (List Char × List Char)
-                       (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
+                       (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ∈Lᵏ k)}))
 \end{code}
 This says that the matcher takes a regular expression |r|, a string |s|
 and a stack |k|, and, if matching succeeds, returns a splitting |(p ++
@@ -421,20 +413,22 @@ then the regular expression |r|.  We now discuss the code case by case.
 
 First, the empty language does not accept any string:
 \begin{code}
-match ∅ˢ s k = fail
+match ∅ˢ s k = nothing
 \end{code}
 
 For character literals
+%format & = "\hsindent{1}{}\,"
+%format do = "\Keyword{do}"
 \begin{code}
-match (Litˢ c) [] k = fail
+match (Litˢ c) [] k = nothing
 match (Litˢ c) (x ∷ xs) k =
-  (isEqual x c) >>=
-    (λ p → map (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf)))
-               (match-helper k xs))
+  do eq ← is-equal x c
+  & pf ← match-helper k xs
+  & just ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym eq) , refl , pf))
 \end{code}
 in the first case, if we are trying to match an empty list with a
 regular expression that requires a character, the matcher fails.  In the
-next case, the |isEqual x c| call has type |Maybe (x ≡ c)|---i.e. it
+next case, the |is-equal x c| call has type |Maybe (x ≡ c)|---i.e. it
 optionally shows that |x| is equal to |c|.  Thus, by the monad bind,
 when |x| is not |c|, the matcher fails, and when |x| is |c|, we try to
 match the stack |k| against the suffix |xs| using |match-helper|.
@@ -443,8 +437,8 @@ The function |match-helper| is mutually recursive with our matcher and
 is defined as follows:
 \begin{code}
 match-helper : (k : List StdRegExp) → (s : List Char) → Maybe (s ∈Lᵏ k)
-match-helper [] [] = return refl
-match-helper [] (x ∷ s) = fail
+match-helper [] [] = just refl
+match-helper [] (x ∷ s) = nothing
 match-helper (r ∷ k') s = match r s k'
 \end{code}
 It succeeds when matching the empty string against the empty stack,
@@ -542,14 +536,15 @@ starting |r|.
 \figrule
 \begin{code}
 mutual
-  match : (r : StdRegExp) (s : List Char) (k : List StdRegExp)
-        → Maybe (Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
-  match ∅ˢ s k = fail
-  match (Litˢ c) [] k = fail
+  match :  (r : StdRegExp) (s : List Char) (k : List StdRegExp)
+           → Maybe  (Σ  (List Char × List Char)
+                         (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ∈Lᵏ k)}))
+  match ∅ˢ s k = nothing
+  match (Litˢ c) [] k = nothing
   match (Litˢ c) (x ∷ xs) k =
-    (isEqual x c) >>=
-      (λ p → map (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf)))
-                 (match-helper k xs))
+    do eq ← is-equal x c
+    & pf ← match-helper k xs
+    & just ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym eq) , refl , pf))
   match (r₁ ·ˢ r₂) s k =
     map (reassociate-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL'))
       (match r₁ s (r₂ ∷ k))
@@ -562,8 +557,8 @@ mutual
       (match r s ((r ⁺ˢ) ∷ k)))
 
   match-helper : (k : List StdRegExp) → (s : List Char) → Maybe (s ∈Lᵏ k)
-  match-helper [] [] = return refl
-  match-helper [] (x ∷ s) = fail
+  match-helper [] [] = just refl
+  match-helper [] (x ∷ s) = nothing
   match-helper (r ∷ k') s = match r s k'
 \end{code}
 \caption{Defunctionalized intrinsic matcher}
@@ -702,7 +697,7 @@ The higher-order intrinsic matcher has the following specification:
 
 \begin{code}
 match :  (C : Set) (r : StdRegExp) (s : List Char)
-         → (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
+         → (k : (p s' : List Char) → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
          → RecursionPermission s
          → Maybe C
 \end{code}
@@ -727,14 +722,14 @@ Figure~\ref{fig:intrinsic-hof-matcher}.
 
 The case for the empty regular expression fails:
 \begin{code}
-match C ∅ˢ s k perm = fail
+match C ∅ˢ s k perm = nothing
 \end{code}
-
 The cases for character literals
 \begin{code}
-match C (Litˢ c) [] k perm = fail
+match C (Litˢ c) [] k perm = nothing
 match C (Litˢ c) (x ∷ xs) k perm =
-  (isEqual x c) >>= (λ p → k {[ x ]} {xs} refl (cong (λ q → [ q ]) p))
+  do eq ← is-equal x c
+  & k [ x ] xs refl (cong [_] eq)
 \end{code}
 are as above, except that where we called |match-helper| to activate the
 stack |k|, here we call |k| itself.  The packaging of the result of
@@ -747,9 +742,9 @@ something in the language of |Litˢ c| and some suffix.
 \begin{code}
 match C (r₁ ·ˢ r₂) s k (CanRec f) =
   match C r₁ s
-        (λ {p}{s'} eq inL →
-          match C r₂ s' (λ {p'}{s''} eq' inL' →
-                          k {p ++ p'}{s''} (replace-right p s' p' s'' s eq' eq) ((p , p') , refl , inL , inL'))
+        (λ p s' eq inL →
+          match C r₂ s' (λ p' s'' eq' inL' →
+                          k (p ++ p') s'' (replace-right p s' p' s'' s eq' eq) ((p , p') , refl , inL , inL'))
                         (f s' (suffix-after-∈Lˢ eq inL))) (CanRec f)
 \end{code}
 
@@ -785,8 +780,8 @@ argument we just gave will also be used in the Kleene plus case.)
 
 \begin{code}
 match C (r₁ ⊕ˢ r₂) s k perm =
-  match C r₁ s (λ eq inL → k eq (inj₁ inL)) perm ∣∣
-  match C r₂ s (λ eq inL → k eq (inj₂ inL)) perm
+  match C r₁ s (λ p s' eq inL → k p s' eq (inj₁ inL)) perm ∣∣
+  match C r₂ s (λ p s' eq inL → k p s' eq (inj₂ inL)) perm
 \end{code}
 
 The alternation case is similar to the defunctionalized version, except
@@ -797,10 +792,10 @@ change-∈L|, we modify them before passing them to the continuation.
 
 \begin{code}
 match C (r ⁺ˢ) s k (CanRec f) =
-  match C r s (λ eq inL → k eq (S+ inL)) (CanRec f) ∣∣
-  match C r s (λ {p}{s'} eq inL →
-                match C (r ⁺ˢ) s' (λ {p'}{s''} eq' inL' →
-                                    k (replace-right p s' p' s'' s eq' eq) (C+ refl inL inL') )
+  match C r s (λ p s' eq inL → k p s' eq (S+ inL)) (CanRec f) ∣∣
+  match C r s (λ p s' eq inL →
+                match C (r ⁺ˢ) s' (λ p' s'' eq' inL' →
+                                    k (p ++ p') s'' (replace-right p s' p' s'' s eq' eq) (C+ refl inL inL') )
                       (f s' (suffix-after-∈Lˢ eq inL))) (CanRec f)
 \end{code}
 
@@ -831,27 +826,28 @@ point it is syntactically clear that the recursive call \emph{is being
 \figrule
 \begin{code}
 match :  (C : Set) (r : StdRegExp) (s : List Char)
-         (k : ∀ {p s'} → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
+         (k : (p s' : List Char) → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
          → RecursionPermission s
          → Maybe C
-match C ∅ˢ s k perm = fail
-match C (Litˢ c) [] k perm = fail
+match C ∅ˢ s k perm = nothing
+match C (Litˢ c) [] k perm = nothing
 match C (Litˢ c) (x ∷ xs) k perm =
-  (isEqual x c) >>= (λ p → k {[ x ]} {xs} refl (cong (λ q → [ q ]) p))
+  do eq ← is-equal x c
+  & k [ x ] xs refl (cong [_] eq)
 match C (r₁ ·ˢ r₂) s k (CanRec f) =
   match C r₁ s
-        (λ {p}{s'} eq inL →
-          match C r₂ s' (λ {p'}{s''} eq' inL' →
-                          k {p ++ p'}{s''} (replace-right p s' p' s'' s eq' eq) ((p , p') , refl , inL , inL'))
+        (λ p s' eq inL →
+          match C r₂ s' (λ p' s'' eq' inL' →
+                          k (p ++ p') s'' (replace-right p s' p' s'' s eq' eq) ((p , p') , refl , inL , inL'))
                         (f _ (suffix-after-∈Lˢ eq inL))) (CanRec f)
 match C (r₁ ⊕ˢ r₂) s k perm =
-  match C r₁ s (λ eq inL → k eq (inj₁ inL)) perm ∣∣
-  match C r₂ s (λ eq inL → k eq (inj₂ inL)) perm
+  match C r₁ s (λ p s' eq inL → k p s' eq (inj₁ inL)) perm ∣∣
+  match C r₂ s (λ p s' eq inL → k p s' eq (inj₂ inL)) perm
 match C (r ⁺ˢ) s k (CanRec f) =
-  match C r s (λ eq inL → k eq (S+ inL)) (CanRec f) ∣∣
-  match C r s (λ {p}{s'} eq inL →
-                match C (r ⁺ˢ) s' (λ {p'}{s''} eq' inL' →
-                                    k (replace-right p s' p' s'' s eq' eq) (C+ refl inL inL') )
+  match C r s (λ p s' eq inL → k p s' eq (S+ inL)) (CanRec f) ∣∣
+  match C r s (λ p s' eq inL →
+                match C (r ⁺ˢ) s' (λ p' s'' eq' inL' →
+                                    k (p ++ p') s'' (replace-right p s' p' s'' s eq' eq) (C+ refl inL inL') )
                       (f _ (suffix-after-∈Lˢ eq inL))) (CanRec f)
 \end{code}
 \caption{Complete definition of the |match| function for
@@ -865,7 +861,7 @@ match C (r ⁺ˢ) s k (CanRec f) =
 Overall, we can define
 \begin{code}
 acceptsˢ-intrinsic : (r : StdRegExp) → (s : List Char) → Maybe (s ∈Lˢ r)
-acceptsˢ-intrinsic r s = match _ r s empty-continuation (well-founded s)
+acceptsˢ-intrinsic r s = match _ r s (λ p s' → empty-continuation) (well-founded s)
 \end{code}
 by choosing an appropriate initial continuation, and by constructing a
 recursion permission for |s| (which exists because string suffix is a

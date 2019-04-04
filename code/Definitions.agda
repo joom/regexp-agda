@@ -35,8 +35,8 @@ module Definitions where
     s ∈Lˢ (r ⁺ˢ) = s ∈L⁺ r
 
     data _∈L⁺_ : List Char → StdRegExp → Set where
-        S+ : ∀ {s r} → s ∈Lˢ r → s ∈L⁺ r
-        C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
+      S+ : ∀ {s r} → s ∈Lˢ r → s ∈L⁺ r
+      C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
 
   {- Suffix xs ys means that xs is a suffix of ys -}
   data Suffix {A : Set} : List A → List A → Set where
@@ -55,5 +55,5 @@ module Definitions where
   s ∈Lᵏ [] = s ≡ []
   s ∈Lᵏ (r ∷ rs) = Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ∈Lᵏ rs) })
 
-  isEqual : (x y : Char) → Maybe (x ≡ y)
-  isEqual x y = decToMaybe (x Data.Char.≟ y)
+  is-equal : (x y : Char) → Maybe (x ≡ y)
+  is-equal x y = decToMaybe (x Data.Char.≟ y)

@@ -16,7 +16,7 @@ module ExtrinsicHOF where
   open import Relation.Binary.PropositionalEquality
 
   -- Matching algorithm
-  match : StdRegExp → (s : List Char) → (Σ _ (λ s' → Suffix s' s) → Bool) → RecursionPermission s → Bool
+  match : StdRegExp → (s : List Char) → (Σ (List Char) (λ s' → Suffix s' s) → Bool) → RecursionPermission s → Bool
   match ∅ˢ s k _ = false
   match (Litˢ _) [] _ _ = false
   match (Litˢ c) (x ∷ xs) k _ = (x == c) ∧ (k (xs , Stop))
@@ -29,7 +29,7 @@ module ExtrinsicHOF where
   {- Show that if match r s k perm is true, then there is a split of s, namely s₁ s₂, such that s₁ ∈L r and k s₂ is true. -}
   match-soundness : (r : StdRegExp)
                   → (s : List Char)
-                  → (k : Σ _ (λ s' → Suffix s' s) → Bool)
+                  → (k : Σ (List Char) (λ s' → Suffix s' s) → Bool)
                   → (perm : RecursionPermission s)
                   → match r s k perm ≡ true
                   → Σ (List Char × (Σ _ (λ s' → Suffix s' s))) (λ { (p , (s' , sf)) → (p ++ s' ≡ s) × (p ∈Lˢ r) × (k (s' , sf) ≡ true)})

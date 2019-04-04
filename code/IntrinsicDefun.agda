@@ -20,7 +20,6 @@ module IntrinsicDefun where
   open import Relation.Binary.PropositionalEquality hiding ([_])
   import Agda.Primitive
 
-
   -- Using groups
 
   -- open RawMonadZero {Agda.Primitive.lzero} Data.Maybe.monadZero renaming (∅ to fail)
@@ -53,9 +52,16 @@ module IntrinsicDefun where
     match ∅ˢ s k = fail
     match (Litˢ c) [] k = fail
     match (Litˢ c) (x ∷ xs) k =
-      do p ← isEqual x c
-         Data.Maybe.map (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))) (match-helper k xs)
-      -- (isEqual x c) >>= (λ p → Data.Maybe.map (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))) (match-helper k xs))
+        do eq ← is-equal x c
+           pf ← match-helper k xs
+           just ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym eq) , refl , pf))
+      -- case (x Data.Char.≟ c) of
+      --   -- λ { (yes p) → Data.Maybe.map (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))) (match-helper k xs)
+      --   λ { (yes p) →
+      --       do pf ← match-helper k xs
+      --          just ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))
+      --     ; (no _) → fail
+      --     }
     match (r₁ ·ˢ r₂) s k =
       Data.Maybe.map (reassociate-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL')) (match r₁ s (r₂ ∷ k))
     match (r₁ ⊕ˢ r₂) s k =
