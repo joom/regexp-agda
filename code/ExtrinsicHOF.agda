@@ -36,6 +36,9 @@ module ExtrinsicHOF where
 
   -- Proofs
 
+  -- data _∈L_✂_  (s : List Char) (r : StdRegExp) (k : (s' : List Char) → Suffix s' s → Bool) : Set where
+  --   sound : (p s' : List Char) (sf : Suffix s' s) → (p ++ s' ≡ s) → (p ∈Lˢ r) → (k s' sf ≡ true) → s ∈L r ✂ k
+
   {- Show that if match r s k perm is true, then there is a split of s, namely s₁ s₂, such that s₁ ∈L r and k s₂ is true. -}
   match-soundness : (r : StdRegExp)
                   → (s : List Char)

@@ -48,20 +48,13 @@ module IntrinsicDefun where
     match : (r : StdRegExp)
           → (s : List Char)
           → (k : List StdRegExp)
-          → Maybe (Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k}))
+          → Maybe (s ∈Lᵏ (r ∷ k))
     match ∅ˢ s k = fail
     match (Litˢ c) [] k = fail
     match (Litˢ c) (x ∷ xs) k =
         do eq ← is-equal x c
            pf ← match-helper k xs
            just ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym eq) , refl , pf))
-      -- case (x Data.Char.≟ c) of
-      --   -- λ { (yes p) → Data.Maybe.map (λ pf → ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))) (match-helper k xs)
-      --   λ { (yes p) →
-      --       do pf ← match-helper k xs
-      --          just ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym p) , refl , pf))
-      --     ; (no _) → fail
-      --     }
     match (r₁ ·ˢ r₂) s k =
       Data.Maybe.map (reassociate-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL')) (match r₁ s (r₂ ∷ k))
     match (r₁ ⊕ˢ r₂) s k =
@@ -79,7 +72,7 @@ module IntrinsicDefun where
     match-completeness : (r : StdRegExp)
                        → (s : List Char)
                        → (k : List StdRegExp)
-                       → Σ _ (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × s' ∈Lᵏ k})
+                       → s ∈Lᵏ (r ∷ k)
                        → isJust (match r s k)
     match-completeness ∅ˢ _ _ (_ , _ , () , _)
     match-completeness (Litˢ x) .(x ∷ xs) k ((.(x ∷ []) , xs) , refl , refl , rest) with x Data.Char.≟ x
