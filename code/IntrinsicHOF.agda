@@ -24,7 +24,7 @@ module IntrinsicHOF where
   match : (C : Set)
         → (r : StdRegExp)
         → (s : List Char)
-        → (k : (p s' : List Char) → p ++ s' ≡ s  → p ∈Lˢ r → Maybe C)
+        → (k : (p s' : List Char) → (p ++ s' ≡ s) → (p ∈Lˢ r) → Maybe C)
         → RecursionPermission s
         → Maybe C
   match C ∅ˢ s k perm = fail
@@ -32,10 +32,6 @@ module IntrinsicHOF where
   match C (Litˢ c) (x ∷ xs) k perm =
     do eq ← is-equal x c
        k [ x ] xs refl (cong [_] eq)
-    -- case (x Data.Char.≟ c) of
-    --   λ { (yes p)  → k {[ x ]} {xs} refl (cong (λ q → [ q ]) p)
-    --     ; (no _) → fail
-    --     }
   match C (r₁ ·ˢ r₂) s k (CanRec f) =
     match C r₁ s (λ p s' eq inL → match C r₂ s' (λ p' s'' eq' inL' → k (p ++ p') s'' (replace-right p s' p' s'' s eq' eq) ((p , p') , refl , inL , inL')) (f _ (suffix-after-∈Lˢ eq inL))) (CanRec f)
   match C (r₁ ⊕ˢ r₂) s k perm =
