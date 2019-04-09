@@ -55,15 +55,12 @@ module IntrinsicDefun where
     match ∅ˢ s k = nothing
     match (Litˢ c) [] k = nothing
     match (Litˢ c) (x ∷ xs) k =
-        do eq ← is-equal x c
+        do refl ← is-equal x c
            pf ← match-helper k xs
-           just (cons _ _ (cong (λ x → x ∷ xs) (sym eq)) ∈ˢLit pf)
-    match (r₁ ·ˢ r₂) s k =
-      M.map change-∈L-· (match r₁ s (r₂ ∷ k))
-    match (r₁ ⊕ˢ r₂) s k =
-      (M.map change-∈L-⊕₁ (match r₁ s k)) ∣ (M.map change-∈L-⊕₂ (match r₂ s k))
-    match (r ⁺ˢ) s k =
-      (M.map change-∈L-S+ (match r s k)) ∣ (M.map change-∈L-C+ (match r s ((r ⁺ˢ) ∷ k)))
+           just (cons [ x ] xs refl ∈ˢLit pf)
+    match (r₁ ·ˢ r₂) s k = M.map change-∈L-· (match r₁ s (r₂ ∷ k))
+    match (r₁ ⊕ˢ r₂) s k = (M.map change-∈L-⊕₁ (match r₁ s k)) ∣ (M.map change-∈L-⊕₂ (match r₂ s k))
+    match (r ⁺ˢ) s k = (M.map change-∈L-S+ (match r s k)) ∣ (M.map change-∈L-C+ (match r s ((r ⁺ˢ) ∷ k)))
 
   mutual
     match-helper-some : (k : List StdRegExp) → (s : List Char) → (s ∈Lᵏ k) → isJust (match-helper k s)
@@ -77,10 +74,10 @@ module IntrinsicDefun where
                        → isJust (match r s k)
     match-completeness ∅ˢ s k (cons _ _ eq () inK)
     match-completeness (Litˢ x) .(x ∷ _) k (cons _ s' refl ∈ˢLit inK) with x Data.Char.≟ x
-    ... | no q = ⊥-elim (q refl)
-    ... | yes p with match-helper k s' | match-helper-some k s' inK
-    ...            | just _  | tt = tt
-    ...            | nothing | ()
+    match-completeness (Litˢ x) .((x ∷ []) ++ s') k (cons .(x ∷ []) s' refl ∈ˢLit inK) | no ¬p = ⊥-elim (¬p refl)
+    match-completeness (Litˢ x) .((x ∷ []) ++ s') k (cons .(x ∷ []) s' refl ∈ˢLit inK) | yes refl with match-helper k s' | match-helper-some k s' inK
+    match-completeness (Litˢ x) .((x ∷ []) ++ s') k (cons .(x ∷ []) s' refl ∈ˢLit inK) | yes refl | just _ | tt = tt
+    match-completeness (Litˢ x) .((x ∷ []) ++ s') k (cons .(x ∷ []) s' refl ∈ˢLit inK) | yes refl | nothing | ()
     match-completeness (r₁ ·ˢ r₂) s k (cons p s' eq (∈ˢ· {_}{as}{bs} eq' inL' inK') inK)
       with match r₁ s (r₂ ∷ k)
          | match-completeness r₁ s (r₂ ∷ k) (cons as (bs ++ s') (replace-left {as} eq' eq) inL' (cons bs s' refl inK' inK))

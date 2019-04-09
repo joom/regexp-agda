@@ -26,23 +26,10 @@ module Definitions where
   infixr 2 _·ˢ_
   infixr 3 _⊕ˢ_
 
-  -- mutual
-  --   _∈Lˢ_ : List Char → StdRegExp → Set
-  --   _ ∈Lˢ ∅ˢ = ⊥
-  --   s ∈Lˢ (Litˢ c) = s ≡ c ∷ []
-  --   s ∈Lˢ (r₁ ⊕ˢ r₂) = (s ∈Lˢ r₁) ⊎ (s ∈Lˢ r₂)
-  --   s ∈Lˢ (r₁ ·ˢ r₂) = Σ (List Char × List Char) (λ { (p , q)  → (p ++ q ≡ s) × (p ∈Lˢ r₁) × (q ∈Lˢ r₂) })
-  --   s ∈Lˢ (r ⁺ˢ) = s ∈L⁺ r
-
-  --   data _∈L⁺_ : List Char → StdRegExp → Set where
-  --     S+ : ∀ {s r} → s ∈Lˢ r → s ∈L⁺ r
-  --     C+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈Lˢ r → s₂ ∈L⁺ r → s ∈L⁺ r
-
   data _∈Lˢ_ : List Char → StdRegExp → Set where
     ∈ˢLit : ∀ {c} → (c ∷ []) ∈Lˢ (Litˢ c)
     ∈ˢ⊕₁ : ∀ {s r₁ r₂} → s ∈Lˢ r₁ → s ∈Lˢ (r₁ ⊕ˢ r₂)
     ∈ˢ⊕₂ : ∀ {s r₁ r₂} → s ∈Lˢ r₂ → s ∈Lˢ (r₁ ⊕ˢ r₂)
-    -- ∈ˢ· : ∀ {p q r₁ r₂} → p ∈Lˢ r₁ → q ∈Lˢ r₂ → (p ++ q) ∈Lˢ (r₁ ·ˢ r₂)
     ∈ˢ· : ∀ {s p q r₁ r₂} → p ++ q ≡ s → p ∈Lˢ r₁ → q ∈Lˢ r₂ → s ∈Lˢ (r₁ ·ˢ r₂)
     ∈ˢS+ : ∀ {s r} → s ∈Lˢ r → s ∈Lˢ (r ⁺ˢ)
     ∈ˢC+ : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈Lˢ r → s₂ ∈Lˢ (r ⁺ˢ) → s ∈Lˢ (r ⁺ˢ)

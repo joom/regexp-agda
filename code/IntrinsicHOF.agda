@@ -30,8 +30,8 @@ module IntrinsicHOF where
   match C ∅ˢ s k perm = nothing
   match C (Litˢ c) [] k perm = nothing
   match C (Litˢ c) (x ∷ xs) k perm =
-    do refl ← is-equal x c
-       k [ x ] xs refl ∈ˢLit
+      do refl ← is-equal x c
+         k [ x ] xs refl ∈ˢLit
   match C (r₁ ·ˢ r₂) s k (CanRec f) =
     match C r₁ s (λ p s' eq inL → match C r₂ s' (λ p' s'' eq' inL' → k (p ++ p') s'' (replace-right eq' eq) (∈ˢ· refl inL inL')) (f _ (suffix-after-∈Lˢ eq inL))) (CanRec f)
   match C (r₁ ⊕ˢ r₂) s k perm =

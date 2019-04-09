@@ -37,21 +37,6 @@ module RegExpDefinitions where
       (Lit '<' · (Lit '0' *) · Lit '>') accepts "<00>"
   -}
 
-  -- Shows a string accepted by the language of a regexp. Type "\in L".
-  -- mutual
-  --   _∈L_ : List Char → RegExp → Set
-  --   _ ∈L ∅ = ⊥
-  --   s ∈L ε = s ≡ []
-  --   s ∈L (Lit c) = s ≡ c ∷ []
-  --   s ∈L (r₁ ⊕ r₂) = (s ∈L r₁) ⊎ (s ∈L r₂)
-  --   s ∈L (r₁ · r₂) = Σ (List Char × List Char) (λ { (p , q) → (p ++ q ≡ s) × (p ∈L r₁) × (q ∈L r₂) })
-  --   s ∈L (r *) = s ∈Lˣ r
-  --   s ∈L (G r) = s ∈L r
-
-  --   data _∈Lˣ_ : List Char → RegExp → Set where
-  --       Ex : ∀ {s r} → s ≡ [] → s ∈Lˣ r
-  --       Cx : ∀ {s s₁ s₂ r} → s₁ ++ s₂ ≡ s → s₁ ∈L r → s₂ ∈Lˣ r → s ∈Lˣ r
-
   data _∈L_ : List Char → RegExp → Set where
     ∈ε : [] ∈L ε
     ∈Lit : ∀ {c} → (c ∷ []) ∈L (Lit c)
