@@ -11,6 +11,7 @@ module IntrinsicDefun where
   open import Data.Empty
   open import Data.List
   open import Data.Maybe
+  import Data.Maybe as M
   open import Data.Product
   import Data.String as String
   open import Data.Sum
@@ -25,11 +26,20 @@ module IntrinsicDefun where
   -- open RawMonadZero {Agda.Primitive.lzero} Data.Maybe.monadZero renaming (∅ to fail)
   open RawMonadPlus {Agda.Primitive.lzero} Data.Maybe.monadPlus renaming (∅ to fail)
 
-  change-∈L : {a b d : List Char → Set} {c : List Char → List Char → Set}
-            → (∀ {s} → a s → b s)
-            → (Σ (List Char × List Char) (λ {(p , s') → (c p s') × (a p) × (d s')}))
-            → (Σ (List Char × List Char) (λ {(p , s') → (c p s') × (b p) × (d s')}))
-  change-∈L f (x , eq , inL , rest) = (x , eq , f inL , rest)
+  change-∈L-S+ : ∀ {s r k} → s ∈Lᵏ (r ∷ k) → s ∈Lᵏ ((r ⁺ˢ) ∷ k)
+  change-∈L-S+ (cons _ _ eq inL inK) = cons _ _ eq (S+ inL) inK
+
+  change-∈L-C+ : ∀ {s r k} → s ∈Lᵏ (r ∷ (r ⁺ˢ) ∷ k) → s ∈Lᵏ ((r ⁺ˢ) ∷ k)
+  change-∈L-C+ (cons _ _ eq inL (cons _ _ eq' inL' inK)) = cons _ _ (replace-right _ _ _ _ _ eq' eq) (C+ refl inL inL') inK
+
+  change-∈L-⊕₁ : ∀ {s r₁ r₂ k} → s ∈Lᵏ (r₁ ∷ k) → s ∈Lᵏ ((r₁ ⊕ˢ r₂) ∷ k)
+  change-∈L-⊕₁ (cons _ _ eq inL inK) = cons _ _ eq (inj₁ inL) inK
+
+  change-∈L-⊕₂ : ∀ {s r₁ r₂ k} → s ∈Lᵏ (r₂ ∷ k) → s ∈Lᵏ ((r₁ ⊕ˢ r₂) ∷ k)
+  change-∈L-⊕₂ (cons _ _ eq inL inK) = cons _ _ eq (inj₂ inL) inK
+
+  change-∈L-· : ∀ {s r₁ r₂ k} → s ∈Lᵏ (r₁ ∷ r₂ ∷ k) → s ∈Lᵏ ((r₁ ·ˢ r₂) ∷ k)
+  change-∈L-· (cons _ _ eq inL (cons _ _ eq' inL' inK)) = cons _ _ (replace-right _ _ _ _ _ eq' eq) (_ , refl , inL , inL') inK
 
   reassociate-left : ∀ {r₁ r₂ s k} {R : StdRegExp → StdRegExp → StdRegExp}
                → (f : ∀ {xs as} → xs ∈Lˢ r₁ → as ∈Lˢ r₂ → ((xs ++ as) ∈Lˢ R r₁ r₂))
@@ -40,8 +50,8 @@ module IntrinsicDefun where
 
   mutual
     match-helper : (k : List StdRegExp) → (s : List Char) → Maybe (s ∈Lᵏ k)
-    match-helper [] [] = return refl
-    match-helper [] (x ∷ s) = fail
+    match-helper [] [] = just emp
+    match-helper [] (x ∷ s) = nothing
     match-helper (r ∷ rs) s = match r s rs
 
     -- Doing the matching and soundness proof at the same time.
@@ -49,24 +59,22 @@ module IntrinsicDefun where
           → (s : List Char)
           → (k : List StdRegExp)
           → Maybe (s ∈Lᵏ (r ∷ k))
-    match ∅ˢ s k = fail
-    match (Litˢ c) [] k = fail
+    match ∅ˢ s k = nothing
+    match (Litˢ c) [] k = nothing
     match (Litˢ c) (x ∷ xs) k =
         do eq ← is-equal x c
            pf ← match-helper k xs
-           just ((([ c ] , xs) , cong (λ x → x ∷ xs) (sym eq) , refl , pf))
+           just (cons _ _ (cong (λ x → x ∷ xs) (sym eq)) refl pf)
     match (r₁ ·ˢ r₂) s k =
-      Data.Maybe.map (reassociate-left {R = _·ˢ_} (λ inL inL' → _ , refl , inL , inL')) (match r₁ s (r₂ ∷ k))
+      M.map change-∈L-· (match r₁ s (r₂ ∷ k))
     match (r₁ ⊕ˢ r₂) s k =
-      (Data.Maybe.map (change-∈L inj₁) (match r₁ s k)) ∣
-      (Data.Maybe.map (change-∈L inj₂) (match r₂ s k))
+      (M.map change-∈L-⊕₁ (match r₁ s k)) ∣ (M.map change-∈L-⊕₂ (match r₂ s k))
     match (r ⁺ˢ) s k =
-      (Data.Maybe.map (change-∈L S+) (match r s k)) ∣
-      (Data.Maybe.map (reassociate-left {R = λ r _ → r ⁺ˢ} (λ inL inL' → C+ refl inL inL')) (match r s ((r ⁺ˢ) ∷ k)))
+      (M.map change-∈L-S+ (match r s k)) ∣ (M.map change-∈L-C+ (match r s ((r ⁺ˢ) ∷ k)))
 
   mutual
     match-helper-some : (k : List StdRegExp) → (s : List Char) → (s ∈Lᵏ k) → isJust (match-helper k s)
-    match-helper-some [] .[] refl = tt
+    match-helper-some [] .[] emp = tt
     match-helper-some (r ∷ rs) s pf = match-completeness r s rs pf
 
     match-completeness : (r : StdRegExp)
@@ -74,35 +82,37 @@ module IntrinsicDefun where
                        → (k : List StdRegExp)
                        → s ∈Lᵏ (r ∷ k)
                        → isJust (match r s k)
-    match-completeness ∅ˢ _ _ (_ , _ , () , _)
-    match-completeness (Litˢ x) .(x ∷ xs) k ((.(x ∷ []) , xs) , refl , refl , rest) with x Data.Char.≟ x
+    match-completeness ∅ˢ s k (cons _ _ eq () inK)
+    match-completeness (Litˢ x) .(x ∷ _) k (cons _ s' refl refl inK) with x Data.Char.≟ x
     ... | no q = ⊥-elim (q refl)
-    ... | yes p with match-helper k xs | match-helper-some k xs rest
+    ... | yes p with match-helper k s' | match-helper-some k s' inK
     ...            | just _  | tt = tt
     ...            | nothing | ()
-    match-completeness (r₁ ·ˢ r₂) s' k ((xs , ys) , eq , ((as , bs) , eq' , inL' , rest') , rest)
-      with match r₁ s' (r₂ ∷ k) | match-completeness r₁ s' (r₂ ∷ k) ((as , bs ++ ys) , replace-left as bs xs ys s' eq' eq , inL' , (bs , ys) , refl , rest' , rest)
+    match-completeness (r₁ ·ˢ r₂) s k (cons p s' eq ((as , bs) , eq' , inL' , inK') inK)
+      with match r₁ s (r₂ ∷ k)
+         | match-completeness r₁ s (r₂ ∷ k) (cons as (bs ++ s') (replace-left as bs p s' s eq' eq) inL' (cons bs s' refl inK' inK))
     ... | nothing | ()
     ... | just _  | tt = tt
-    match-completeness (r₁ ⊕ˢ r₂) s k ((xs , ys) , eq , inj₁ p , rest)
-      with match r₁ s k | match-completeness r₁ s k (((xs , ys) , eq , p , rest))
+    match-completeness (r₁ ⊕ˢ r₂) s k (cons p s' eq (inj₁ inL) inK)
+      with match r₁ s k | match-completeness r₁ s k (cons p s' eq inL inK)
     ... | nothing | ()
     ... | just _  | _ = tt
-    match-completeness (r₁ ⊕ˢ r₂) s k ((xs , ys) , eq , inj₂ q , rest) with match r₁ s k
+    match-completeness (r₁ ⊕ˢ r₂) s k (cons p s' eq (inj₂ inL) inK) with match r₁ s k
     ... | just pf = tt
-    ... | nothing with match r₂ s k | match-completeness r₂ s k (((xs , ys) , eq , q , rest))
+    ... | nothing with match r₂ s k | match-completeness r₂ s k (cons p s' eq inL inK)
     ...           | nothing | ()
     ...           | just _  | _ = tt
-    match-completeness (r ⁺ˢ) s k ((xs , ys) , eq , S+ x , rest)
-      with match r s k | match-completeness r s k ((xs , ys) , eq , x , rest)
+    match-completeness (r ⁺ˢ) s k (cons p s' eq (S+ x) inK)
+      with match r s k | match-completeness r s k (cons p s' eq x inK)
     ... | nothing | ()
     ... | just _  | _ = tt
-    match-completeness (r ⁺ˢ) .((s₁ ++ s₂) ++ ys) k ((._ , ys) , refl , C+ {._}{s₁}{s₂} refl y inL , rest)
-      with match r ((s₁ ++ s₂) ++ ys) k
+    match-completeness (r ⁺ˢ) .((s₁ ++ s₂) ++ s') k (cons ._ s' refl (C+ {._}{s₁}{s₂} refl y inL) inK)
+      with match r ((s₁ ++ s₂) ++ s') k
     ... | just _ = tt
     ... | nothing
-      with match r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k)
-         | match-completeness r ((s₁ ++ s₂) ++ ys) ((r ⁺ˢ) ∷ k) (_ , append-assoc s₁ s₂ ys , y , (_ , ys) , refl , inL , rest)
+      with match r ((s₁ ++ s₂) ++ s') ((r ⁺ˢ) ∷ k)
+         | match-completeness r ((s₁ ++ s₂) ++ s') ((r ⁺ˢ) ∷ k)
+             (cons s₁ (s₂ ++ s') (append-assoc s₁ s₂ s') y (cons s₂ s' refl inL inK))
     ... | nothing | ()
     ... | just _  | _ = tt
 
@@ -113,17 +123,18 @@ module IntrinsicDefun where
 
   acceptsˢ-soundness : (r : StdRegExp) → (s : List Char) → r acceptsˢ s ≡ true → s ∈Lˢ r
   acceptsˢ-soundness r s m with match r s []
-  acceptsˢ-soundness r .(xs ++ []) m | just ((xs , .[]) , refl , inL , refl) = eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] xs) refl)) inL
+  acceptsˢ-soundness r .(p ++ []) m | just (cons p .[] refl inL emp) =
+    eq-replace (sym (cong₂ _∈Lˢ_ {_}{_}{r}{r} (append-rh-[] p) refl)) inL
   acceptsˢ-soundness r s () | nothing
 
   acceptsˢ-completeness : (r : StdRegExp) → (s : List Char) → s ∈Lˢ r → r acceptsˢ s ≡ true
-  acceptsˢ-completeness r s inL = is-just-lemma (match-completeness r s [] ((s , []) , append-rh-[] s , inL , refl))
+  acceptsˢ-completeness r s inL = is-just-lemma (match-completeness r s [] (cons _ _ (append-rh-[] s) inL emp))
 
   acceptsˢ-intrinsic : (r : StdRegExp) → (s : List Char) → Maybe (s ∈Lˢ r)
-  acceptsˢ-intrinsic r s = Data.Maybe.map ∈Lˢ-empty-continuation (match r s [])
+  acceptsˢ-intrinsic r s = M.map ∈Lᵏ-empty-continuation (match r s [])
 
   acceptsˢ-intrinsic-completeness : (r : StdRegExp) → (s : List Char) → s ∈Lˢ r → isJust (acceptsˢ-intrinsic r s)
-  acceptsˢ-intrinsic-completeness r s inL = is-just-preserve (match-completeness r s [] ((s , []) , append-rh-[] s , inL , refl))
+  acceptsˢ-intrinsic-completeness r s inL = is-just-preserve (match-completeness r s [] (cons s [] (append-rh-[] s) inL emp))
 
   {- Efficient overall matcher.
    These functions can be found in the OverallMatcher module

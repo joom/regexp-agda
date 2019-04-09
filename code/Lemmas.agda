@@ -157,10 +157,10 @@ module Lemmas where
   is-just-preserve {x = just _} m = tt
   is-just-preserve {x = nothing} ()
 
-  ∈Lˢ-empty-continuation : {r : StdRegExp} {s : List Char}
-                        → Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ≡ [])})
-                        → s ∈Lˢ r
-  ∈Lˢ-empty-continuation {r} ((xs , []) , eq , inL , refl) = eq-replace (cong₂ _∈Lˢ_ {_}{_}{r}{r} (trans (sym (append-rh-[] xs)) eq) refl) inL
+  ∈Lᵏ-empty-continuation : {r : StdRegExp} {s : List Char}
+                         → s ∈Lᵏ (r ∷ [])
+                         → s ∈Lˢ r
+  ∈Lᵏ-empty-continuation {r} {s} (cons p .[] eq inL emp) = eq-replace ((cong₂ _∈Lˢ_ {_}{_}{r}{r} (trans (sym (append-rh-[] p)) eq) refl)) inL
 
   empty-continuation : ∀ {p' s' s'' r} → (p' ++ s'' ≡ s') → (p' ∈Lˢ r) → Maybe (s' ∈Lˢ r)
   empty-continuation {p'}{s'}{s'' = []}{r} eq inL =  just (eq-replace (cong₂ _∈Lˢ_ {_}{_}{r}{r} (trans (sym (append-rh-[] p')) eq) refl ) inL)

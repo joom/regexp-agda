@@ -51,9 +51,9 @@ module Definitions where
   isJust (just _) = ⊤
   isJust _ = ⊥
 
-  _∈Lᵏ_ : List Char → List StdRegExp → Set
-  s ∈Lᵏ [] = s ≡ []
-  s ∈Lᵏ (r ∷ rs) = Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ r) × (s' ∈Lᵏ rs) })
+  data _∈Lᵏ_ : (List Char) → List StdRegExp → Set where
+    emp : [] ∈Lᵏ []
+    cons : ∀ {s r rs} → (p s' : List Char) → (p ++ s' ≡ s) → (p ∈Lˢ r) → (s' ∈Lᵏ rs) → s ∈Lᵏ (r ∷ rs)
 
   is-equal : (x y : Char) → Maybe (x ≡ y)
   is-equal x y = decToMaybe (x Data.Char.≟ y)
