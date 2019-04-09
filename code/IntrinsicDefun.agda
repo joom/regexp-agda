@@ -27,26 +27,19 @@ module IntrinsicDefun where
   open RawMonadPlus {Agda.Primitive.lzero} Data.Maybe.monadPlus renaming (∅ to fail)
 
   change-∈L-S+ : ∀ {s r k} → s ∈Lᵏ (r ∷ k) → s ∈Lᵏ ((r ⁺ˢ) ∷ k)
-  change-∈L-S+ (cons _ _ eq inL inK) = cons _ _ eq (S+ inL) inK
+  change-∈L-S+ (cons _ _ eq inL inK) = cons _ _ eq (∈ˢS+ inL) inK
 
   change-∈L-C+ : ∀ {s r k} → s ∈Lᵏ (r ∷ (r ⁺ˢ) ∷ k) → s ∈Lᵏ ((r ⁺ˢ) ∷ k)
-  change-∈L-C+ (cons _ _ eq inL (cons _ _ eq' inL' inK)) = cons _ _ (replace-right _ _ _ _ _ eq' eq) (C+ refl inL inL') inK
+  change-∈L-C+ (cons _ _ eq inL (cons _ _ eq' inL' inK)) = cons _ _ (replace-right eq' eq) (∈ˢC+ refl inL inL') inK
 
   change-∈L-⊕₁ : ∀ {s r₁ r₂ k} → s ∈Lᵏ (r₁ ∷ k) → s ∈Lᵏ ((r₁ ⊕ˢ r₂) ∷ k)
-  change-∈L-⊕₁ (cons _ _ eq inL inK) = cons _ _ eq (inj₁ inL) inK
+  change-∈L-⊕₁ (cons _ _ eq inL inK) = cons _ _ eq (∈ˢ⊕₁ inL) inK
 
   change-∈L-⊕₂ : ∀ {s r₁ r₂ k} → s ∈Lᵏ (r₂ ∷ k) → s ∈Lᵏ ((r₁ ⊕ˢ r₂) ∷ k)
-  change-∈L-⊕₂ (cons _ _ eq inL inK) = cons _ _ eq (inj₂ inL) inK
+  change-∈L-⊕₂ (cons _ _ eq inL inK) = cons _ _ eq (∈ˢ⊕₂ inL) inK
 
   change-∈L-· : ∀ {s r₁ r₂ k} → s ∈Lᵏ (r₁ ∷ r₂ ∷ k) → s ∈Lᵏ ((r₁ ·ˢ r₂) ∷ k)
-  change-∈L-· (cons _ _ eq inL (cons _ _ eq' inL' inK)) = cons _ _ (replace-right _ _ _ _ _ eq' eq) (_ , refl , inL , inL') inK
-
-  reassociate-left : ∀ {r₁ r₂ s k} {R : StdRegExp → StdRegExp → StdRegExp}
-               → (f : ∀ {xs as} → xs ∈Lˢ r₁ → as ∈Lˢ r₂ → ((xs ++ as) ∈Lˢ R r₁ r₂))
-               → Σ (List Char × List Char) (λ { (xs , ys) → (xs ++ ys ≡ s) × xs ∈Lˢ r₁ × Σ (List Char × List Char) (λ {(as , bs) → (as ++ bs ≡ ys) × as ∈Lˢ r₂ × bs ∈Lᵏ k})})
-               → (Σ (List Char × List Char) (λ { (p , s') → (p ++ s' ≡ s) × (p ∈Lˢ R r₁ r₂) × s' ∈Lᵏ k}))
-  reassociate-left {_}{_}{s} f ((xs , ys) , eq , inL , (as , bs) , eq' , inL' , rest) =
-    ((xs ++ as , bs) , replace-right xs ys as bs s eq' eq , f inL inL' , rest )
+  change-∈L-· (cons _ _ eq inL (cons _ _ eq' inL' inK)) = cons _ _ (replace-right eq' eq) (∈ˢ· refl inL inL') inK
 
   mutual
     match-helper : (k : List StdRegExp) → (s : List Char) → Maybe (s ∈Lᵏ k)
@@ -64,7 +57,7 @@ module IntrinsicDefun where
     match (Litˢ c) (x ∷ xs) k =
         do eq ← is-equal x c
            pf ← match-helper k xs
-           just (cons _ _ (cong (λ x → x ∷ xs) (sym eq)) refl pf)
+           just (cons _ _ (cong (λ x → x ∷ xs) (sym eq)) ∈ˢLit pf)
     match (r₁ ·ˢ r₂) s k =
       M.map change-∈L-· (match r₁ s (r₂ ∷ k))
     match (r₁ ⊕ˢ r₂) s k =
@@ -83,30 +76,30 @@ module IntrinsicDefun where
                        → s ∈Lᵏ (r ∷ k)
                        → isJust (match r s k)
     match-completeness ∅ˢ s k (cons _ _ eq () inK)
-    match-completeness (Litˢ x) .(x ∷ _) k (cons _ s' refl refl inK) with x Data.Char.≟ x
+    match-completeness (Litˢ x) .(x ∷ _) k (cons _ s' refl ∈ˢLit inK) with x Data.Char.≟ x
     ... | no q = ⊥-elim (q refl)
     ... | yes p with match-helper k s' | match-helper-some k s' inK
     ...            | just _  | tt = tt
     ...            | nothing | ()
-    match-completeness (r₁ ·ˢ r₂) s k (cons p s' eq ((as , bs) , eq' , inL' , inK') inK)
+    match-completeness (r₁ ·ˢ r₂) s k (cons p s' eq (∈ˢ· {_}{as}{bs} eq' inL' inK') inK)
       with match r₁ s (r₂ ∷ k)
-         | match-completeness r₁ s (r₂ ∷ k) (cons as (bs ++ s') (replace-left as bs p s' s eq' eq) inL' (cons bs s' refl inK' inK))
+         | match-completeness r₁ s (r₂ ∷ k) (cons as (bs ++ s') (replace-left {as} eq' eq) inL' (cons bs s' refl inK' inK))
     ... | nothing | ()
     ... | just _  | tt = tt
-    match-completeness (r₁ ⊕ˢ r₂) s k (cons p s' eq (inj₁ inL) inK)
+    match-completeness (r₁ ⊕ˢ r₂) s k (cons p s' eq (∈ˢ⊕₁ inL) inK)
       with match r₁ s k | match-completeness r₁ s k (cons p s' eq inL inK)
     ... | nothing | ()
     ... | just _  | _ = tt
-    match-completeness (r₁ ⊕ˢ r₂) s k (cons p s' eq (inj₂ inL) inK) with match r₁ s k
+    match-completeness (r₁ ⊕ˢ r₂) s k (cons p s' eq (∈ˢ⊕₂ inL) inK) with match r₁ s k
     ... | just pf = tt
     ... | nothing with match r₂ s k | match-completeness r₂ s k (cons p s' eq inL inK)
     ...           | nothing | ()
     ...           | just _  | _ = tt
-    match-completeness (r ⁺ˢ) s k (cons p s' eq (S+ x) inK)
+    match-completeness (r ⁺ˢ) s k (cons p s' eq (∈ˢS+ x) inK)
       with match r s k | match-completeness r s k (cons p s' eq x inK)
     ... | nothing | ()
     ... | just _  | _ = tt
-    match-completeness (r ⁺ˢ) .((s₁ ++ s₂) ++ s') k (cons ._ s' refl (C+ {._}{s₁}{s₂} refl y inL) inK)
+    match-completeness (r ⁺ˢ) .((s₁ ++ s₂) ++ s') k (cons ._ s' refl (∈ˢC+ {._}{s₁}{s₂} refl y inL) inK)
       with match r ((s₁ ++ s₂) ++ s') k
     ... | just _ = tt
     ... | nothing

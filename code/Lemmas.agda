@@ -100,15 +100,15 @@ module Lemmas where
   bool-eq false = inj₂ refl
 
   non-empty : ∀ {r} → ([] ∈Lˢ r → ⊥)
-  non-empty {∅ˢ} inL = inL
-  non-empty {Litˢ c} ()
-  non-empty {r₁ ·ˢ r₂} ((xs , ys) , a , b , c) with empty-append {xs} {ys} a
-  non-empty {r₁ ·ˢ r₂} ((.[] , .[]) , a , b , c) | refl , refl = non-empty {r₁} b
-  non-empty {r₁ ⊕ˢ r₂} (inj₁ x) = non-empty {r₁} x
-  non-empty {r₁ ⊕ˢ r₂} (inj₂ x) = non-empty {r₂} x
-  non-empty {r ⁺ˢ} (S+ x) = non-empty {r} x
-  non-empty {r ⁺ˢ} (C+ {.[]}{s₁}{s₂} p q inL) with empty-append {s₁} {s₂} p
-  non-empty {r ⁺ˢ} (C+ p q inL) | refl , refl = non-empty {r} q
+  non-empty {∅ˢ} ()
+  non-empty {Litˢ x} ()
+  non-empty {r₁ ·ˢ r₂} (∈ˢ· {s}{xs}{ys} eq inL inL') with empty-append {xs} {ys} eq
+  non-empty {r₁ ·ˢ r₂} (∈ˢ· {.[]} {.[]} {ys} eq inL inL') | refl , _ = non-empty inL
+  non-empty {r₁ ⊕ˢ r₂} (∈ˢ⊕₁ inL) = non-empty inL
+  non-empty {r₁ ⊕ˢ r₂} (∈ˢ⊕₂ inL) = non-empty inL
+  non-empty {r ⁺ˢ} (∈ˢS+ inL) = non-empty inL
+  non-empty {r ⁺ˢ} (∈ˢC+ {s}{xs}{ys} eq inL _) with empty-append {xs} {ys} eq
+  non-empty {r ⁺ˢ} (∈ˢC+ {.[]} {.[]} {ys} eq inL _) | refl , _ = non-empty inL
 
   cons-empty : {x : Char} → {xs : List Char} → x ∷ xs ≡ [] → ⊥
   cons-empty ()
@@ -123,12 +123,12 @@ module Lemmas where
   append-suffix2 {[]} inL | q = ⊥-elim (q inL)
   append-suffix2 {x ∷ xs} {ys} inL | q = append-suffix2' {x ∷ xs} {ys} (cons-empty {x} {xs})
 
-  append-suffix2⁺ : ∀ {xs ys r} → xs ∈L⁺ r → Suffix ys (xs ++ ys)
-  append-suffix2⁺ {xs}{ys}{r} inL with non-empty {r}
-  append-suffix2⁺ {[]} (S+ x) | q = ⊥-elim (q x)
-  append-suffix2⁺ {[]} (C+ {._}{s₁}{s₂} x x₁ inL) | q with empty-append {s₁} {s₂} x
-  append-suffix2⁺ {[]} (C+ x x₁ inL) | q | refl , refl = ⊥-elim (q x₁)
-  append-suffix2⁺ {x ∷ xs} {ys} inL | q = append-suffix2' {x ∷ xs} {ys} (cons-empty {x} {xs})
+  -- append-suffix2⁺ : ∀ {xs ys r} → xs ∈L⁺ r → Suffix ys (xs ++ ys)
+  -- append-suffix2⁺ {xs}{ys}{r} inL with non-empty {r}
+  -- append-suffix2⁺ {[]} (S+ x) | q = ⊥-elim (q x)
+  -- append-suffix2⁺ {[]} (C+ {._}{s₁}{s₂} x x₁ inL) | q with empty-append {s₁} {s₂} x
+  -- append-suffix2⁺ {[]} (C+ x x₁ inL) | q | refl , refl = ⊥-elim (q x₁)
+  -- append-suffix2⁺ {x ∷ xs} {ys} inL | q = append-suffix2' {x ∷ xs} {ys} (cons-empty {x} {xs})
 
   assoc-append-suffix : {xs ys zs : List Char}
                       → ys ≡ zs
@@ -143,11 +143,11 @@ module Lemmas where
   null-lemma {[]} eq = refl
   null-lemma {_ ∷ _} ()
 
-  replace-left : (as bs xs ys s' : List Char) → as ++ bs ≡ xs → xs ++ ys ≡ s' → as ++ bs ++ ys ≡ s'
-  replace-left as bs .(as ++ bs) ys .((as ++ bs) ++ ys) refl refl = append-assoc as bs ys
+  replace-left : {as bs xs ys s' : List Char} → as ++ bs ≡ xs → xs ++ ys ≡ s' → as ++ bs ++ ys ≡ s'
+  replace-left {as} {bs} .{as ++ bs} {ys} .{(as ++ bs) ++ ys} refl refl = append-assoc as bs ys
 
-  replace-right : (xs ys as bs s : List Char) → as ++ bs ≡ ys → xs ++ ys ≡ s → (xs ++ as) ++ bs ≡ s
-  replace-right xs .(as ++ bs) as bs .(xs ++ as ++ bs) refl refl = sym (append-assoc xs as bs)
+  replace-right : {xs ys as bs s : List Char} → as ++ bs ≡ ys → xs ++ ys ≡ s → (xs ++ as) ++ bs ≡ s
+  replace-right {xs} .{as ++ bs} {as} {bs} .{xs ++ as ++ bs} refl refl = sym (append-assoc xs as bs)
 
   is-just-lemma : ∀ {A} → {x : Maybe A} → isJust x → is-just x ≡ true
   is-just-lemma {x = just x} m = refl
