@@ -10,9 +10,9 @@ open import Data.Maybe
 open import Data.Product
 import Data.String as String
 open import Data.Sum
+open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary
 open import Relation.Nullary.Decidable
-open import Relation.Binary.PropositionalEquality
 
 module Matcher {_acceptsˢ_ : StdRegExp → List Char → Bool}
                {acceptsˢ-soundness : (r : StdRegExp) → (s : List Char) → r acceptsˢ s ≡ true → s ∈Lˢ r}

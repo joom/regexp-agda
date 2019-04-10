@@ -2,8 +2,8 @@ open import Definitions
 
 module Lemmas where
 
-  open import Function
   open import Category.Monad
+  open import Function
   open import Data.Bool
   open import Data.Char
   open import Data.Empty
@@ -12,7 +12,9 @@ module Lemmas where
   open import Data.Product
   open import Data.Unit
   open import Data.Sum
+  open import Induction.WellFounded
   open import Relation.Nullary
+  open import Relation.Binary
   open import Relation.Binary.PropositionalEquality
   open import Relation.Nullary.Decidable
   import Agda.Primitive
@@ -29,17 +31,17 @@ module Lemmas where
   suffix-trans s1 (Drop s2) = Drop (suffix-trans s1 s2)
 
   {- Prove that you can make a recursion permission for any suffix of [] -}
-  perm-suffix-[] : {A : Set} (xs : List A) → Suffix xs [] → RecursionPermission xs
+  perm-suffix-[] : {A : Set} (xs : List A) → Suffix xs [] → Acc Suffix xs
   perm-suffix-[] _ ()
 
-  perm-suffix : {A : Set} {y : A} {xs ys : List A} → Suffix xs (y ∷ ys) → RecursionPermission ys → RecursionPermission xs
+  perm-suffix : {A : Set} {y : A} {xs ys : List A} → Suffix xs (y ∷ ys) → Acc Suffix ys → Acc Suffix xs
   perm-suffix Stop rec = rec
-  perm-suffix (Drop s) (CanRec perm) = perm _ s
+  perm-suffix (Drop s) (acc perm) = perm _ s
 
   {- Using perm-suffix-[] and perm-suffix, make a recursion permission for any list. -}
-  well-founded : {A : Set} (ys : List A) → RecursionPermission ys
-  well-founded [] = CanRec perm-suffix-[]
-  well-founded (y ∷ ys) = CanRec (λ xs suff → perm-suffix suff (well-founded ys))
+  well-founded : {A : Set} (ys : List A) → Acc Suffix ys
+  well-founded [] = acc perm-suffix-[]
+  well-founded (y ∷ ys) = acc (λ xs suff → perm-suffix suff (well-founded ys))
 
   suffix-[]-cons : {A : Set} → {x : A} → {xs : List A} → Suffix [] (x ∷ xs)
   suffix-[]-cons {xs = []} = Stop

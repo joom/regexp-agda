@@ -11,6 +11,7 @@ module Definitions where
   open import Data.Unit
   open import Relation.Binary.PropositionalEquality
   open import Relation.Nullary
+  open import Induction.WellFounded
 
   -- Definitions of types and functions used in the matchers.
 

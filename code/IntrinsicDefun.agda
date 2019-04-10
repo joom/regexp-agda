@@ -16,9 +16,9 @@ module IntrinsicDefun where
   import Data.String as String
   open import Data.Sum
   open import Data.Unit
+  open import Relation.Binary.PropositionalEquality hiding ([_])
   open import Relation.Nullary
   open import Relation.Nullary.Decidable
-  open import Relation.Binary.PropositionalEquality hiding ([_])
   import Agda.Primitive
 
   -- Using groups
