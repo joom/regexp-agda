@@ -42,10 +42,10 @@ module IntrinsicDefun where
   change-∈L-· (cons _ _ eq inL (cons _ _ eq' inL' inK)) = cons _ _ (replace-right eq' eq) (∈ˢ· refl inL inL') inK
 
   mutual
-    match-helper : (k : List StdRegExp) → (s : List Char) → Maybe (s ∈Lᵏ k)
-    match-helper [] [] = just emp
-    match-helper [] (x ∷ s) = nothing
-    match-helper (r ∷ rs) s = match r s rs
+    apply : (k : List StdRegExp) → (s : List Char) → Maybe (s ∈Lᵏ k)
+    apply [] [] = just emp
+    apply [] (_ ∷ _) = nothing
+    apply (r ∷ rs) s = match r s rs
 
     -- Doing the matching and soundness proof at the same time.
     match : (r : StdRegExp)
@@ -56,16 +56,16 @@ module IntrinsicDefun where
     match (Litˢ c) [] k = nothing
     match (Litˢ c) (x ∷ xs) k =
         do refl ← is-equal x c
-           pf ← match-helper k xs
+           pf ← apply k xs
            just (cons [ x ] xs refl ∈ˢLit pf)
     match (r₁ ·ˢ r₂) s k = M.map change-∈L-· (match r₁ s (r₂ ∷ k))
     match (r₁ ⊕ˢ r₂) s k = (M.map change-∈L-⊕₁ (match r₁ s k)) ∣ (M.map change-∈L-⊕₂ (match r₂ s k))
     match (r ⁺ˢ) s k = (M.map change-∈L-S+ (match r s k)) ∣ (M.map change-∈L-C+ (match r s ((r ⁺ˢ) ∷ k)))
 
   mutual
-    match-helper-some : (k : List StdRegExp) → (s : List Char) → (s ∈Lᵏ k) → isJust (match-helper k s)
-    match-helper-some [] .[] emp = tt
-    match-helper-some (r ∷ rs) s pf = match-completeness r s rs pf
+    apply-is-just : (k : List StdRegExp) → (s : List Char) → (s ∈Lᵏ k) → isJust (apply k s)
+    apply-is-just [] .[] emp = tt
+    apply-is-just (r ∷ rs) s pf = match-completeness r s rs pf
 
     match-completeness : (r : StdRegExp)
                        → (s : List Char)
@@ -75,7 +75,7 @@ module IntrinsicDefun where
     match-completeness ∅ˢ s k (cons _ _ eq () inK)
     match-completeness (Litˢ x) .(x ∷ _) k (cons _ s' refl ∈ˢLit inK) with x Data.Char.≟ x
     match-completeness (Litˢ x) .((x ∷ []) ++ s') k (cons .(x ∷ []) s' refl ∈ˢLit inK) | no ¬p = ⊥-elim (¬p refl)
-    match-completeness (Litˢ x) .((x ∷ []) ++ s') k (cons .(x ∷ []) s' refl ∈ˢLit inK) | yes refl with match-helper k s' | match-helper-some k s' inK
+    match-completeness (Litˢ x) .((x ∷ []) ++ s') k (cons .(x ∷ []) s' refl ∈ˢLit inK) | yes refl with apply k s' | apply-is-just k s' inK
     match-completeness (Litˢ x) .((x ∷ []) ++ s') k (cons .(x ∷ []) s' refl ∈ˢLit inK) | yes refl | just _ | tt = tt
     match-completeness (Litˢ x) .((x ∷ []) ++ s') k (cons .(x ∷ []) s' refl ∈ˢLit inK) | yes refl | nothing | ()
     match-completeness (r₁ ·ˢ r₂) s k (cons p s' eq (∈ˢ· {_}{as}{bs} eq' inL' inK') inK)

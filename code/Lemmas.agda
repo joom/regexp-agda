@@ -125,13 +125,6 @@ module Lemmas where
   append-suffix2 {[]} inL | q = ⊥-elim (q inL)
   append-suffix2 {x ∷ xs} {ys} inL | q = append-suffix2' {x ∷ xs} {ys} (cons-empty {x} {xs})
 
-  -- append-suffix2⁺ : ∀ {xs ys r} → xs ∈L⁺ r → Suffix ys (xs ++ ys)
-  -- append-suffix2⁺ {xs}{ys}{r} inL with non-empty {r}
-  -- append-suffix2⁺ {[]} (S+ x) | q = ⊥-elim (q x)
-  -- append-suffix2⁺ {[]} (C+ {._}{s₁}{s₂} x x₁ inL) | q with empty-append {s₁} {s₂} x
-  -- append-suffix2⁺ {[]} (C+ x x₁ inL) | q | refl , refl = ⊥-elim (q x₁)
-  -- append-suffix2⁺ {x ∷ xs} {ys} inL | q = append-suffix2' {x ∷ xs} {ys} (cons-empty {x} {xs})
-
   assoc-append-suffix : {xs ys zs : List Char}
                       → ys ≡ zs
                       → Suffix xs ys
@@ -162,14 +155,14 @@ module Lemmas where
   ∈Lᵏ-empty-continuation : {r : StdRegExp} {s : List Char}
                          → s ∈Lᵏ (r ∷ [])
                          → s ∈Lˢ r
-  ∈Lᵏ-empty-continuation {r} {s} (cons p .[] eq inL emp) = eq-replace ((cong₂ _∈Lˢ_ {_}{_}{r}{r} (trans (sym (append-rh-[] p)) eq) refl)) inL
+  ∈Lᵏ-empty-continuation {r} {s} (cons p .[] eq inL emp) = eq-replace ((cong₂ _∈Lˢ_ (trans (sym (append-rh-[] p)) eq) refl)) inL
 
   empty-continuation : ∀ {p' s' s'' r} → (p' ++ s'' ≡ s') → (p' ∈Lˢ r) → Maybe (s' ∈Lˢ r)
-  empty-continuation {p'}{s'}{s'' = []}{r} eq inL =  just (eq-replace (cong₂ _∈Lˢ_ {_}{_}{r}{r} (trans (sym (append-rh-[] p')) eq) refl ) inL)
+  empty-continuation {p'}{s'}{s'' = []} eq inL =  just (eq-replace (cong₂ _∈Lˢ_ (trans (sym (append-rh-[] p')) eq) refl ) inL)
   empty-continuation {s'' = x ∷ s''} eq inL = nothing
 
   suffix-after-∈Lˢ : ∀ {p s' s r} → (p ++ s' ≡ s) → (p ∈Lˢ r) → Suffix s' s
-  suffix-after-∈Lˢ {p}{s'}{s}{r} eq inL = eq-replace (cong₂ Suffix refl eq) (append-suffix2 {p}{s'}{r} inL)
+  suffix-after-∈Lˢ eq inL = eq-replace (cong₂ Suffix refl eq) (append-suffix2 inL)
 
   open RawMonadPlus {Agda.Primitive.lzero} Data.Maybe.monadPlus renaming (∅ to fail)
   or-just : ∀ {A} {a b : Maybe A} → (isJust a) ⊎ (isJust b) → isJust (a ∣ b)
