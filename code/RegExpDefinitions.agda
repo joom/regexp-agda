@@ -27,6 +27,25 @@ module RegExpDefinitions where
   infixr 2 _·_
   infixr 3 _⊕_
 
+  -- mutual
+  --   bad-match : RegExp → (s : List Char) → (k : List RegExp) → Bool
+  --   bad-match ∅ s k = false
+  --   bad-match ε s k = pop k s
+  --   bad-match (Lit x) [] k = false
+  --   bad-match (Lit x) (y ∷ ys) k with x Data.Char.≟ y
+  --   ... | no ¬p = false
+  --   bad-match (Lit x) (y ∷ ys) [] | yes p = null ys
+  --   bad-match (Lit x) (y ∷ ys) (r ∷ rs) | yes p = bad-match r ys rs
+  --   bad-match (r₁ · r₂) s k = bad-match r₁ s (r₂ ∷ k)
+  --   bad-match (r₁ ⊕ r₂) s k = (bad-match r₁ s k) ∨ (bad-match r₂ s k)
+  --   bad-match (r *) s k = (bad-match r s k) ∨ (bad-match r s ((r *) ∷ k))
+  --   bad-match (G r) s k = bad-match r s k
+
+  --   pop : List RegExp → List Char → Bool
+  --   pop [] [] = true
+  --   pop [] (x ∷ s) = false
+  --   pop (x ∷ k) s = {!!}
+
   {-
     Example regexp:
       ((Lit 'a' ⊕ Lit 'b') · (Lit 'c')) accepts "ac"

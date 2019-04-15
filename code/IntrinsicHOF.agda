@@ -10,6 +10,7 @@ module IntrinsicHOF where
   open import Data.Empty
   open import Data.List
   open import Data.Maybe
+  import Data.Maybe.Categorical
   open import Data.Product
   import Data.String as String
   open import Data.Sum
@@ -21,7 +22,7 @@ module IntrinsicHOF where
   open import Relation.Nullary.Decidable
   import Agda.Primitive
 
-  open RawMonadPlus {Agda.Primitive.lzero} Data.Maybe.monadPlus renaming (∅ to fail)
+  open RawMonadPlus {Agda.Primitive.lzero} Data.Maybe.Categorical.monadPlus renaming (∅ to fail)
 
   match : (C : Set)
         → (r : StdRegExp)

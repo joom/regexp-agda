@@ -9,6 +9,7 @@ module Lemmas where
   open import Data.Empty
   open import Data.List
   open import Data.Maybe
+  import Data.Maybe.Categorical
   open import Data.Product
   open import Data.Unit
   open import Data.Sum
@@ -164,7 +165,7 @@ module Lemmas where
   suffix-after-∈Lˢ : ∀ {p s' s r} → (p ++ s' ≡ s) → (p ∈Lˢ r) → Suffix s' s
   suffix-after-∈Lˢ eq inL = eq-replace (cong₂ Suffix refl eq) (append-suffix2 inL)
 
-  open RawMonadPlus {Agda.Primitive.lzero} Data.Maybe.monadPlus renaming (∅ to fail)
+  open RawMonadPlus {Agda.Primitive.lzero} Data.Maybe.Categorical.monadPlus renaming (∅ to fail)
   or-just : ∀ {A} {a b : Maybe A} → (isJust a) ⊎ (isJust b) → isJust (a ∣ b)
   or-just {a = just x} m = tt
   or-just {a = nothing} (inj₁ ())

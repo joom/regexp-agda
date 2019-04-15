@@ -12,6 +12,7 @@ module IntrinsicDefun where
   open import Data.List
   open import Data.Maybe
   import Data.Maybe as M
+  import Data.Maybe.Categorical
   open import Data.Product
   import Data.String as String
   open import Data.Sum
@@ -23,8 +24,8 @@ module IntrinsicDefun where
 
   -- Using groups
 
-  -- open RawMonadZero {Agda.Primitive.lzero} Data.Maybe.monadZero renaming (∅ to fail)
-  open RawMonadPlus {Agda.Primitive.lzero} Data.Maybe.monadPlus renaming (∅ to fail)
+  -- open RawMonadZero {Agda.Primitive.lzero} Data.Maybe.Categorical.monadZero renaming (∅ to fail)
+  open RawMonadPlus {Agda.Primitive.lzero} Data.Maybe.Categorical.monadPlus renaming (∅ to fail)
 
   change-∈L-S+ : ∀ {s r k} → s ∈Lᵏ (r ∷ k) → s ∈Lᵏ ((r ⁺ˢ) ∷ k)
   change-∈L-S+ (cons _ _ eq inL inK) = cons _ _ eq (∈ˢS+ inL) inK
